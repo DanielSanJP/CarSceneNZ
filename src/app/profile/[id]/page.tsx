@@ -17,6 +17,7 @@ import {
   Heart,
   Eye,
   Settings,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -205,12 +206,22 @@ export default function UserProfilePage() {
             {/* Cars Grid */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Car className="h-5 w-5" />
-                  {isOwnProfile
-                    ? "My Cars"
-                    : `${profileUser.display_name}'s Garage`}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Car className="h-5 w-5" />
+                    {isOwnProfile
+                      ? "My Cars"
+                      : `${profileUser.display_name}'s Garage`}
+                  </CardTitle>
+                  {isOwnProfile && (
+                    <Link href="/garage">
+                      <Button variant="outline" size="sm">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Go to Garage
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {userCars.length === 0 ? (
