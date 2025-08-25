@@ -1,0 +1,101 @@
+[
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440001",
+    "host_id": "550e8400-e29b-41d4-a716-446655440001",
+    "title": "Mad Mike's Summer Bash",
+    "description": "Epic motorsport event featuring drift exhibitions, car displays, and automotive entertainment. Red Bull sponsored event with professional drivers and amazing builds on display.",
+    "poster_image_url": "/events/img2.jpg",
+    "event_date": "2025-12-02T10:00:00Z",
+    "location": "Hampton Downs Motorsport Park, Waikato",
+    "is_public": true,
+    "created_at": "2024-08-01T10:30:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440002",
+    "host_id": "550e8400-e29b-41d4-a716-446655440002",
+    "title": "Christchurch Drift Day",
+    "description": "Track day at Ruapuna Park for all skill levels. Professional instructors available. Helmet and safety gear required. Limited spots available.",
+    "poster_image_url": "/events/img10.jpg",
+    "event_date": "2025-09-22T08:00:00Z",
+    "location": "Ruapuna Park, Christchurch",
+    "is_public": true,
+    "created_at": "2024-07-15T14:20:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440003",
+    "host_id": "550e8400-e29b-41d4-a716-446655440004",
+    "title": "Euro Car Show Wellington",
+    "description": "Celebrating European automotive excellence. BMW, Audi, VW, Mercedes and more. Trophies for best in class. Food and coffee available.",
+    "poster_image_url": "/events/img5.JPG",
+    "event_date": "2025-10-05T10:00:00Z",
+    "location": "Wellington Waterfront, Wellington",
+    "is_public": true,
+    "created_at": "2024-08-10T09:45:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440004",
+    "host_id": "550e8400-e29b-41d4-a716-446655440003",
+    "title": "NZ Car Community Mega Meet",
+    "description": "Massive car gathering featuring hundreds of builds from across New Zealand. All makes and models welcome - JDM, Euro, Muscle, and everything in between. Food, music, and prizes.",
+    "poster_image_url": "/events/img6.jpg",
+    "event_date": "2025-09-29T11:00:00Z",
+    "location": "Mystery Creek Events Centre, Hamilton",
+    "is_public": true,
+    "created_at": "2024-07-28T16:10:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440005",
+    "host_id": "550e8400-e29b-41d4-a716-446655440006",
+    "title": "Classic Car & Coffee Hamilton",
+    "description": "Monthly gathering for classic car enthusiasts. Coffee, pastries, and automotive stories. Family-friendly event in central Hamilton.",
+    "poster_image_url": "/events/img7.jpg",
+    "event_date": "2025-09-08T08:30:00Z",
+    "location": "Hamilton Gardens, Hamilton",
+    "is_public": true,
+    "created_at": "2024-08-05T11:25:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440006",
+    "host_id": "550e8400-e29b-41d4-a716-446655440005",
+    "title": "Tauranga Cruise Night",
+    "description": "Sunset cruise around Tauranga followed by fish and chips at the beach. All cars welcome for this relaxed evening drive.",
+    "poster_image_url": "/events/img4.jpg",
+    "event_date": "2025-09-14T17:30:00Z",
+    "location": "Tauranga Marina, Tauranga",
+    "is_public": true,
+    "created_at": "2024-08-12T13:40:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440007",
+    "host_id": "550e8400-e29b-41d4-a716-446655440007",
+    "title": "American Muscle Meetup",
+    "description": "V8 thunder in Dunedin! Mustangs, Camaros, Chargers and more. Rev competition and burnout contest (in designated area only).",
+    "poster_image_url": "/events/img8.JPG",
+    "event_date": "2025-10-12T14:00:00Z",
+    "location": "Forsyth Barr Stadium Carpark, Dunedin",
+    "is_public": true,
+    "created_at": "2024-08-18T15:55:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440008",
+    "host_id": "550e8400-e29b-41d4-a716-446655440008",
+    "title": "Subaru Club Track Day",
+    "description": "Private track day for Subaru owners at Hampton Downs. All models welcome from WRX to Forester. Professional timing and coaching available.",
+    "poster_image_url": "/events/img9.jpg",
+    "event_date": "2025-10-19T07:00:00Z",
+    "location": "Hampton Downs Motorsport Park, Waikato",
+    "is_public": false,
+    "created_at": "2024-08-20T12:30:00Z"
+  },
+  {
+    "id": "event-550e8400-e29b-41d4-a716-446655440009",
+    "host_id": "550e8400-e29b-41d4-a716-446655440001",
+    "title": "Rotary Revolution",
+    "description": "Celebrating the Wankel engine! RX-7s, RX-8s, and other rotary-powered machines. Engine bay judging and best sound competition.",
+    "poster_image_url": "/events/img3.jpg",
+    "event_date": "2025-11-02T12:00:00Z",
+    "location": "Western Springs Stadium, Auckland",
+    "is_public": true,
+    "created_at": "2024-08-22T10:15:00Z"
+  }
+]

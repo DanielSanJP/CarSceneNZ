@@ -1,0 +1,158 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Camera, Upload } from "lucide-react";
+import { useState, useRef } from "react";
+
+export function RegisterForm({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  const [profileImage, setProfileImage] = useState<string>("");
+  const [displayName, setDisplayName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Create your account</CardTitle>
+          <CardDescription>
+            Join the Car Scene NZ community and connect with fellow enthusiasts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form>
+            <div className="flex flex-col gap-6">
+              {/* Profile Picture Section */}
+              <div className="grid gap-3">
+                <Label>Profile Picture</Label>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <Avatar
+                      className="h-24 w-24 cursor-pointer"
+                      onClick={handleImageClick}
+                    >
+                      {profileImage ? (
+                        <AvatarImage src={profileImage} alt="Profile preview" />
+                      ) : (
+                        <AvatarFallback className="text-lg">
+                          {displayName ? (
+                            getInitials(displayName)
+                          ) : (
+                            <Camera className="h-8 w-8" />
+                          )}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div
+                      className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                      onClick={handleImageClick}
+                    >
+                      <Upload className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleImageClick}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Choose Photo
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    aria-label="Profile picture upload"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="display-name">Display Name</Label>
+                <Input
+                  id="display-name"
+                  type="text"
+                  placeholder="Your display name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" required />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input id="confirm-password" type="password" required />
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button type="submit" className="w-full">
+                  Create Account
+                </Button>
+                {/* <Button variant="outline" className="w-full">
+                  Sign up with Google
+                </Button> */}
+              </div>
+            </div>
+            <div className="mt-4 text-center text-sm">
+              Already have an account?{" "}
+              <a href="/login" className="underline underline-offset-4">
+                Sign in
+              </a>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
