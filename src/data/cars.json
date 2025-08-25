@@ -277,8 +277,12 @@
       "front": "245/40R18",
       "rear": "245/40R18"
     },
-    "images": ["/cars/forester_daniel_1.jpg", "/cars/forester_daniel_2.jpg"],
-    "total_likes": 42,
+    "images": [
+      "/cars/forester1.jpg",
+      "/cars/forester2.jpeg",
+      "/cars/forester3.jpg"
+    ],
+    "total_likes": 443,
     "created_at": "2024-08-25T12:15:00Z"
   }
 ]

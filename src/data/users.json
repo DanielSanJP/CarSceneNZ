@@ -5,7 +5,7 @@
     "display_name": "Jake Thompson",
     "email": "jake@example.com",
     "password": "password123",
-    "profile_image_url": "/profiles/jake.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-01-15T10:30:00Z",
     "updated_at": "2024-08-20T14:22:00Z"
   },
@@ -15,7 +15,7 @@
     "display_name": "Sarah Wilson",
     "email": "sarah@example.com",
     "password": "sarah2024",
-    "profile_image_url": "/profiles/sarah.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-02-03T09:15:00Z",
     "updated_at": "2024-08-18T16:45:00Z"
   },
@@ -25,7 +25,7 @@
     "display_name": "Marcus Chen",
     "email": "marcus@example.com",
     "password": "drift123",
-    "profile_image_url": "/profiles/marcus.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-01-28T13:20:00Z",
     "updated_at": "2024-08-19T11:10:00Z"
   },
@@ -35,7 +35,7 @@
     "display_name": "Emma Rodriguez",
     "email": "emma@example.com",
     "password": "euro2024",
-    "profile_image_url": "/profiles/emma.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-03-10T08:45:00Z",
     "updated_at": "2024-08-21T12:30:00Z"
   },
@@ -45,7 +45,7 @@
     "display_name": "Tom Anderson",
     "email": "tom@example.com",
     "password": "stance123",
-    "profile_image_url": "/profiles/tom.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-02-20T15:30:00Z",
     "updated_at": "2024-08-22T09:15:00Z"
   },
@@ -55,7 +55,7 @@
     "display_name": "Priya Patel",
     "email": "priya@example.com",
     "password": "jdm2024",
-    "profile_image_url": "/profiles/priya.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-01-05T11:45:00Z",
     "updated_at": "2024-08-20T17:20:00Z"
   },
@@ -65,7 +65,7 @@
     "display_name": "Mike Johnson",
     "email": "mike@example.com",
     "password": "muscle123",
-    "profile_image_url": "/profiles/mike.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-03-25T14:10:00Z",
     "updated_at": "2024-08-19T13:55:00Z"
   },
@@ -75,7 +75,7 @@
     "display_name": "Amy Foster",
     "email": "amy@example.com",
     "password": "trackday2024",
-    "profile_image_url": "/profiles/amy.jpg",
+    "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-02-14T16:25:00Z",
     "updated_at": "2024-08-21T10:40:00Z"
   },

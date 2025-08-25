@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Navigation } from "@/components/nav";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,11 +45,23 @@ interface Car {
 export default function CarDetailPage() {
   const { user, isAuthenticated } = useAuth();
   const params = useParams();
+  const router = useRouter();
   const carId = params.id as string;
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const car = (cars as Car[]).find((c) => c.id === carId);
+
+  const handleBackClick = () => {
+    // Since edit page now uses router.replace(), it won't be in history
+    // Safe to use normal back navigation
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      // Fallback to garage if no history
+      router.push("/garage");
+    }
+  };
 
   if (!isAuthenticated || !user) {
     return (
@@ -121,23 +133,15 @@ export default function CarDetailPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <Link href="/garage">
-                <Button variant="outline" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
+              <Button variant="outline" size="icon" onClick={handleBackClick}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <div>
                 <h1 className="text-3xl font-bold">
                   {car.year} {car.brand} {car.model}
                 </h1>
                 <div className="flex items-center gap-2 mt-2">
                   {car.is_main_car && <Badge>Main Car</Badge>}
-                  <Badge variant={car.is_public ? "default" : "secondary"}>
-                    {car.is_public ? "Public" : "Private"}
-                  </Badge>
-                  <Badge variant="outline" className="capitalize">
-                    {car.suspension_type}
-                  </Badge>
                 </div>
               </div>
             </div>
@@ -155,30 +159,26 @@ export default function CarDetailPage() {
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Images */}
             <div className="space-y-4">
-              <Card>
-                <CardContent className="p-0">
-                  <div className="relative aspect-square overflow-hidden rounded-lg">
-                    {failedImages.has(`${carId}-${currentImageIndex}`) ||
-                    !car.images[currentImageIndex] ? (
-                      <div className="aspect-square bg-muted flex items-center justify-center">
-                        <CarIcon className="h-16 w-16 text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <Image
-                        src={car.images[currentImageIndex]}
-                        alt={`${car.brand} ${car.model} - Image ${
-                          currentImageIndex + 1
-                        }`}
-                        fill
-                        quality={100}
-                        className="object-cover"
-                        sizes="(max-width: 1024px) 100vw, 50vw"
-                        onError={() => handleImageError(currentImageIndex)}
-                      />
-                    )}
+              <div className="relative aspect-square overflow-hidden rounded-lg">
+                {failedImages.has(`${carId}-${currentImageIndex}`) ||
+                !car.images[currentImageIndex] ? (
+                  <div className="aspect-square bg-muted flex items-center justify-center">
+                    <CarIcon className="h-16 w-16 text-muted-foreground" />
                   </div>
-                </CardContent>
-              </Card>
+                ) : (
+                  <Image
+                    src={car.images[currentImageIndex]}
+                    alt={`${car.brand} ${car.model} - Image ${
+                      currentImageIndex + 1
+                    }`}
+                    fill
+                    quality={100}
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    onError={() => handleImageError(currentImageIndex)}
+                  />
+                )}
+              </div>
 
               {/* Image thumbnails */}
               {car.images.length > 1 && (

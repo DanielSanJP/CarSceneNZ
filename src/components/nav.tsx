@@ -14,6 +14,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
+import { SearchBar } from "@/components/search-bar";
 import { useAuth } from "@/contexts/auth-context";
 
 export function ModeToggle() {
@@ -103,52 +112,67 @@ export function Navigation() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 py-4">
+    <div className="border-b">
+      <div className=" mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Car className="h-8 w-8 text-primary" />
-            <Link href="/">
-              <h1 className="text-2xl font-bold text-foreground">
-                Car Scene NZ
-              </h1>
-            </Link>
+            {/* Navigation Links */}
+            {isAuthenticated && (
+              <NavigationMenu className="hidden md:flex">
+                <NavigationMenuList>
+                  <NavigationMenuItem>
+                    <NavigationMenuLink asChild>
+                      <Link
+                        href="/"
+                        className="flex flex-row items-center gap-3 px-4"
+                      >
+                        <Car className="h-10 w-10 text-primary" />
+                        <h2 className="text-xl font-bold text-foreground">
+                          Car Scene NZ
+                        </h2>
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <NavigationMenuLink asChild>
+                      <Link
+                        href="/events"
+                        className="flex flex-row items-center gap-2"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        <span>Events</span>
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <NavigationMenuLink asChild>
+                      <Link
+                        href="/garage"
+                        className="flex flex-row items-center gap-2"
+                      >
+                        <Car className="h-4 w-4" />
+                        <span>My Garage</span>
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <NavigationMenuLink asChild>
+                      <Link
+                        href="/leaderboards"
+                        className="flex flex-row items-center gap-2"
+                      >
+                        <Trophy className="h-4 w-4" />
+                        <span>Leaderboards</span>
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                </NavigationMenuList>
+              </NavigationMenu>
+            )}
           </div>
 
-          {/* Navigation Links */}
-          {isAuthenticated && (
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link
-                href="/events"
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  Events
-                </div>
-              </Link>
-              <Link
-                href="/garage"
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <Car className="h-4 w-4" />
-                  Garage
-                </div>
-              </Link>
-              <Link
-                href="/leaderboards"
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <Trophy className="h-4 w-4" />
-                  Leaderboards
-                </div>
-              </Link>
-            </nav>
-          )}
-
           <div className="flex items-center space-x-2">
+            {isAuthenticated && <SearchBar />}
             <ModeToggle />
             {isAuthenticated ? (
               <ProfileDropdown />
@@ -165,6 +189,6 @@ export function Navigation() {
           </div>
         </div>
       </div>
-    </header>
+    </div>
   );
 }

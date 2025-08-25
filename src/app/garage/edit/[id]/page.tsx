@@ -222,6 +222,16 @@ export default function EditCarPage() {
     }));
   };
 
+  const handleBackClick = () => {
+    // Use browser back to return to wherever user came from, but replace current edit page
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      // Fallback: if no history, go to garage
+      router.replace("/garage");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -233,8 +243,8 @@ export default function EditCarPage() {
       // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Redirect to car detail page
-      router.push(`/garage/${carId}`);
+      // Use replace instead of push to remove edit page from history
+      router.replace(`/garage/${carId}`);
     } catch (error) {
       console.error("Error updating car:", error);
     } finally {
@@ -276,11 +286,9 @@ export default function EditCarPage() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
-            <Link href={`/garage/${carId}`}>
-              <Button variant="outline" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
+            <Button variant="outline" size="icon" onClick={handleBackClick}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <div>
               <h1 className="text-3xl font-bold">Edit Car</h1>
               <p className="text-muted-foreground">
