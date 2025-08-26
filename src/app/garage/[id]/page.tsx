@@ -26,7 +26,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
     front?: {
@@ -109,26 +108,6 @@ export default function CarDetailPage() {
 
   // Check if user owns this car
   const isOwner = car.owner_id === user.id;
-
-  if (!isOwner && !car.is_public) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Private Car</h1>
-            <p className="text-muted-foreground mt-2">
-              This car is set to private and you don&apos;t have permission to
-              view it.
-            </p>
-            <Link href="/garage" className="mt-4 inline-block">
-              <Button>Back to Garage</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const handleImageError = (imageIndex: number) => {
     setFailedImages((prev) => new Set(prev).add(`${carId}-${imageIndex}`));

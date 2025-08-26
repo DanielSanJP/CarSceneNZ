@@ -18,7 +18,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
     front?: {

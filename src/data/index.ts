@@ -17,8 +17,7 @@ export interface Car {
   brand: string;
   model: string;
   year: number;
-  is_public: boolean;
-  suspension_type: 'bags' | 'static';
+  suspension_type: 'air suspension' | 'lowering springs' | 'coilovers' | 'stock';
   wheel_specs: {
     front: {
       brand: string;
@@ -123,10 +122,6 @@ export const getUserById = (id: string): User | undefined => {
 
 export const getCarsByUserId = (userId: string): Car[] => {
   return cars.filter(car => car.owner_id === userId);
-};
-
-export const getPublicCars = (): Car[] => {
-  return cars.filter(car => car.is_public);
 };
 
 // Event helper functions

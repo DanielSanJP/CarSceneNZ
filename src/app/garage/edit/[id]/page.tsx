@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -41,7 +40,6 @@ interface CarFormData {
   model: string;
   year: number | "";
   suspension_type: string;
-  is_public: boolean;
   wheel_specs: {
     front: WheelSpec;
     rear: WheelSpec;
@@ -59,7 +57,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
     front?: {
@@ -97,7 +94,6 @@ export default function EditCarPage() {
     model: "",
     year: "",
     suspension_type: "",
-    is_public: true,
     wheel_specs: {
       front: { brand: "", size: "", offset: "" },
       rear: { brand: "", size: "", offset: "" },
@@ -118,7 +114,6 @@ export default function EditCarPage() {
         model: foundCar.model,
         year: foundCar.year,
         suspension_type: foundCar.suspension_type,
-        is_public: foundCar.is_public,
         wheel_specs: {
           front: foundCar.wheel_specs?.front || {
             brand: "",
@@ -728,29 +723,6 @@ export default function EditCarPage() {
                       placeholder="e.g., 295/30R18"
                     />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Car Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Public Visibility</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Allow others to see this car in your profile
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.is_public}
-                    onCheckedChange={(checked: boolean) =>
-                      handleInputChange("is_public", checked)
-                    }
-                  />
                 </div>
               </CardContent>
             </Card>

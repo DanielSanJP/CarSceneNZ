@@ -38,7 +38,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
     front?: {
@@ -73,9 +72,9 @@ export default function UserProfilePage() {
     (u) => u.id === userId || u.username === userId
   );
 
-  // Get user's public cars
+  // Get user's cars
   const userCars = (cars as Car[]).filter(
-    (car) => car.owner_id === profileUser?.id && car.is_public
+    (car) => car.owner_id === profileUser?.id
   );
 
   const handleBackClick = () => {

@@ -4,7 +4,6 @@ import { Navigation } from "@/components/nav";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cars } from "@/data";
 import { Plus, Car, Edit3, Eye, Star } from "lucide-react";
 import Link from "next/link";
@@ -17,7 +16,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
     front?: {
@@ -129,12 +127,6 @@ export default function GaragePage() {
                           onError={() => handleImageError(car.id)}
                         />
                       )}
-                      <Badge
-                        variant={car.is_public ? "default" : "secondary"}
-                        className="absolute top-2 right-2"
-                      >
-                        {car.is_public ? "Public" : "Private"}
-                      </Badge>
                     </div>
 
                     <CardHeader className="pb-3">
