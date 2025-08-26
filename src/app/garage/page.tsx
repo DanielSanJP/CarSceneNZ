@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cars } from "@/data";
-import { Plus, Car, Edit3, Eye, Heart, Settings } from "lucide-react";
+import { Plus, Car, Edit3, Eye, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
@@ -17,7 +17,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_main_car: boolean;
   is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
@@ -63,7 +62,6 @@ export default function GaragePage() {
 
   // Get user's cars
   const userCars = (cars as Car[]).filter((car) => car.owner_id === user.id);
-  const mainCar = userCars.find((car) => car.is_main_car);
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
@@ -90,71 +88,6 @@ export default function GaragePage() {
             </Link>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-4 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Car className="h-8 w-8 text-primary" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Total Cars
-                    </p>
-                    <div className="text-2xl font-bold">{userCars.length}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Heart className="h-8 w-8 text-primary" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Total Likes
-                    </p>
-                    <div className="text-2xl font-bold">
-                      {userCars.reduce((sum, car) => sum + car.total_likes, 0)}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Eye className="h-8 w-8 text-primary" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Public Cars
-                    </p>
-                    <div className="text-2xl font-bold">
-                      {userCars.filter((car) => car.is_public).length}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Settings className="h-8 w-8 text-primary" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Main Car
-                    </p>
-                    <div className="text-2xl font-bold">
-                      {mainCar ? "Set" : "None"}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* Cars Grid */}
           {userCars.length === 0 ? (
             <Card>
@@ -177,80 +110,92 @@ export default function GaragePage() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {userCars.map((car) => (
-                <Card
-                  key={car.id}
-                  className="overflow-hidden hover:shadow-lg transition-shadow pt-0"
-                >
-                  {/* Car Image */}
-                  <div className="relative aspect-square overflow-hidden">
-                    {failedImages.has(car.id) || !car.images[0] ? (
-                      <div className="aspect-square bg-muted flex items-center justify-center">
-                        <Car className="h-16 w-16 text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <Image
-                        src={car.images[0]}
-                        alt={`${car.brand} ${car.model}`}
-                        fill
-                        quality={100}
-                        className="object-cover transition-transform hover:scale-105"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        onError={() => handleImageError(car.id)}
-                      />
-                    )}
-                    {car.is_main_car && (
-                      <Badge className="absolute top-2 left-2">Main Car</Badge>
-                    )}
-                    <Badge
-                      variant={car.is_public ? "default" : "secondary"}
-                      className="absolute top-2 right-2"
-                    >
-                      {car.is_public ? "Public" : "Private"}
-                    </Badge>
-                  </div>
-
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">
-                      {car.year} {car.brand} {car.model}
-                    </CardTitle>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span className="capitalize">{car.suspension_type}</span>
-                      <span className="flex items-center gap-1">
-                        <Heart className="h-3 w-3" />
-                        {car.total_likes}
-                      </span>
+                <Link href={`/garage/${car.id}`} key={car.id} className="group">
+                  <Card className="overflow-hidden pt-0 ">
+                    {/* Car Image */}
+                    <div className="relative aspect-square overflow-hidden">
+                      {failedImages.has(car.id) || !car.images[0] ? (
+                        <div className="aspect-square bg-muted flex items-center justify-center">
+                          <Car className="h-16 w-16 text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <Image
+                          src={car.images[0]}
+                          alt={`${car.brand} ${car.model}`}
+                          fill
+                          quality={100}
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          onError={() => handleImageError(car.id)}
+                        />
+                      )}
+                      <Badge
+                        variant={car.is_public ? "default" : "secondary"}
+                        className="absolute top-2 right-2"
+                      >
+                        {car.is_public ? "Public" : "Private"}
+                      </Badge>
                     </div>
-                  </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    {/* Quick specs */}
-                    {car.wheel_specs?.front && (
-                      <div className="text-sm">
-                        <p className="text-muted-foreground">Wheels:</p>
-                        <p>
-                          {car.wheel_specs.front.size}{" "}
-                          {car.wheel_specs.front.offset}
-                        </p>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">
+                        {car.year} {car.brand} {car.model}
+                      </CardTitle>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span className="capitalize">
+                          {car.suspension_type}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          {car.total_likes}
+                        </span>
                       </div>
-                    )}
+                    </CardHeader>
 
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <Link href={`/garage/${car.id}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
+                    <CardContent className="space-y-4">
+                      {/* Quick specs */}
+                      {car.wheel_specs?.front && (
+                        <div className="text-sm">
+                          <p className="text-muted-foreground">Wheels:</p>
+                          <p>
+                            {car.wheel_specs.front.size}{" "}
+                            {car.wheel_specs.front.offset}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.location.href = `/garage/${car.id}`;
+                          }}
+                        >
                           <Eye className="h-4 w-4 mr-2" />
-                          View
+                          View Details
                         </Button>
-                      </Link>
-                      <Link href={`/garage/edit/${car.id}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.location.href = `/garage/edit/${car.id}`;
+                          }}
+                        >
                           <Edit3 className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}

@@ -16,6 +16,7 @@ import {
   users,
   events,
   clubs,
+  getEventDateRange,
   type Car as CarType,
   type User,
   type Event,
@@ -249,7 +250,9 @@ function SearchContent() {
                               {event.location}
                             </p>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {new Date(event.event_date).toLocaleDateString()}
+                              {getEventDateRange(
+                                event.daily_schedule
+                              ).startDate.toLocaleDateString()}
                             </p>
                             <p className="text-sm mt-2 line-clamp-2">
                               {event.description}

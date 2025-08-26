@@ -6,8 +6,7 @@ import { Navigation } from "@/components/nav";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cars } from "@/data";
 import {
   ArrowLeft,
@@ -27,7 +26,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_main_car: boolean;
   is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
@@ -168,9 +166,6 @@ export default function CarDetailPage() {
                 <h1 className="text-3xl font-bold">
                   {car.year} {car.brand} {car.model}
                 </h1>
-                <div className="flex items-center gap-2 mt-2">
-                  {car.is_main_car && <Badge>Main Car</Badge>}
-                </div>
               </div>
             </div>
 
@@ -394,6 +389,9 @@ export default function CarDetailPage() {
             className="!max-w-none !w-screen !h-screen !p-0 !m-0 !rounded-none bg-background border-none "
             showCloseButton={true}
           >
+            <DialogTitle className="sr-only">
+              {car.brand} {car.model} Image Gallery
+            </DialogTitle>
             <div className="relative w-full h-full flex flex-col">
               {/* Close button using shadcn Button component */}
 

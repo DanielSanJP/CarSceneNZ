@@ -22,6 +22,7 @@ import {
   Filter,
 } from "lucide-react";
 import { clubs, clubMembers, getUserById } from "@/data";
+import { useAuth } from "@/contexts/auth-context";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -49,6 +50,7 @@ interface JoinClubViewProps {
 }
 
 export function JoinClubView({ currentTab = "join" }: JoinClubViewProps) {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -61,6 +63,14 @@ export function JoinClubView({ currentTab = "join" }: JoinClubViewProps) {
   // Get member counts for each club
   const getClubMemberCount = (clubId: string) => {
     return clubMembersData.filter((member) => member.club_id === clubId).length;
+  };
+
+  // Check if current user is a member of a club
+  const isUserMemberOfClub = (clubId: string) => {
+    if (!user) return false;
+    return clubMembersData.some(
+      (member) => member.club_id === clubId && member.user_id === user.id
+    );
   };
 
   // Get club type icon and styling
@@ -271,95 +281,133 @@ export function JoinClubView({ currentTab = "join" }: JoinClubViewProps) {
           const memberCount = getClubMemberCount(club.id);
           const typeInfo = getClubTypeInfo(club.club_type);
           const leader = getUserById(club.leader_id);
+          const isUserMember = isUserMemberOfClub(club.id);
+
+          // Determine button text based on club type and membership
+          const getActionButtonText = () => {
+            if (isUserMember) {
+              return "View Club";
+            }
+
+            switch (club.club_type) {
+              case "open":
+                return "Join Club";
+              case "invite":
+                return "Request Invite";
+              case "closed":
+                return "View Club";
+              default:
+                return "View Club";
+            }
+          };
 
           return (
-            <Card
-              key={club.id}
-              className="overflow-hidden hover:shadow-lg transition-all duration-300 group py-0"
-            >
-              {/* Banner Image Background */}
-              <div className="relative aspect-square overflow-hidden">
-                {failedImages.has(club.id) ? (
-                  <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                    <Users className="h-12 w-12 text-primary opacity-50" />
-                  </div>
-                ) : (
-                  <Image
-                    src={club.banner_image_url}
-                    alt={club.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    onError={() => handleImageError(club.id)}
-                  />
-                )}
-                {/* Overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-                {/* Member count in Clash of Clans style */}
-                <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {memberCount}/50
-                </div>
-
-                {/* Club type badge */}
-                <div
-                  className={`absolute top-3 left-3 ${typeInfo.color} text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}
-                >
-                  {typeInfo.icon}
-                  {typeInfo.text}
-                </div>
-              </div>
-
-              <CardContent className="p-4">
-                {/* Club name and location */}
-                <div className="space-y-2 mb-3">
-                  <h3 className="font-bold text-lg leading-tight">
-                    {club.name}
-                  </h3>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {club.location}
+            <Link href={`/clubs/${club.id}?from=${currentTab}`} key={club.id}>
+              <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group py-0">
+                {/* Banner Image Background */}
+                <div className="relative aspect-square overflow-hidden">
+                  {failedImages.has(club.id) ? (
+                    <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                      <Users className="h-12 w-12 text-primary opacity-50" />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                      {club.total_likes}
+                  ) : (
+                    <Image
+                      src={club.banner_image_url}
+                      alt={club.name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      onError={() => handleImageError(club.id)}
+                    />
+                  )}
+
+                  {/* Member count */}
+                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {memberCount}
+                  </div>
+
+                  {/* Club type badge */}
+                  <div
+                    className={`absolute top-3 left-3 ${typeInfo.color} text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}
+                  >
+                    {typeInfo.icon}
+                    {typeInfo.text}
+                  </div>
+                </div>
+
+                <CardContent className="p-4 pt-0">
+                  {/* Club name and location */}
+                  <div className="space-y-2 mb-3">
+                    <h3 className="font-bold text-lg leading-tight">
+                      {club.name}
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {club.location}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        {club.total_likes}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Description */}
-                <p className="text-sm text-muted-foreground mb-4">
-                  {club.description.length > 100
-                    ? `${club.description.substring(0, 100)}...`
-                    : club.description}
-                </p>
+                  {/* Description */}
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {club.description.length > 100
+                      ? `${club.description.substring(0, 100)}...`
+                      : club.description}
+                  </p>
 
-                {/* Leader info */}
-                {leader && (
-                  <div className="text-xs text-muted-foreground mb-4">
-                    Led by {leader.display_name}
-                  </div>
-                )}
+                  {/* Leader info */}
+                  {leader && (
+                    <div className="text-xs text-muted-foreground mb-4">
+                      Led by {leader.display_name}
+                    </div>
+                  )}
 
-                {/* Action button */}
-                <div className="flex gap-2">
-                  <Button className="flex-1" size="sm">
-                    {club.club_type === "open"
-                      ? "Join Club"
-                      : club.club_type === "invite"
-                      ? "Request Invite"
-                      : "View Club"}
-                  </Button>
-                  <Link href={`/clubs/${club.id}?from=${currentTab}`}>
-                    <Button variant="outline" size="sm">
+                  {/* Action button */}
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // If user is already a member, navigate to club page
+                        if (isUserMember) {
+                          window.location.href = `/clubs/${club.id}?from=${currentTab}`;
+                          return;
+                        }
+
+                        // Handle join/request logic here
+                        const actionText =
+                          club.club_type === "open"
+                            ? "Joining"
+                            : "Requesting to join";
+                        console.log(`${actionText} club:`, club.id);
+                      }}
+                    >
+                      {getActionButtonText()}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = `/clubs/${club.id}?from=${currentTab}`;
+                      }}
+                    >
                       View
                     </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>

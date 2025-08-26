@@ -71,6 +71,7 @@ export default function ClubDetailPage() {
   const { user, isAuthenticated } = useAuth();
   const clubId = params.id as string;
   const fromTab = searchParams.get("from") || "join";
+  const leaderboardTab = searchParams.get("tab") || "clubs";
 
   const [club, setClub] = useState<ClubWithMembers | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,7 +134,6 @@ export default function ClubDetailPage() {
   const canManage = isLeader || isCoLeader;
 
   const memberCount = club?.members.length || 0;
-  const maxMembers = 50;
 
   const handleJoinClub = async () => {
     if (!isAuthenticated || !user || !club) return;
@@ -295,8 +295,16 @@ export default function ClubDetailPage() {
               The club you&apos;re looking for doesn&apos;t exist or has been
               removed.
             </p>
-            <Link href={`/clubs?tab=${fromTab}`}>
-              <Button>Back to Clubs</Button>
+            <Link
+              href={
+                fromTab === "leaderboard"
+                  ? `/leaderboards?tab=${leaderboardTab}`
+                  : `/clubs?tab=${fromTab}`
+              }
+            >
+              <Button>
+                Back to {fromTab === "leaderboard" ? "Leaderboards" : "Clubs"}
+              </Button>
             </Link>
           </div>
         </div>
@@ -305,11 +313,7 @@ export default function ClubDetailPage() {
   }
 
   const typeInfo = getClubTypeInfo(club.club_type);
-  const canJoin =
-    isAuthenticated &&
-    !isMember &&
-    club.club_type === "open" &&
-    memberCount < maxMembers;
+  const canJoin = isAuthenticated && !isMember && club.club_type === "open";
 
   return (
     <div className="min-h-screen bg-background">
@@ -318,7 +322,13 @@ export default function ClubDetailPage() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
-            <Link href={`/clubs?tab=${fromTab}`}>
+            <Link
+              href={
+                fromTab === "leaderboard"
+                  ? `/leaderboards?tab=${leaderboardTab}`
+                  : `/clubs?tab=${fromTab}`
+              }
+            >
               <Button variant="outline" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
@@ -332,7 +342,7 @@ export default function ClubDetailPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  {memberCount}/{maxMembers}
+                  {memberCount} members
                 </div>
                 <div className="flex items-center gap-1">
                   <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
@@ -340,29 +350,6 @@ export default function ClubDetailPage() {
                 </div>
               </div>
             </div>
-            {canManage && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Club Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invite Members
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">
-                    Transfer Leadership
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </div>
 
           {/* Club Info Card - Three Column Layout */}
@@ -406,28 +393,10 @@ export default function ClubDetailPage() {
                     </p>
                     {canManage && (
                       <div className="pt-2">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <Settings className="h-4 w-4 mr-2" />
-                              Manage Club
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Settings className="h-4 w-4 mr-2" />
-                              Club Settings
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Invite Members
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              Transfer Leadership
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button variant="outline" size="sm">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Manage Club
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -485,7 +454,7 @@ export default function ClubDetailPage() {
                         <span>Members</span>
                       </div>
                       <span className="font-semibold text-primary">
-                        {memberCount}/50
+                        {memberCount}
                       </span>
                     </div>
                   </div>
@@ -546,11 +515,6 @@ export default function ClubDetailPage() {
                     <Shield className="h-4 w-4 mr-2" />
                     Invite Only
                   </Button>
-                ) : memberCount >= maxMembers ? (
-                  <Button disabled size="lg">
-                    <Users className="h-4 w-4 mr-2" />
-                    Full
-                  </Button>
                 ) : null}
               </div>
             </CardContent>
@@ -562,7 +526,7 @@ export default function ClubDetailPage() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Members ({memberCount}/50)
+                  Members ({memberCount})
                 </div>
                 {canManage && (
                   <Button variant="outline" size="sm">

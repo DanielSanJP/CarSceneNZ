@@ -5,7 +5,6 @@
     "brand": "Mazda",
     "model": "RX-7 FD",
     "year": 1995,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "coilovers",
     "wheel_specs": {
@@ -38,7 +37,6 @@
     "brand": "Nissan",
     "model": "Skyline GTR R34",
     "year": 1999,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "air suspension",
     "wheel_specs": {
@@ -72,7 +70,6 @@
     "brand": "Nissan",
     "model": "Silvia S15",
     "year": 2001,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "coilovers",
     "wheel_specs": {
@@ -101,7 +98,6 @@
     "brand": "BMW",
     "model": "E46 M3",
     "year": 2003,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "air suspension",
     "wheel_specs": {
@@ -134,7 +130,6 @@
     "brand": "Honda",
     "model": "Civic Type R FK8",
     "year": 2018,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "coilovers",
     "wheel_specs": {
@@ -163,7 +158,6 @@
     "brand": "Toyota",
     "model": "Supra A80",
     "year": 1997,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "air suspension",
     "wheel_specs": {
@@ -196,7 +190,6 @@
     "brand": "Ford",
     "model": "Mustang GT",
     "year": 2020,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "coilovers",
     "wheel_specs": {
@@ -225,7 +218,6 @@
     "brand": "Subaru",
     "model": "Impreza WRX STI",
     "year": 2005,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "coilovers",
     "wheel_specs": {
@@ -258,17 +250,16 @@
     "brand": "Subaru",
     "model": "Forester",
     "year": 2004,
-    "is_main_car": true,
     "is_public": true,
     "suspension_type": "coilovers",
     "wheel_specs": {
       "front": {
-        "brand": "Aftermarket",
+        "brand": "Work Meister S1",
         "size": "18x8.5",
         "offset": "+35"
       },
       "rear": {
-        "brand": "Aftermarket",
+        "brand": "Work Meister S1",
         "size": "18x8.5",
         "offset": "+35"
       }

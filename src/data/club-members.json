@@ -38,7 +38,7 @@
   {
     "club_id": "K9L1M2N3O",
     "user_id": "550e8400-e29b-41d4-a716-446655440001",
-    "role": "leader",
+    "role": "member",
     "joined_at": "2024-01-05T16:45:00Z"
   },
   {
@@ -80,7 +80,7 @@
   {
     "club_id": "U8V9W1X2Y",
     "user_id": "550e8400-e29b-41d4-a716-446655440004",
-    "role": "co-leader",
+    "role": "member",
     "joined_at": "2024-03-02T14:40:00Z"
   },
   {
@@ -92,7 +92,13 @@
   {
     "club_id": "K9L1M2N3O",
     "user_id": "550e8400-e29b-41d4-a716-446655440009",
-    "role": "member",
+    "role": "leader",
     "joined_at": "2024-08-25T13:00:00Z"
+  },
+  {
+    "club_id": "U8V9W1X2Y",
+    "user_id": "550e8400-e29b-41d4-a716-446655440009",
+    "role": "co-leader",
+    "joined_at": "2024-08-26T10:30:00Z"
   }
 ]

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Save, Upload, X, Camera } from "lucide-react";
+import { ArrowLeft, Save, Upload, X, Camera, GripVertical } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -32,7 +32,6 @@ interface CarFormData {
   model: string;
   year: number | "";
   suspension_type: string;
-  is_main_car: boolean;
   is_public: boolean;
   wheel_specs: {
     front: WheelSpec;
@@ -50,13 +49,13 @@ export default function CreateCarPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<CarFormData>({
     brand: "",
     model: "",
     year: "",
     suspension_type: "",
-    is_main_car: false,
     is_public: true,
     wheel_specs: {
       front: { brand: "", size: "", offset: "" },
@@ -197,6 +196,50 @@ export default function CreateCarPage() {
     }
   };
 
+  // Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const newImages = [...formData.images];
+    const draggedImage = newImages[draggedIndex];
+
+    // Remove the dragged image from its original position
+    newImages.splice(draggedIndex, 1);
+
+    // Insert it at the new position
+    newImages.splice(dropIndex, 0, draggedImage);
+
+    setFormData((prev) => ({
+      ...prev,
+      images: newImages,
+    }));
+
+    setDraggedIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
 
@@ -233,7 +276,17 @@ export default function CreateCarPage() {
                     {formData.images.map((imageUrl, index) => (
                       <div
                         key={index}
-                        className="relative group overflow-hidden rounded-lg border"
+                        className={`relative group overflow-hidden rounded-lg border cursor-move transition-all ${
+                          draggedIndex === index
+                            ? "opacity-50 scale-95 rotate-2"
+                            : "hover:shadow-lg"
+                        }`}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragOver={handleDragOver}
+                        onDragEnter={handleDragEnter}
+                        onDrop={(e) => handleDrop(e, index)}
+                        onDragEnd={handleDragEnd}
                       >
                         <div className="relative aspect-square">
                           {failedImages.has(imageUrl) ? (
@@ -250,6 +303,12 @@ export default function CreateCarPage() {
                               onError={() => handleImageError(imageUrl)}
                             />
                           )}
+
+                          {/* Drag handle */}
+                          <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
+
                           {/* Delete button */}
                           <Button
                             type="button"
@@ -260,12 +319,18 @@ export default function CreateCarPage() {
                           >
                             <X className="h-4 w-4" />
                           </Button>
+
                           {/* Main image indicator */}
                           {index === 0 && (
-                            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
-                              Main
+                            <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
+                              Main Image
                             </div>
                           )}
+
+                          {/* Image number */}
+                          <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-medium">
+                            {index + 1}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -530,23 +595,6 @@ export default function CreateCarPage() {
                 <CardTitle>Car Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Main Car</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Set this as your main car for leaderboards
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.is_main_car}
-                    onCheckedChange={(checked) =>
-                      handleInputChange("is_main_car", checked)
-                    }
-                  />
-                </div>
-
-                <Separator />
-
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Public Visibility</Label>

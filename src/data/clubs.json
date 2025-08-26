@@ -7,7 +7,7 @@
     "club_type": "open",
     "location": "Auckland",
     "leader_id": "550e8400-e29b-41d4-a716-446655440003",
-    "total_likes": 1247,
+    "total_likes": 880,
     "created_at": "2024-01-10T14:30:00Z"
   },
   {
@@ -18,7 +18,7 @@
     "club_type": "invite",
     "location": "Wellington",
     "leader_id": "550e8400-e29b-41d4-a716-446655440004",
-    "total_likes": 892,
+    "total_likes": 254,
     "created_at": "2024-02-15T11:20:00Z"
   },
   {
@@ -28,8 +28,8 @@
     "banner_image_url": "/clubs/MidnightClub.jpg",
     "club_type": "closed",
     "location": "Christchurch",
-    "leader_id": "550e8400-e29b-41d4-a716-446655440001",
-    "total_likes": 1456,
+    "leader_id": "550e8400-e29b-41d4-a716-446655440009",
+    "total_likes": 1467,
     "created_at": "2024-01-05T16:45:00Z"
   },
   {
@@ -40,7 +40,7 @@
     "club_type": "open",
     "location": "Hamilton",
     "leader_id": "550e8400-e29b-41d4-a716-446655440005",
-    "total_likes": 734,
+    "total_likes": 446,
     "created_at": "2024-03-01T13:10:00Z"
   },
   {
@@ -51,7 +51,7 @@
     "club_type": "invite",
     "location": "Tauranga",
     "leader_id": "550e8400-e29b-41d4-a716-446655440008",
-    "total_likes": 567,
+    "total_likes": 766,
     "created_at": "2024-02-28T09:30:00Z"
   },
   {
@@ -62,7 +62,7 @@
     "club_type": "open",
     "location": "Auckland",
     "leader_id": "550e8400-e29b-41d4-a716-446655440001",
-    "total_likes": 623,
+    "total_likes": 245,
     "created_at": "2024-01-20T12:15:00Z"
   }
 ]

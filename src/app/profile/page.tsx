@@ -18,7 +18,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_main_car: boolean;
   is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
@@ -176,55 +175,56 @@ export default function ProfilePage() {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {userCars.map((car) => (
-                      <Card
-                        key={car.id}
-                        className="overflow-hidden hover:shadow-md transition-shadow pt-0"
-                      >
-                        {/* Car Image */}
-                        <div className="relative aspect-square overflow-hidden">
-                          {failedImages.has(car.id) || !car.images[0] ? (
-                            <div className="aspect-square bg-muted flex items-center justify-center">
-                              <Car className="h-12 w-12 text-muted-foreground" />
-                            </div>
-                          ) : (
-                            <Image
-                              src={car.images[0]}
-                              alt={`${car.brand} ${car.model}`}
-                              fill
-                              className="object-cover transition-transform hover:scale-105"
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              onError={() => handleImageError(car.id)}
-                            />
-                          )}
-                          {car.is_main_car && (
-                            <Badge className="absolute top-2 left-2">
-                              Main Car
-                            </Badge>
-                          )}
-                        </div>
-
-                        <CardContent className="p-4">
-                          <h3 className="font-semibold mb-2">
-                            {car.year} {car.brand} {car.model}
-                          </h3>
-                          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                            <span className="capitalize">
-                              {car.suspension_type}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                              {car.total_likes}
-                            </span>
+                      <Link href={`/garage/${car.id}`} key={car.id}>
+                        <Card className="overflow-hidden pt-0">
+                          {/* Car Image */}
+                          <div className="relative aspect-square overflow-hidden">
+                            {failedImages.has(car.id) || !car.images[0] ? (
+                              <div className="aspect-square bg-muted flex items-center justify-center">
+                                <Car className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            ) : (
+                              <Image
+                                src={car.images[0]}
+                                alt={`${car.brand} ${car.model}`}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                onError={() => handleImageError(car.id)}
+                              />
+                            )}
                           </div>
 
-                          <Link href={`/garage/${car.id}`}>
-                            <Button size="sm" className="w-full">
+                          <CardContent className="p-4 py-0">
+                            <h3 className="font-semibold mb-2">
+                              {car.year} {car.brand} {car.model}
+                            </h3>
+                            <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                              <span className="capitalize">
+                                {car.suspension_type}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                {car.total_likes}
+                              </span>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.location.href = `/garage/${car.id}`;
+                              }}
+                            >
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </Button>
-                          </Link>
-                        </CardContent>
-                      </Card>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 )}

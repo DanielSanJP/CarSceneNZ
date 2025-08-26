@@ -41,7 +41,6 @@ interface CarFormData {
   model: string;
   year: number | "";
   suspension_type: string;
-  is_main_car: boolean;
   is_public: boolean;
   wheel_specs: {
     front: WheelSpec;
@@ -60,7 +59,6 @@ interface Car {
   brand: string;
   model: string;
   year: number;
-  is_main_car: boolean;
   is_public: boolean;
   suspension_type: string;
   wheel_specs?: {
@@ -99,7 +97,6 @@ export default function EditCarPage() {
     model: "",
     year: "",
     suspension_type: "",
-    is_main_car: false,
     is_public: true,
     wheel_specs: {
       front: { brand: "", size: "", offset: "" },
@@ -121,7 +118,6 @@ export default function EditCarPage() {
         model: foundCar.model,
         year: foundCar.year,
         suspension_type: foundCar.suspension_type,
-        is_main_car: foundCar.is_main_car,
         is_public: foundCar.is_public,
         wheel_specs: {
           front: foundCar.wheel_specs?.front || {
@@ -742,23 +738,6 @@ export default function EditCarPage() {
                 <CardTitle>Car Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Main Car</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Set this as your main car for leaderboards
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.is_main_car}
-                    onCheckedChange={(checked: boolean) =>
-                      handleInputChange("is_main_car", checked)
-                    }
-                  />
-                </div>
-
-                <Separator />
-
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Public Visibility</Label>

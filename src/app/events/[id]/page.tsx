@@ -20,7 +20,14 @@ import {
   Share2,
   Heart,
 } from "lucide-react";
-import { events, eventAttendees, getUserById } from "@/data";
+import {
+  events,
+  eventAttendees,
+  getUserById,
+  getEventDateRange,
+  formatScheduleDisplay,
+  DailySchedule,
+} from "@/data";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -29,9 +36,8 @@ interface Event {
   title: string;
   description: string;
   location: string;
-  event_date: string;
+  daily_schedule: DailySchedule[];
   host_id: string;
-  is_public: boolean;
   poster_image_url: string;
   created_at: string;
 }
@@ -72,17 +78,6 @@ export default function EventDetailPage() {
   const interestedCount = attendees.filter(
     (a) => a.status === "interested"
   ).length;
-
-  // Get attendee users
-  const goingUsers = attendees
-    .filter((a) => a.status === "going" || a.status === "approved")
-    .map((a) => getUserById(a.user_id))
-    .filter((user): user is NonNullable<typeof user> => user !== null);
-
-  const interestedUsers = attendees
-    .filter((a) => a.status === "interested")
-    .map((a) => getUserById(a.user_id))
-    .filter((user): user is NonNullable<typeof user> => user !== null);
 
   const handleBackClick = () => {
     if (window.history.length > 1) {
@@ -146,28 +141,6 @@ export default function EventDetailPage() {
     }
   };
 
-  // Helper function to format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return {
-      full: date.toLocaleDateString("en-NZ", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-      time: date.toLocaleTimeString("en-NZ", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      day: date.toLocaleDateString("en-NZ", { weekday: "short" }),
-      date: date.toLocaleDateString("en-NZ", {
-        day: "numeric",
-        month: "short",
-      }),
-    };
-  };
-
   // Get host info
   const host = event ? getUserById(event.host_id) : null;
 
@@ -190,7 +163,37 @@ export default function EventDetailPage() {
     );
   }
 
-  const dateInfo = formatDate(event.event_date);
+  // Helper function to format date for daily schedule
+  const getEventDateInfo = (schedule: DailySchedule[]) => {
+    if (!schedule || schedule.length === 0) return { full: "", time: "" };
+
+    const { startDate, endDate, isMultiDay } = getEventDateRange(schedule);
+
+    // Format full date display
+    let fullDisplay = startDate.toLocaleDateString("en-NZ", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    if (isMultiDay) {
+      const endDateFull = endDate.toLocaleDateString("en-NZ", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      fullDisplay = `${fullDisplay} - ${endDateFull}`;
+    }
+
+    return {
+      full: fullDisplay,
+      time: formatScheduleDisplay(schedule),
+    };
+  };
+
+  const dateInfo = getEventDateInfo(event.daily_schedule);
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,15 +205,13 @@ export default function EventDetailPage() {
             <Button variant="outline" size="icon" onClick={handleBackClick}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
+
             <div className="flex-1">
               <h1 className="text-3xl font-bold">{event.title}</h1>
               <div className="flex items-center gap-4 mt-2">
-                <Badge variant={event.is_public ? "default" : "secondary"}>
-                  {event.is_public ? "Public Event" : "Private Event"}
-                </Badge>
                 {host && (
                   <span className="text-muted-foreground text-sm">
-                    Hosted by {host.display_name}
+                    {event.location}
                   </span>
                 )}
               </div>
@@ -256,150 +257,9 @@ export default function EventDetailPage() {
               {/* Description */}
               <Card>
                 <CardHeader>
-                  <CardTitle>About This Event</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {event.description}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Attendees Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Who&apos;s Coming</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Going */}
-                  {goingUsers.length > 0 && (
-                    <div>
-                      <h4 className="font-medium mb-3 flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Going ({goingCount})
-                      </h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {goingUsers.slice(0, 8).map((user) => (
-                          <Link
-                            key={user.id}
-                            href={`/profile/${user.username}`}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
-                          >
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage
-                                src={user.profile_image_url}
-                                alt={user.display_name}
-                              />
-                              <AvatarFallback className="text-xs">
-                                {user.display_name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium truncate">
-                              {user.display_name}
-                            </span>
-                          </Link>
-                        ))}
-                      </div>
-                      {goingUsers.length > 8 && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          And {goingUsers.length - 8} more...
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Interested */}
-                  {interestedUsers.length > 0 && (
-                    <div>
-                      <h4 className="font-medium mb-3 flex items-center gap-2">
-                        <Star className="h-4 w-4" />
-                        Interested ({interestedCount})
-                      </h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {interestedUsers.slice(0, 8).map((user) => (
-                          <Link
-                            key={user.id}
-                            href={`/profile/${user.username}`}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
-                          >
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage
-                                src={user.profile_image_url}
-                                alt={user.display_name}
-                              />
-                              <AvatarFallback className="text-xs">
-                                {user.display_name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium truncate">
-                              {user.display_name}
-                            </span>
-                          </Link>
-                        ))}
-                      </div>
-                      {interestedUsers.length > 8 && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          And {interestedUsers.length - 8} more...
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {goingUsers.length === 0 && interestedUsers.length === 0 && (
-                    <div className="text-center py-8">
-                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">
-                        Be the first to show interest in this event!
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Event Details */}
-              <Card>
-                <CardHeader>
                   <CardTitle>Event Details</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Date and Time */}
-                  <div className="flex items-start space-x-3">
-                    <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
-                      <Calendar className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">{dateInfo.full}</div>
-                      <div className="text-muted-foreground text-sm flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {dateInfo.time}
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Location */}
-                  <div className="flex items-start space-x-3">
-                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <div className="font-medium text-sm">Location</div>
-                      <div className="text-muted-foreground text-sm">
-                        {event.location}
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
+                <CardContent className="space-y-6">
                   {/* Host */}
                   {host && (
                     <div className="flex items-center space-x-3">
@@ -417,7 +277,7 @@ export default function EventDetailPage() {
                       </Avatar>
                       <div>
                         <div className="text-xs text-muted-foreground">
-                          Hosted by
+                          Event by
                         </div>
                         <Link href={`/profile/${host.username}`}>
                           <div className="text-sm font-medium hover:underline">
@@ -427,14 +287,117 @@ export default function EventDetailPage() {
                       </div>
                     </div>
                   )}
+
+                  <Separator />
+
+                  {/* Location */}
+                  <div className="flex items-start space-x-3">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">Location</div>
+                      <div className="text-muted-foreground text-sm">
+                        {event.location}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Date and Time */}
+                  <div className="flex items-start space-x-3">
+                    <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
+                      <Calendar className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">{dateInfo.full}</div>
+                      <div className="text-muted-foreground text-sm flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {dateInfo.time}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Description */}
+                  <div>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {event.description}
+                    </p>
+                  </div>
+
+                  {/* Daily Schedule */}
+                  {event.daily_schedule && event.daily_schedule.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="font-medium text-sm mb-4 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Event Schedule
+                        </h4>
+                        <div className="space-y-4">
+                          {event.daily_schedule.map((schedule, index) => {
+                            const date = new Date(schedule.date);
+                            const dayName = date.toLocaleDateString("en-NZ", {
+                              weekday: "long",
+                            });
+                            const dateFormatted = date.toLocaleDateString(
+                              "en-NZ",
+                              {
+                                day: "numeric",
+                                month: "long",
+                              }
+                            );
+
+                            return (
+                              <div
+                                key={index}
+                                className="border rounded-lg p-4 bg-muted/30"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                                      <Calendar className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-sm">
+                                        {event.daily_schedule.length > 1
+                                          ? `Day ${index + 1} - ${dayName}`
+                                          : dayName}
+                                      </div>
+                                      <div className="text-muted-foreground text-sm">
+                                        {dateFormatted}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Badge
+                                    variant="secondary"
+                                    className="flex items-center gap-1"
+                                  >
+                                    <Clock className="h-3 w-3" />
+                                    {schedule.start_time} - {schedule.end_time}
+                                  </Badge>
+                                </div>
+                                {schedule.description && (
+                                  <p className="text-sm text-muted-foreground mt-2 pl-13">
+                                    {schedule.description}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
+            </div>
 
+            {/* Sidebar */}
+            <div className="space-y-6">
               {/* Action Buttons */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Join This Event</CardTitle>
-                </CardHeader>
                 <CardContent className="space-y-3">
                   <Button
                     className="w-full"
@@ -464,6 +427,47 @@ export default function EventDetailPage() {
                 </CardContent>
               </Card>
 
+              {/* Event Location Map */}
+              <Card className="py-0">
+                <CardContent className="p-0">
+                  <div className="aspect-square w-full">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      loading="lazy"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                      src={`https://maps.google.com/maps?width=100%25&height=400&hl=en&q=${encodeURIComponent(
+                        event.location + ", New Zealand"
+                      )}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                      title={`Map showing ${event.location}`}
+                    />
+                  </div>
+                  <div className="p-4 rounded-b-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium text-foreground">
+                        {event.location}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const query = encodeURIComponent(
+                            event.location + ", New Zealand"
+                          );
+                          window.open(
+                            `https://maps.google.com/maps?q=${query}`,
+                            "_blank"
+                          );
+                        }}
+                      >
+                        Open in Maps
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Stats */}
               <Card>
                 <CardHeader>
@@ -479,14 +483,6 @@ export default function EventDetailPage() {
                       Interested
                     </span>
                     <Badge variant="secondary">{interestedCount}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      Total Interest
-                    </span>
-                    <Badge variant="secondary">
-                      {goingCount + interestedCount}
-                    </Badge>
                   </div>
                 </CardContent>
               </Card>

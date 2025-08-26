@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -28,7 +27,14 @@ import {
   ImageIcon,
   Star,
 } from "lucide-react";
-import { events, eventAttendees, getUserById } from "@/data";
+import {
+  events,
+  eventAttendees,
+  getUserById,
+  getEventDateRange,
+  formatScheduleDisplay,
+  DailySchedule,
+} from "@/data";
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -73,33 +79,63 @@ export default function EventsPage() {
 
     // Apply sorting
     if (sortOrder === "nearest") {
-      filtered.sort(
-        (a, b) =>
-          new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
-      );
+      filtered.sort((a, b) => {
+        const aStart = getEventDateRange(a.daily_schedule).startDate;
+        const bStart = getEventDateRange(b.daily_schedule).startDate;
+        return aStart.getTime() - bStart.getTime();
+      });
     } else if (sortOrder === "furthest") {
-      filtered.sort(
-        (a, b) =>
-          new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
-      );
+      filtered.sort((a, b) => {
+        const aStart = getEventDateRange(a.daily_schedule).startDate;
+        const bStart = getEventDateRange(b.daily_schedule).startDate;
+        return bStart.getTime() - aStart.getTime();
+      });
     }
 
     return filtered;
   }, [locationFilter, sortOrder]);
 
-  // Helper function to format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return {
-      day: date.toLocaleDateString("en-NZ", { weekday: "short" }),
-      date: date.toLocaleDateString("en-NZ", {
+  // Helper function to format date and time period for daily schedule
+  const formatDate = (schedule: DailySchedule[]) => {
+    if (!schedule || schedule.length === 0)
+      return { day: "", date: "", time: "", full: "" };
+
+    const { startDate, endDate, isMultiDay } = getEventDateRange(schedule);
+
+    // Format full date display
+    let fullDisplay = startDate.toLocaleDateString("en-NZ", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    if (isMultiDay) {
+      const endDateFull = endDate.toLocaleDateString("en-NZ", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
         day: "numeric",
-        month: "short",
-      }),
-      time: date.toLocaleTimeString("en-NZ", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      });
+      fullDisplay = `${fullDisplay} - ${endDateFull}`;
+    }
+
+    return {
+      day: startDate.toLocaleDateString("en-NZ", { weekday: "short" }),
+      date: isMultiDay
+        ? `${startDate.toLocaleDateString("en-NZ", {
+            day: "numeric",
+            month: "short",
+          })} - ${endDate.toLocaleDateString("en-NZ", {
+            day: "numeric",
+            month: "short",
+          })}`
+        : startDate.toLocaleDateString("en-NZ", {
+            day: "numeric",
+            month: "short",
+          }),
+      time: formatScheduleDisplay(schedule),
+      full: fullDisplay,
     };
   };
 
@@ -203,154 +239,164 @@ export default function EventsPage() {
         {/* Events Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedEvents.map((event) => {
-            const dateInfo = formatDate(event.event_date);
+            const dateInfo = formatDate(event.daily_schedule);
             const attendeeCount = getAttendeeCount(event.id);
             const interestedCount = getInterestedCount(event.id);
             const host = getHostInfo(event.host_id);
 
             return (
-              <Card
+              <Link
                 key={event.id}
-                className="overflow-hidden hover:shadow-lg transition-shadow pt-0"
+                href={`/events/${event.id}`}
+                className="block"
               >
-                {/* Event Image/Poster */}
-                <div className="relative aspect-square overflow-hidden">
-                  {failedImages.has(event.id) ? (
-                    // Fallback placeholder
-                    <div className="aspect-square  flex items-center justify-center">
-                      <div className="text-center">
-                        <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground font-medium px-4">
+                <Card className="overflow-hidden pt-0 cursor-pointer">
+                  {/* Event Image/Poster */}
+                  <div className="relative aspect-square overflow-hidden">
+                    {failedImages.has(event.id) ? (
+                      // Fallback placeholder
+                      <div className="aspect-square  flex items-center justify-center">
+                        <div className="text-center">
+                          <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground font-medium px-4">
+                            {event.title}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <Image
+                        src={event.poster_image_url}
+                        alt={event.title}
+                        fill
+                        quality={100}
+                        priority={filteredAndSortedEvents.indexOf(event) < 6}
+                        className="object-cover"
+                        sizes="(max-width: 640px) 200vw, (max-width: 768px) 100vw, (max-width: 1024px) 66vw, (max-width: 1280px) 50vw, 40vw"
+                        onError={() => handleImageError(event.id)}
+                      />
+                    )}
+                  </div>
+
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg mb-2">
                           {event.title}
-                        </p>
+                        </CardTitle>
+                        <CardDescription className="line-clamp-2">
+                          {event.description}
+                        </CardDescription>
                       </div>
                     </div>
-                  ) : (
-                    <Image
-                      src={event.poster_image_url}
-                      alt={event.title}
-                      fill
-                      quality={100}
-                      priority={filteredAndSortedEvents.indexOf(event) < 6}
-                      className="object-cover transition-transform hover:scale-105"
-                      sizes="(max-width: 640px) 200vw, (max-width: 768px) 100vw, (max-width: 1024px) 66vw, (max-width: 1280px) 50vw, 40vw"
-                      onError={() => handleImageError(event.id)}
-                    />
-                  )}
-                </div>
+                  </CardHeader>
 
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg mb-2">
-                        {event.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-2">
-                        {event.description}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={event.is_public ? "default" : "secondary"}>
-                      {event.is_public ? "Public" : "Private"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  {/* Date and Time */}
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-primary">
-                          {dateInfo.date}
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">
-                        {new Date(event.event_date).toLocaleDateString(
-                          "en-NZ",
-                          {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          }
-                        )}
-                      </div>
-                      <div className="text-muted-foreground text-sm flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {dateInfo.time}
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Location */}
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {event.location}
-                    </span>
-                  </div>
-
-                  {/* Interested */}
-                  <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {interestedCount}{" "}
-                      {interestedCount === 1 ? "person" : "people"} interested
-                    </span>
-                  </div>
-
-                  {/* Attendees */}
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {attendeeCount}{" "}
-                      {attendeeCount === 1 ? "person" : "people"} attending
-                    </span>
-                  </div>
-
-                  {/* Host */}
-                  {host && (
+                  <CardContent className="space-y-4">
+                    {/* Date and Time */}
                     <div className="flex items-center space-x-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>
-                          {host.display_name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="text-xs text-muted-foreground">
-                          Hosted by
+                      <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
+                        <div className="text-center">
+                          <div className="text-sm font-bold text-primary">
+                            <Calendar className="h-5 w-5 text-primary" />
+                          </div>
                         </div>
-                        <div className="text-sm font-medium">
-                          {host.display_name}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">
+                          {dateInfo.full}
+                        </div>
+                        <div className="text-muted-foreground text-sm flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {dateInfo.time}
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  <Separator />
+                    <Separator />
 
-                  {/* Action Buttons */}
-                  <div className="flex space-x-2">
-                    <Link href={`/events/${event.id}`} className="flex-1">
-                      <Button className="w-full" variant="outline" size="sm">
+                    {/* Location */}
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {event.location}
+                      </span>
+                    </div>
+
+                    {/* Interested */}
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {interestedCount}{" "}
+                        {interestedCount === 1 ? "person" : "people"} interested
+                      </span>
+                    </div>
+
+                    {/* Attendees */}
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {attendeeCount}{" "}
+                        {attendeeCount === 1 ? "person" : "people"} attending
+                      </span>
+                    </div>
+
+                    {/* Host */}
+                    {host && (
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>
+                            {host.display_name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="text-xs text-muted-foreground">
+                            Hosted by
+                          </div>
+                          <div className="text-sm font-medium">
+                            {host.display_name}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2">
+                      <Button
+                        className="w-full flex-1"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Handle "Interested" logic here
+                          console.log(
+                            "Marked as interested for event:",
+                            event.id
+                          );
+                        }}
+                      >
                         Interested
                       </Button>
-                    </Link>
-                    <Link href={`/events/${event.id}`} className="flex-1">
-                      <Button className="w-full" size="sm">
+                      <Button
+                        className="w-full flex-1"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Handle "I'm Going" logic here
+                          console.log("Marked as going to event:", event.id);
+                        }}
+                      >
                         I&apos;m Going
                       </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             );
           })}
         </div>

@@ -17,7 +17,6 @@ export interface Car {
   brand: string;
   model: string;
   year: number;
-  is_main_car: boolean;
   is_public: boolean;
   suspension_type: 'bags' | 'static';
   wheel_specs: {
@@ -41,15 +40,21 @@ export interface Car {
   created_at: string;
 }
 
+export interface DailySchedule {
+  date: string;           // "2025-10-31"
+  start_time: string;     // "09:00"
+  end_time: string;       // "16:00"
+  description?: string;   // Optional activity description
+}
+
 export interface Event {
   id: string;
   host_id: string;
   title: string;
   description: string;
   poster_image_url: string;
-  event_date: string;
+  daily_schedule: DailySchedule[];
   location: string;
-  is_public: boolean;
   created_at: string;
 }
 
@@ -124,11 +129,36 @@ export const getPublicCars = (): Car[] => {
   return cars.filter(car => car.is_public);
 };
 
+// Event helper functions
+export const getEventDateRange = (schedule: DailySchedule[]) => {
+  const startDate = new Date(schedule[0].date);
+  const endDate = new Date(schedule[schedule.length - 1].date);
+  return { 
+    startDate, 
+    endDate, 
+    isMultiDay: schedule.length > 1 
+  };
+};
+
+export const formatScheduleDisplay = (schedule: DailySchedule[]) => {
+  if (schedule.length === 1) {
+    return `${schedule[0].start_time} - ${schedule[0].end_time}`;
+  }
+  return `${schedule.length} day event`;
+};
+
 export const getUpcomingEvents = (): Event[] => {
   const now = new Date();
   return events
-    .filter(event => new Date(event.event_date) > now)
-    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+    .filter(event => {
+      const { startDate } = getEventDateRange(event.daily_schedule);
+      return startDate > now;
+    })
+    .sort((a, b) => {
+      const aStart = getEventDateRange(a.daily_schedule).startDate;
+      const bStart = getEventDateRange(b.daily_schedule).startDate;
+      return aStart.getTime() - bStart.getTime();
+    });
 };
 
 export const getEventsByHostId = (hostId: string): Event[] => {
@@ -141,6 +171,23 @@ export const getClubsByUserId = (userId: string): Club[] => {
     .map(member => member.club_id);
   
   return clubs.filter(club => userClubIds.includes(club.id));
+};
+
+// Get user's club memberships with full club data and member counts
+export const getUserClubMemberships = (userId: string) => {
+  const userMemberships = clubMembers.filter(member => member.user_id === userId);
+  
+  return userMemberships.map(membership => {
+    const club = clubs.find(c => c.id === membership.club_id);
+    const memberCount = clubMembers.filter(m => m.club_id === membership.club_id).length;
+    
+    return {
+      club: club!,
+      role: membership.role,
+      joined_at: membership.joined_at,
+      memberCount
+    };
+  });
 };
 
 export const getClubMembers = (clubId: string): ClubMember[] => {

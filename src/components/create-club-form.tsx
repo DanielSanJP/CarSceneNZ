@@ -213,7 +213,7 @@ export function CreateClubForm({
                     onError={handleImageError}
                   />
                   {/* Overlay to show how it will look */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
                   <div className="absolute bottom-4 left-4 text-white">
                     <h3 className="text-xl font-bold">
                       {formData.name || "Your Club Name"}
@@ -392,11 +392,10 @@ export function CreateClubForm({
                       className="object-cover"
                     />
                   ) : (
-                    <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                    <div className="h-full  flex items-center justify-center">
                       <Users className="h-12 w-12 text-primary opacity-50" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
                   {/* Member count */}
                   <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
