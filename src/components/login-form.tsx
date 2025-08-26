@@ -103,11 +103,6 @@ export function LoginForm({
                 Sign up
               </a>
             </div>
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              <p className="mb-2">Test accounts:</p>
-              <p>daniel.medcalf@example.com / 123</p>
-              <p>jake@example.com / password123</p>
-            </div>
           </form>
         </CardContent>
       </Card>

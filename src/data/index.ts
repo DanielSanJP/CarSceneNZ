@@ -57,6 +57,7 @@ export interface Club {
   id: string;
   name: string;
   description: string;
+  location: string;
   banner_image_url: string;
   club_type: 'open' | 'invite' | 'closed';
   leader_id: string;

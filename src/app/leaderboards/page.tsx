@@ -32,12 +32,6 @@ interface Club {
   total_likes: number;
 }
 
-interface ClubMember {
-  club_id: string;
-  user_id: string;
-  role: string;
-}
-
 interface LeaderboardEntry {
   user: User;
   totalLikes: number;
@@ -321,14 +315,6 @@ export default function LeaderboardsPage() {
                           <h3 className="font-semibold text-sm md:text-lg truncate">
                             {entry.club.name}
                           </h3>
-                          {entry.rank <= 10 && (
-                            <Badge
-                              variant="secondary"
-                              className="text-xs hidden sm:inline"
-                            >
-                              Top {entry.rank <= 3 ? "3" : "10"}
-                            </Badge>
-                          )}
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {entry.memberCount} member

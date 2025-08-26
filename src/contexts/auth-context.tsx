@@ -53,7 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (foundUser) {
         // Remove password from user object before storing
-        const { password: userPassword, ...userWithoutPassword } = foundUser;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password, ...userWithoutPassword } = foundUser;
         setUser(userWithoutPassword);
         setIsAuthenticated(true);
         localStorage.setItem(

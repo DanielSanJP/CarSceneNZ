@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Moon, Sun, Car, LogOut, User, Trophy, Calendar } from "lucide-react";
+import {
+  Moon,
+  Sun,
+  Car,
+  LogOut,
+  User,
+  Trophy,
+  Calendar,
+  Users,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 
@@ -16,11 +25,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   NavigationMenu,
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { SearchBar } from "@/components/search-bar";
 import { useAuth } from "@/contexts/auth-context";
@@ -116,59 +123,73 @@ export function Navigation() {
       <div className=" mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            {/* Navigation Links */}
-            {isAuthenticated && (
-              <NavigationMenu className="hidden md:flex">
-                <NavigationMenuList>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        href="/"
-                        className="flex flex-row items-center gap-3 px-4"
-                      >
-                        <Car className="h-10 w-10 text-primary" />
-                        <h2 className="text-xl font-bold text-foreground">
-                          Car Scene NZ
-                        </h2>
-                      </Link>
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        href="/events"
-                        className="flex flex-row items-center gap-2"
-                      >
-                        <Calendar className="h-4 w-4" />
-                        <span>Events</span>
-                      </Link>
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        href="/garage"
-                        className="flex flex-row items-center gap-2"
-                      >
-                        <Car className="h-4 w-4" />
-                        <span>My Garage</span>
-                      </Link>
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        href="/leaderboards"
-                        className="flex flex-row items-center gap-2"
-                      >
-                        <Trophy className="h-4 w-4" />
-                        <span>Leaderboards</span>
-                      </Link>
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                </NavigationMenuList>
-              </NavigationMenu>
-            )}
+            {/* Always visible navigation */}
+            <NavigationMenu className="hidden md:flex">
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      href="/"
+                      className="flex flex-row items-center gap-3 px-4"
+                    >
+                      <Car className="h-10 w-10 text-primary" />
+                      <h2 className="text-xl font-bold text-foreground">
+                        Car Scene NZ
+                      </h2>
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      href="/events"
+                      className="flex flex-row items-center gap-2"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      <span>Events</span>
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      href="/leaderboards"
+                      className="flex flex-row items-center gap-2"
+                    >
+                      <Trophy className="h-4 w-4" />
+                      <span>Leaderboards</span>
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      href="/clubs"
+                      className="flex flex-row items-center gap-2"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span>Clubs</span>
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                {/* Authenticated only navigation */}
+                {isAuthenticated && (
+                  <>
+                    <NavigationMenuItem>
+                      <NavigationMenuLink asChild>
+                        <Link
+                          href="/garage"
+                          className="flex flex-row items-center gap-2"
+                        >
+                          <Car className="h-4 w-4" />
+                          <span>My Garage</span>
+                        </Link>
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                  </>
+                )}
+              </NavigationMenuList>
+            </NavigationMenu>
           </div>
 
           <div className="flex items-center space-x-2">

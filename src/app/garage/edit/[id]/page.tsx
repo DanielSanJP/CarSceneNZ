@@ -18,8 +18,17 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cars } from "@/data";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Trash2,
+  Upload,
+  X,
+  Camera,
+  GripVertical,
+} from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface WheelSpec {
   brand: string;
@@ -82,6 +91,8 @@ export default function EditCarPage() {
   const carId = params.id as string;
   const [isLoading, setIsLoading] = useState(false);
   const [car, setCar] = useState<Car | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<CarFormData>({
     brand: "",
@@ -222,6 +233,107 @@ export default function EditCarPage() {
     }));
   };
 
+  const handleImageError = (imageUrl: string) => {
+    setFailedImages((prev) => new Set(prev).add(imageUrl));
+  };
+
+  const handleDeleteImage = (imageUrl: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((img) => img !== imageUrl),
+    }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const currentImageCount = formData.images.length;
+    const maxImages = 10;
+    const remainingSlots = maxImages - currentImageCount;
+
+    if (remainingSlots <= 0) {
+      alert(`You can only upload a maximum of ${maxImages} images.`);
+      e.target.value = "";
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    if (files.length > remainingSlots) {
+      alert(
+        `You can only add ${remainingSlots} more image(s). Only the first ${remainingSlots} image(s) will be uploaded.`
+      );
+    }
+
+    // In a real app, you would upload these files to your server/cloud storage
+    // For now, we'll simulate adding them as URLs
+    filesToProcess.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imageUrl = event.target?.result as string;
+        setFormData((prev) => {
+          // Double-check we don't exceed the limit
+          if (prev.images.length >= maxImages) {
+            return prev;
+          }
+          return {
+            ...prev,
+            images: [...prev.images, imageUrl],
+          };
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Clear the input
+    e.target.value = "";
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/html", index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const newImages = [...formData.images];
+    const draggedImage = newImages[draggedIndex];
+
+    // Remove the dragged image from its original position
+    newImages.splice(draggedIndex, 1);
+
+    // Insert it at the new position
+    newImages.splice(dropIndex, 0, draggedImage);
+
+    setFormData((prev) => ({
+      ...prev,
+      images: newImages,
+    }));
+
+    setDraggedIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const handleBackClick = () => {
     // Use browser back to return to wherever user came from, but replace current edit page
     if (window.history.length > 1) {
@@ -298,6 +410,124 @@ export default function EditCarPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Car Images */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Car Images</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Current Images */}
+                {formData.images.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {formData.images.map((imageUrl, index) => (
+                      <div
+                        key={index}
+                        className={`relative group overflow-hidden rounded-lg border cursor-move transition-all ${
+                          draggedIndex === index
+                            ? "opacity-50 scale-95 rotate-2"
+                            : "hover:shadow-lg"
+                        }`}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragOver={handleDragOver}
+                        onDragEnter={handleDragEnter}
+                        onDrop={(e) => handleDrop(e, index)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <div className="relative aspect-square">
+                          {failedImages.has(imageUrl) ? (
+                            <div className="aspect-square bg-muted flex items-center justify-center">
+                              <Camera className="h-12 w-12 text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <Image
+                              src={imageUrl}
+                              alt={`Car image ${index + 1}`}
+                              fill
+                              className="object-cover transition-transform group-hover:scale-105"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              onError={() => handleImageError(imageUrl)}
+                            />
+                          )}
+
+                          {/* Drag handle */}
+                          <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
+
+                          {/* Delete button */}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="destructive"
+                            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDeleteImage(imageUrl)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+
+                          {/* Main image indicator */}
+                          {index === 0 && (
+                            <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
+                              Main Image
+                            </div>
+                          )}
+
+                          {/* Image number */}
+                          <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-medium">
+                            {index + 1}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                    <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      No images uploaded yet
+                    </p>
+                  </div>
+                )}
+
+                {/* Upload new images */}
+                <div className="space-y-2">
+                  <Label htmlFor="image-upload">
+                    Add Images ({formData.images.length}/10)
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      className="cursor-pointer"
+                      disabled={formData.images.length >= 10}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      disabled={formData.images.length >= 10}
+                    >
+                      <label htmlFor="image-upload" className="cursor-pointer">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Choose Files
+                      </label>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    You can upload up to 10 images. Drag and drop images to
+                    reorder them. The first image will be used as the main
+                    image.
+                    {formData.images.length >= 10 && " Maximum images reached."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Basic Information */}
             <Card>
               <CardHeader>

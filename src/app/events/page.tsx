@@ -31,6 +31,7 @@ import {
 import { events, eventAttendees, getUserById } from "@/data";
 import { useState, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function EventsPage() {
   // State for filters
@@ -337,12 +338,16 @@ export default function EventsPage() {
 
                   {/* Action Buttons */}
                   <div className="flex space-x-2">
-                    <Button className="flex-1" variant="outline" size="sm">
-                      Interested
-                    </Button>
-                    <Button className="flex-1" size="sm">
-                      I&apos;m Going
-                    </Button>
+                    <Link href={`/events/${event.id}`} className="flex-1">
+                      <Button className="w-full" variant="outline" size="sm">
+                        Interested
+                      </Button>
+                    </Link>
+                    <Link href={`/events/${event.id}`} className="flex-1">
+                      <Button className="w-full" size="sm">
+                        I&apos;m Going
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
