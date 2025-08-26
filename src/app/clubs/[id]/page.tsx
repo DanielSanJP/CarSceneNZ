@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/nav";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,12 +27,19 @@ import {
   Settings,
   Globe,
   Lock,
-  Heart,
   Calendar,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { clubs, clubMembers, users } from "@/data";
+import { clubs, clubMembers, users, cars } from "@/data";
+
+// Helper function to calculate total likes for a user's cars
+const getUserTotalLikes = (userId: string): number => {
+  return cars
+    .filter((car) => car.owner_id === userId)
+    .reduce((total, car) => total + car.total_likes, 0);
+};
 
 interface ClubWithMembers {
   id: string;
@@ -60,8 +67,10 @@ interface ClubWithMembers {
 export default function ClubDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
   const clubId = params.id as string;
+  const fromTab = searchParams.get("from") || "join";
 
   const [club, setClub] = useState<ClubWithMembers | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,9 +101,8 @@ export default function ClubDetailPage() {
           };
         })
         .sort((a, b) => {
-          // Sort by role: leader first, then co-leaders, then members
-          const roleOrder = { leader: 0, "co-leader": 1, member: 2 };
-          return roleOrder[a.role] - roleOrder[b.role];
+          // Sort by total likes (highest to lowest)
+          return getUserTotalLikes(b.user_id) - getUserTotalLikes(a.user_id);
         });
 
       setClub({
@@ -287,7 +295,7 @@ export default function ClubDetailPage() {
               The club you&apos;re looking for doesn&apos;t exist or has been
               removed.
             </p>
-            <Link href="/clubs">
+            <Link href={`/clubs?tab=${fromTab}`}>
               <Button>Back to Clubs</Button>
             </Link>
           </div>
@@ -310,7 +318,7 @@ export default function ClubDetailPage() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
-            <Link href="/clubs">
+            <Link href={`/clubs?tab=${fromTab}`}>
               <Button variant="outline" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
@@ -327,7 +335,7 @@ export default function ClubDetailPage() {
                   {memberCount}/{maxMembers}
                 </div>
                 <div className="flex items-center gap-1">
-                  <Heart className="h-4 w-4" />
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                   {club.total_likes}
                 </div>
               </div>
@@ -370,6 +378,9 @@ export default function ClubDetailPage() {
                         alt={`${club.name} banner`}
                         fill
                         className="object-cover"
+                        quality={100}
+                        priority
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                     </div>
                   ) : (
@@ -429,7 +440,7 @@ export default function ClubDetailPage() {
                     {/* Likes */}
                     <div className="flex items-center justify-between py-2 border-b border-border">
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <Heart className="h-4 w-4" />
+                        <Star className="h-4 w-4" />
                         <span>Total Likes</span>
                       </div>
                       <span className="font-semibold">{club.total_likes}</span>
@@ -613,16 +624,12 @@ export default function ClubDetailPage() {
                         </Badge>
                       </div>
 
-                      {/* Join Date */}
+                      {/* Total Likes */}
                       <div className="text-sm text-muted-foreground hidden md:block">
-                        Joined{" "}
-                        {new Date(member.joined_at).toLocaleDateString(
-                          "en-NZ",
-                          {
-                            year: "numeric",
-                            month: "short",
-                          }
-                        )}
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                          {getUserTotalLikes(member.user_id)}
+                        </div>
                       </div>
 
                       {/* Actions */}

@@ -14,7 +14,7 @@ import {
   Mail,
   User as UserIcon,
   Car,
-  Heart,
+  Star,
   Eye,
   Settings,
   ExternalLink,
@@ -182,7 +182,7 @@ export default function UserProfilePage() {
                         <Badge variant="secondary">{userCars.length}</Badge>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Heart className="h-4 w-4 text-red-500" />
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="text-sm">Total Likes</span>
                         <Badge variant="secondary">
                           {userCars.reduce(
@@ -282,7 +282,7 @@ export default function UserProfilePage() {
                               {car.suspension_type}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Heart className="h-3 w-3" />
+                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                               {car.total_likes}
                             </span>
                           </div>

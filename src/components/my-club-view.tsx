@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { cars } from "@/data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,11 +25,18 @@ import {
   Settings,
   Globe,
   Lock,
-  Heart,
   Calendar,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+
+// Helper function to calculate total likes for a user's cars
+const getUserTotalLikes = (userId: string): number => {
+  return cars
+    .filter((car) => car.owner_id === userId)
+    .reduce((total, car) => total + car.total_likes, 0);
+};
 
 interface ClubWithMembers {
   id: string;
@@ -182,7 +190,7 @@ export function MyClubView({ club }: MyClubViewProps) {
               {memberCount}/{maxMembers}
             </div>
             <div className="flex items-center gap-1">
-              <Heart className="h-4 w-4" />
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
               {club.total_likes}
             </div>
           </div>
@@ -253,7 +261,7 @@ export function MyClubView({ club }: MyClubViewProps) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-2 border-b border-border">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Heart className="h-4 w-4" />
+                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                     Likes
                   </div>
                   <span className="font-semibold">{club.total_likes}</span>
@@ -342,74 +350,79 @@ export function MyClubView({ club }: MyClubViewProps) {
         <CardContent>
           {memberCount > 0 ? (
             <div className="space-y-3">
-              {club.members.map((member, index) => (
-                <div
-                  key={member.user_id}
-                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  {/* Rank Number */}
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                    {index + 1}
-                  </div>
-
-                  {/* Avatar */}
-                  <Link href={`/profile/${member.user_id}`}>
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={member.user.profile_image_url} />
-                      <AvatarFallback>
-                        {member.user.display_name.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
-
-                  {/* User Info */}
-                  <div className="flex-1 min-w-0">
+              {club.members
+                .sort(
+                  (a, b) =>
+                    getUserTotalLikes(b.user_id) - getUserTotalLikes(a.user_id)
+                )
+                .map((member, index) => (
+                  <div
+                    key={member.user_id}
+                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    {/* Rank Number */}
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
+                      {index + 1}
+                    </div>
+                    {/* Avatar */}
                     <Link href={`/profile/${member.user_id}`}>
-                      <p className="font-medium hover:underline">
-                        {member.user.display_name}
-                      </p>
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={member.user.profile_image_url} />
+                        <AvatarFallback>
+                          {member.user.display_name
+                            .substring(0, 2)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </Link>
-                    <p className="text-sm text-muted-foreground">
-                      @{member.user.username}
-                    </p>
+                    {/* User Info */}
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/profile/${member.user_id}`}>
+                        <p className="font-medium hover:underline">
+                          {member.user.display_name}
+                        </p>
+                      </Link>
+                      <p className="text-sm text-muted-foreground">
+                        @{member.user.username}
+                      </p>
+                    </div>
+                    {/* Role Badge */}
+                    <div className="flex items-center gap-2">
+                      {getRoleIcon(member.role)}
+                      <Badge className={getRoleBadgeColor(member.role)}>
+                        {member.role.charAt(0).toUpperCase() +
+                          member.role.slice(1)}
+                      </Badge>
+                    </div>
+                    {/* Total Likes */}
+                    <div className="text-sm text-muted-foreground hidden md:block">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        {getUserTotalLikes(member.user_id)}
+                      </div>
+                    </div>{" "}
+                    {/* Actions */}
+                    {canManage &&
+                      member.role !== "leader" &&
+                      member.user_id !== user?.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              Promote to Co-Leader
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600">
+                              Remove from Club
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                   </div>
-
-                  {/* Role Badge */}
-                  <div className="flex items-center gap-2">
-                    {getRoleIcon(member.role)}
-                    <Badge className={getRoleBadgeColor(member.role)}>
-                      {member.role.charAt(0).toUpperCase() +
-                        member.role.slice(1)}
-                    </Badge>
-                  </div>
-
-                  {/* Join Date */}
-                  <div className="text-sm text-muted-foreground hidden md:block">
-                    Joined {new Date(member.joined_at).toLocaleDateString()}
-                  </div>
-
-                  {/* Actions */}
-                  {canManage &&
-                    member.role !== "leader" &&
-                    member.user_id !== user?.id && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            Promote to Co-Leader
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            Remove from Club
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                </div>
-              ))}
+                ))}
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">

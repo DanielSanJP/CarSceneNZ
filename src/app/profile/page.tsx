@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cars } from "@/data";
-import { Calendar, Edit, Car, Heart, Eye, ExternalLink } from "lucide-react";
+import { Calendar, Edit, Car, Star, Eye, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -129,7 +129,7 @@ export default function ProfilePage() {
                       <Badge variant="secondary">{userCars.length}</Badge>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Heart className="h-4 w-4 text-red-500" />
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                       <span className="text-sm">Total Likes</span>
                       <Badge variant="secondary">
                         {userCars.reduce(
@@ -212,7 +212,7 @@ export default function ProfilePage() {
                               {car.suspension_type}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Heart className="h-3 w-3" />
+                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                               {car.total_likes}
                             </span>
                           </div>

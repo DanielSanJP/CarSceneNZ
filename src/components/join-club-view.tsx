@@ -18,7 +18,7 @@ import {
   Shield,
   Lock,
   Globe,
-  Heart,
+  Star,
   Filter,
 } from "lucide-react";
 import { clubs, clubMembers, getUserById } from "@/data";
@@ -44,7 +44,11 @@ interface ClubMember {
   joined_at: string;
 }
 
-export function JoinClubView() {
+interface JoinClubViewProps {
+  currentTab?: string;
+}
+
+export function JoinClubView({ currentTab = "join" }: JoinClubViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -319,7 +323,7 @@ export function JoinClubView() {
                       {club.location}
                     </div>
                     <div className="flex items-center gap-1">
-                      <Heart className="h-3 w-3" />
+                      <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                       {club.total_likes}
                     </div>
                   </div>
@@ -348,7 +352,7 @@ export function JoinClubView() {
                       ? "Request Invite"
                       : "View Club"}
                   </Button>
-                  <Link href={`/clubs/${club.id}`}>
+                  <Link href={`/clubs/${club.id}?from=${currentTab}`}>
                     <Button variant="outline" size="sm">
                       View
                     </Button>

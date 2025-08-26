@@ -24,7 +24,7 @@ import {
   Globe,
   Lock,
   MapPin,
-  Heart,
+  Star,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -153,7 +153,7 @@ export function CreateClubForm({
       if (onSuccess) {
         onSuccess();
       } else {
-        router.push("/clubs");
+        router.push("/clubs?tab=myclub");
       }
     } catch (error) {
       console.error("Error creating club:", error);
@@ -430,7 +430,8 @@ export function CreateClubForm({
                         {formData.location || "Location"}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Heart className="h-3 w-3" />0
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        0
                       </div>
                     </div>
                   </div>

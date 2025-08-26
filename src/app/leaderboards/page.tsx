@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Medal, Award, Heart, Users, Car } from "lucide-react";
+import { Trophy, Medal, Award, Users, Car, Star } from "lucide-react";
 import { users, cars, clubs, clubMembers } from "@/data";
 import { Navigation } from "@/components/nav";
 import Link from "next/link";
@@ -260,7 +260,7 @@ export default function LeaderboardsPage() {
                         {/* Likes Score */}
                         <div className="text-right flex-shrink-0">
                           <div className="flex items-center gap-1 md:gap-2 justify-end mb-0.5 md:mb-1">
-                            <Heart className="h-4 w-4 md:h-5 md:w-5 text-red-500 fill-red-500" />
+                            <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
                             <span className="text-lg md:text-2xl font-bold text-primary">
                               {entry.totalLikes.toLocaleString()}
                             </span>
@@ -325,7 +325,7 @@ export default function LeaderboardsPage() {
                       {/* Club Likes Score */}
                       <div className="text-right flex-shrink-0">
                         <div className="flex items-center gap-1 md:gap-2 justify-end mb-0.5 md:mb-1">
-                          <Heart className="h-4 w-4 md:h-5 md:w-5 text-red-500 fill-red-500" />
+                          <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
                           <span className="text-lg md:text-2xl font-bold text-primary">
                             {entry.totalLikes.toLocaleString()}
                           </span>

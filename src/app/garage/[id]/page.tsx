@@ -12,7 +12,7 @@ import { cars } from "@/data";
 import {
   ArrowLeft,
   Edit3,
-  Heart,
+  Star,
   Eye,
   Car as CarIcon,
   ChevronLeft,
@@ -366,7 +366,7 @@ export default function CarDetailPage() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">
-                      <Heart className="h-4 w-4 text-red-500" />
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                       <span>{car.total_likes} likes</span>
                     </div>
                     <div className="flex items-center gap-2">

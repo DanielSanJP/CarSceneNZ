@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/nav";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -56,14 +57,43 @@ type MainTab = "myclub" | "join" | "create";
 
 export default function ClubsPage() {
   const { user, isAuthenticated } = useAuth();
-  const [mainTab, setMainTab] = useState<MainTab>(
-    // Default to "myclub" if user is in a club, otherwise "join"
-    isAuthenticated ? "myclub" : "join"
-  );
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get tab from URL or use default
+  const getInitialTab = (): MainTab => {
+    const tabFromUrl = searchParams.get("tab") as MainTab;
+    if (tabFromUrl && ["myclub", "join", "create"].includes(tabFromUrl)) {
+      return tabFromUrl;
+    }
+    return isAuthenticated ? "myclub" : "join";
+  };
+
+  const [mainTab, setMainTab] = useState<MainTab>(getInitialTab());
   const [userClub, setUserClub] = useState<ClubWithMembers | null>(null);
 
   const clubsData = clubs as Club[];
   const clubMembersData = clubMembers as ClubMember[];
+
+  // Handle tab change and update URL
+  const handleTabChange = (tab: MainTab) => {
+    setMainTab(tab);
+    const newUrl = `/clubs?tab=${tab}`;
+    router.push(newUrl, { scroll: false });
+  };
+
+  // Sync tab state with URL changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab") as MainTab;
+    if (tabFromUrl && ["myclub", "join", "create"].includes(tabFromUrl)) {
+      setMainTab(tabFromUrl);
+    } else {
+      // If no valid tab in URL, set default and update URL
+      const defaultTab = userClub ? "myclub" : "join";
+      setMainTab(defaultTab);
+      router.replace(`/clubs?tab=${defaultTab}`, { scroll: false });
+    }
+  }, [searchParams, userClub, router]);
 
   // Check if user is in a club
   useEffect(() => {
@@ -147,7 +177,7 @@ export default function ClubsPage() {
               {userClub && (
                 <Button
                   variant={mainTab === "myclub" ? "default" : "ghost"}
-                  onClick={() => setMainTab("myclub")}
+                  onClick={() => handleTabChange("myclub")}
                   className="flex items-center gap-2"
                 >
                   <Heart className="h-4 w-4" />
@@ -156,7 +186,7 @@ export default function ClubsPage() {
               )}
               <Button
                 variant={mainTab === "join" ? "default" : "ghost"}
-                onClick={() => setMainTab("join")}
+                onClick={() => handleTabChange("join")}
                 className="flex items-center gap-2"
               >
                 <Users className="h-4 w-4" />
@@ -164,7 +194,7 @@ export default function ClubsPage() {
               </Button>
               <Button
                 variant={mainTab === "create" ? "default" : "ghost"}
-                onClick={() => setMainTab("create")}
+                onClick={() => handleTabChange("create")}
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
@@ -178,7 +208,7 @@ export default function ClubsPage() {
             <MyClubView club={userClub} />
           ) : mainTab === "join" ? (
             /* Join Club Section */
-            <JoinClubView />
+            <JoinClubView currentTab={mainTab} />
           ) : (
             /* Create Club Section */
             <CreateClubForm embedded={true} />
