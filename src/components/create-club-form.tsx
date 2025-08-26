@@ -15,7 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Upload, Camera, Users, Shield, Globe, Lock } from "lucide-react";
+import {
+  Save,
+  Upload,
+  Camera,
+  Users,
+  Shield,
+  Globe,
+  Lock,
+  MapPin,
+  Heart,
+} from "lucide-react";
 import Image from "next/image";
 
 interface ClubFormData {
@@ -188,16 +198,16 @@ export function CreateClubForm({
         {/* Banner Image */}
         <Card>
           <CardHeader>
-            <CardTitle>Club Banner</CardTitle>
+            <CardTitle>Club Logo</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Banner Preview */}
-            <div className="relative h-48 rounded-lg border-2 border-dashed border-muted-foreground/25 overflow-hidden">
+            <div className="relative aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 overflow-hidden max-w-md mx-auto">
               {imagePreview && !imageError ? (
                 <div className="relative h-full">
                   <Image
                     src={imagePreview}
-                    alt="Club banner preview"
+                    alt="Club logo preview"
                     fill
                     className="object-cover"
                     onError={handleImageError}
@@ -218,7 +228,7 @@ export function CreateClubForm({
                   <div className="text-center">
                     <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">
-                      Club banner preview
+                      Club logo preview
                     </p>
                   </div>
                 </div>
@@ -227,7 +237,7 @@ export function CreateClubForm({
 
             {/* Upload Banner */}
             <div className="space-y-2">
-              <Label htmlFor="banner-upload">Upload Banner Image</Label>
+              <Label htmlFor="banner-upload">Upload Club Logo</Label>
               <div className="flex items-center gap-4">
                 <Input
                   id="banner-upload"
@@ -237,15 +247,15 @@ export function CreateClubForm({
                   className="cursor-pointer"
                 />
                 <Button type="button" variant="outline" size="sm" asChild>
-                  <label htmlFor="banner-upload" className="cursor-pointer">
+                  <Label htmlFor="banner-upload" className="cursor-pointer">
                     <Upload className="h-4 w-4 mr-2" />
                     Choose Image
-                  </label>
+                  </Label>
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Recommended size: 1200x400px. This will be the background image
-                for your club card.
+                Recommended size: 400px × 400px (square). This will be the logo
+                image for your club card.
               </p>
             </div>
           </CardContent>
@@ -369,15 +379,15 @@ export function CreateClubForm({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="max-w-md">
-              {/* Preview club card */}
+            <div className="max-w-md mx-auto">
+              {/* Preview club card - matching the main clubs page layout */}
               <div className="overflow-hidden rounded-lg border hover:shadow-lg transition-all duration-300">
                 {/* Banner */}
-                <div className="relative h-32 overflow-hidden">
+                <div className="relative aspect-square overflow-hidden">
                   {imagePreview && !imageError ? (
                     <Image
                       src={imagePreview}
-                      alt="Club banner preview"
+                      alt="Club logo preview"
                       fill
                       className="object-cover"
                     />
@@ -416,11 +426,11 @@ export function CreateClubForm({
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
+                        <MapPin className="h-3 w-3" />
                         {formData.location || "Location"}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />0
+                        <Heart className="h-3 w-3" />0
                       </div>
                     </div>
                   </div>

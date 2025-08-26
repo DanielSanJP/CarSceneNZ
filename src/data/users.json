@@ -88,5 +88,15 @@
     "profile_image_url": "/profiles/daniel.jpg",
     "created_at": "2024-08-25T12:00:00Z",
     "updated_at": "2024-08-25T12:00:00Z"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440010",
+    "username": "newcomer_nz",
+    "display_name": "Alex Carter",
+    "email": "alex.carter@example.com",
+    "password": "123",
+    "profile_image_url": "/profiles/daniel.jpg",
+    "created_at": "2024-08-26T10:00:00Z",
+    "updated_at": "2024-08-26T10:00:00Z"
   }
 ]

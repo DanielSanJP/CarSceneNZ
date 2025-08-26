@@ -7,8 +7,17 @@ import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cars } from "@/data";
-import { ArrowLeft, Edit3, Heart, Eye, Car as CarIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit3,
+  Heart,
+  Eye,
+  Car as CarIcon,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -49,6 +58,8 @@ export default function CarDetailPage() {
   const carId = params.id as string;
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalImageIndex, setModalImageIndex] = useState(0);
 
   const car = (cars as Car[]).find((c) => c.id === carId);
 
@@ -125,6 +136,23 @@ export default function CarDetailPage() {
     setFailedImages((prev) => new Set(prev).add(`${carId}-${imageIndex}`));
   };
 
+  const openModal = (imageIndex: number) => {
+    setModalImageIndex(imageIndex);
+    setIsModalOpen(true);
+  };
+
+  const navigateModal = (direction: "prev" | "next") => {
+    if (direction === "prev") {
+      setModalImageIndex((prev) =>
+        prev === 0 ? car.images.length - 1 : prev - 1
+      );
+    } else {
+      setModalImageIndex((prev) =>
+        prev === car.images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -159,7 +187,10 @@ export default function CarDetailPage() {
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Images */}
             <div className="space-y-4">
-              <div className="relative aspect-square overflow-hidden rounded-lg">
+              <div
+                className="relative aspect-square overflow-hidden rounded-lg cursor-pointer"
+                onClick={() => openModal(currentImageIndex)}
+              >
                 {failedImages.has(`${carId}-${currentImageIndex}`) ||
                 !car.images[currentImageIndex] ? (
                   <div className="aspect-square bg-muted flex items-center justify-center">
@@ -356,6 +387,106 @@ export default function CarDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Image Modal */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent
+            className="!max-w-none !w-screen !h-screen !p-0 !m-0 !rounded-none bg-background border-none "
+            showCloseButton={true}
+          >
+            <div className="relative w-full h-full flex flex-col">
+              {/* Close button using shadcn Button component */}
+
+              {/* Main image area - takes up most of the space */}
+              <div className="relative flex-1 flex items-center justify-center p-4 pt-16">
+                {/* Navigation arrows */}
+                {car.images.length > 1 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 z-10 "
+                      onClick={() => navigateModal("prev")}
+                    >
+                      <ChevronLeft className="h-6 w-6" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-10"
+                      onClick={() => navigateModal("next")}
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </Button>
+                  </>
+                )}
+
+                {/* Main modal image */}
+                <div className="relative w-full h-full">
+                  {failedImages.has(`${carId}-${modalImageIndex}`) ||
+                  !car.images[modalImageIndex] ? (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <CarIcon className="h-32 w-32 text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Image
+                      src={car.images[modalImageIndex]}
+                      alt={`${car.brand} ${car.model} - Image ${
+                        modalImageIndex + 1
+                      }`}
+                      fill
+                      quality={100}
+                      className="object-contain"
+                      sizes="100vw"
+                      onError={() => handleImageError(modalImageIndex)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom thumbnail strip */}
+              {car.images.length > 1 && (
+                <div className="p-4">
+                  <div className="flex justify-center gap-2 max-w-full overflow-x-auto">
+                    {car.images.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setModalImageIndex(index)}
+                        className={`relative flex-shrink-0 w-16 h-16 overflow-hidden rounded border-2 transition-colors ${
+                          modalImageIndex === index
+                            ? "border-white"
+                            : "border-transparent hover:border-gray-400"
+                        }`}
+                      >
+                        {failedImages.has(`${carId}-${index}`) ||
+                        !car.images[index] ? (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <CarIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <Image
+                            src={car.images[index]}
+                            alt={`Thumbnail ${index + 1}`}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                            onError={() => handleImageError(index)}
+                          />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Image counter */}
+                  <div className="text-center mt-2 text-white/80 text-sm">
+                    {modalImageIndex + 1} / {car.images.length}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
