@@ -128,7 +128,7 @@ export function OwnerRankings() {
                 </div>
 
                 {/* User Avatar */}
-                <div className="relative h-14 w-14 md:h-20 md:w-20 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                <div className="relative h-14 w-14 md:h-20 md:w-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
                   {entry.user.profile_image_url ? (
                     <Image
                       src={entry.user.profile_image_url}

@@ -105,6 +105,12 @@ function ProfileDropdown() {
             <span>My Garage</span>
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/events/create" className="cursor-pointer">
+            <Calendar className="mr-2 h-4 w-4" />
+            <span>Create Event</span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />

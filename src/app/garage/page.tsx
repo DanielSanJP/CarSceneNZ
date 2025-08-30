@@ -22,11 +22,13 @@ interface Car {
       brand: string;
       size: string;
       offset: string;
+      camber?: number;
     };
     rear?: {
       brand: string;
       size: string;
       offset: string;
+      camber?: number;
     };
   };
   tire_specs?: {
@@ -134,9 +136,6 @@ export default function GaragePage() {
                         {car.year} {car.brand} {car.model}
                       </CardTitle>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span className="capitalize">
-                          {car.suspension_type}
-                        </span>
                         <span className="flex items-center gap-1">
                           <Star className="h-3 w-3" />
                           {car.total_likes}
@@ -145,17 +144,6 @@ export default function GaragePage() {
                     </CardHeader>
 
                     <CardContent className="space-y-4">
-                      {/* Quick specs */}
-                      {car.wheel_specs?.front && (
-                        <div className="text-sm">
-                          <p className="text-muted-foreground">Wheels:</p>
-                          <p>
-                            {car.wheel_specs.front.size}{" "}
-                            {car.wheel_specs.front.offset}
-                          </p>
-                        </div>
-                      )}
-
                       {/* Action Buttons */}
                       <div className="flex space-x-2">
                         <Button

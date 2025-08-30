@@ -26,6 +26,12 @@ import {
   Camera,
   GripVertical,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -33,6 +39,142 @@ interface WheelSpec {
   brand: string;
   size: string;
   offset: string;
+}
+
+interface EngineSpec {
+  type: string;
+  displacement: string;
+  horsepower: string;
+  torque: string;
+  fuel_system: string;
+  aspiration: string;
+  engine_code: string;
+  power_hp: number;
+  torque_nm: number;
+  modifications: {
+    turbo: { brand: string };
+    supercharger: { brand: string };
+    intercooler: { brand: string };
+    exhaust: { header: string; catback: string };
+    intake: { brand: string };
+    ecu: { brand: string; tuned_by: string };
+    internals: {
+      pistons: string;
+      rods: string;
+      valves: string;
+      springs: string;
+      cams: string;
+    };
+    fuel_system: { injectors: string; fuel_pump: string; fuel_rail: string };
+  };
+}
+
+interface BrakeSpec {
+  front: {
+    brand: string;
+    size: string;
+    type: string;
+    caliper: string;
+    disc_size: string;
+    disc_type: string;
+    pads: string;
+  };
+  rear: {
+    brand: string;
+    size: string;
+    type: string;
+    caliper: string;
+    disc_size: string;
+    disc_type: string;
+    pads: string;
+  };
+  brake_lines: string;
+  master_cylinder: string;
+}
+
+interface SuspensionSpec {
+  front: {
+    brand: string;
+    type: string;
+    spring_rate: string;
+    damper: string;
+    model: string;
+    camber: number;
+    toe: string;
+    caster: string;
+  };
+  rear: {
+    brand: string;
+    type: string;
+    spring_rate: string;
+    damper: string;
+    model: string;
+    camber: number;
+    toe: string;
+    caster: string;
+  };
+}
+
+interface ExteriorSpec {
+  paint: {
+    color: string;
+    type: string;
+    finish: string;
+  };
+  body_kit: {
+    front_bumper: string;
+    rear_bumper: string;
+    side_skirts: string;
+    rear_wing: string;
+  };
+  wheels: string;
+  exhaust: string;
+  spoiler: string;
+  lighting: {
+    headlights: string;
+    taillights: string;
+    indicators: string;
+  };
+  other: string;
+}
+
+interface InteriorSpec {
+  seats: {
+    front: string;
+    rear: string;
+  };
+  steering_wheel: {
+    brand: string;
+    model: string;
+    size: string;
+  };
+  dashboard: string;
+  carpet: string;
+  gauges: string[];
+  audio_system: string;
+  roll_cage: {
+    material: string;
+  };
+  audio: {
+    head_unit: string;
+    speakers: string;
+    subwoofer: string;
+  };
+  other: string;
+}
+
+interface PerformanceModsSpec {
+  intake: string;
+  exhaust: string;
+  turbo: string;
+  intercooler: string;
+  fuel_system: string;
+  ignition: string;
+  weight_reduction: string[];
+  aero: string[];
+  chassis: string[];
+  cooling: string[];
+  other: string;
 }
 
 interface CarFormData {
@@ -49,6 +191,12 @@ interface CarFormData {
     rear: string;
   };
   images: string[];
+  engine: EngineSpec;
+  brakes: BrakeSpec;
+  suspension: SuspensionSpec;
+  exterior: ExteriorSpec;
+  interior: InteriorSpec;
+  performance_mods: PerformanceModsSpec;
 }
 
 interface Car {
@@ -77,6 +225,12 @@ interface Car {
   images: string[];
   total_likes: number;
   created_at: string;
+  engine?: EngineSpec;
+  brakes?: BrakeSpec;
+  suspension?: SuspensionSpec;
+  exterior?: ExteriorSpec;
+  interior?: InteriorSpec;
+  performance_mods?: PerformanceModsSpec;
 }
 
 export default function EditCarPage() {
@@ -103,6 +257,109 @@ export default function EditCarPage() {
       rear: "",
     },
     images: [],
+    engine: {
+      type: "",
+      displacement: "",
+      horsepower: "",
+      torque: "",
+      fuel_system: "",
+      aspiration: "",
+      engine_code: "",
+      power_hp: 0,
+      torque_nm: 0,
+      modifications: {
+        turbo: { brand: "" },
+        supercharger: { brand: "" },
+        intercooler: { brand: "" },
+        exhaust: { header: "", catback: "" },
+        intake: { brand: "" },
+        ecu: { brand: "", tuned_by: "" },
+        internals: { pistons: "", rods: "", valves: "", springs: "", cams: "" },
+        fuel_system: { injectors: "", fuel_pump: "", fuel_rail: "" },
+      },
+    },
+    brakes: {
+      front: {
+        brand: "",
+        size: "",
+        type: "",
+        caliper: "",
+        disc_size: "",
+        disc_type: "",
+        pads: "",
+      },
+      rear: {
+        brand: "",
+        size: "",
+        type: "",
+        caliper: "",
+        disc_size: "",
+        disc_type: "",
+        pads: "",
+      },
+      brake_lines: "",
+      master_cylinder: "",
+    },
+    suspension: {
+      front: {
+        brand: "",
+        type: "",
+        spring_rate: "",
+        damper: "",
+        model: "",
+        camber: 0,
+        toe: "",
+        caster: "",
+      },
+      rear: {
+        brand: "",
+        type: "",
+        spring_rate: "",
+        damper: "",
+        model: "",
+        camber: 0,
+        toe: "",
+        caster: "",
+      },
+    },
+    exterior: {
+      paint: { color: "", type: "", finish: "" },
+      body_kit: {
+        front_bumper: "",
+        rear_bumper: "",
+        side_skirts: "",
+        rear_wing: "",
+      },
+      wheels: "",
+      exhaust: "",
+      spoiler: "",
+      lighting: { headlights: "", taillights: "", indicators: "" },
+      other: "",
+    },
+    interior: {
+      seats: { front: "", rear: "" },
+      steering_wheel: { brand: "", model: "", size: "" },
+      dashboard: "",
+      carpet: "",
+      gauges: [],
+      audio_system: "",
+      roll_cage: { material: "" },
+      audio: { head_unit: "", speakers: "", subwoofer: "" },
+      other: "",
+    },
+    performance_mods: {
+      intake: "",
+      exhaust: "",
+      turbo: "",
+      intercooler: "",
+      fuel_system: "",
+      ignition: "",
+      weight_reduction: [],
+      aero: [],
+      chassis: [],
+      cooling: [],
+      other: "",
+    },
   });
 
   useEffect(() => {
@@ -131,6 +388,124 @@ export default function EditCarPage() {
           rear: foundCar.tire_specs?.rear || "",
         },
         images: foundCar.images,
+        engine: foundCar.engine || {
+          type: "",
+          displacement: "",
+          horsepower: "",
+          torque: "",
+          fuel_system: "",
+          aspiration: "",
+          engine_code: "",
+          power_hp: 0,
+          torque_nm: 0,
+          modifications: {
+            turbo: { brand: "" },
+            supercharger: { brand: "" },
+            intercooler: { brand: "" },
+            exhaust: { header: "", catback: "" },
+            intake: { brand: "" },
+            ecu: { brand: "", tuned_by: "" },
+            internals: {
+              pistons: "",
+              rods: "",
+              valves: "",
+              springs: "",
+              cams: "",
+            },
+            fuel_system: { injectors: "", fuel_pump: "", fuel_rail: "" },
+          },
+        },
+        brakes: foundCar.brakes || {
+          front: {
+            brand: "",
+            size: "",
+            type: "",
+            caliper: "",
+            disc_size: "",
+            disc_type: "",
+            pads: "",
+          },
+          rear: {
+            brand: "",
+            size: "",
+            type: "",
+            caliper: "",
+            disc_size: "",
+            disc_type: "",
+            pads: "",
+          },
+          brake_lines: "",
+          master_cylinder: "",
+        },
+        suspension: foundCar.suspension || {
+          front: {
+            brand: "",
+            type: "",
+            spring_rate: "",
+            damper: "",
+            model: "",
+            camber: 0,
+            toe: "",
+            caster: "",
+          },
+          rear: {
+            brand: "",
+            type: "",
+            spring_rate: "",
+            damper: "",
+            model: "",
+            camber: 0,
+            toe: "",
+            caster: "",
+          },
+        },
+        exterior: foundCar.exterior || {
+          paint: { color: "", type: "", finish: "" },
+          body_kit: {
+            front_bumper: "",
+            rear_bumper: "",
+            side_skirts: "",
+            rear_wing: "",
+          },
+          wheels: "",
+          exhaust: "",
+          spoiler: "",
+          lighting: { headlights: "", taillights: "", indicators: "" },
+          other: "",
+        },
+        interior: foundCar.interior
+          ? {
+              ...foundCar.interior,
+              gauges: Array.isArray(foundCar.interior.gauges)
+                ? foundCar.interior.gauges
+                : typeof foundCar.interior.gauges === "string"
+                ? [foundCar.interior.gauges]
+                : [],
+            }
+          : {
+              seats: { front: "", rear: "" },
+              steering_wheel: { brand: "", model: "", size: "" },
+              dashboard: "",
+              carpet: "",
+              gauges: [],
+              audio_system: "",
+              roll_cage: { material: "" },
+              audio: { head_unit: "", speakers: "", subwoofer: "" },
+              other: "",
+            },
+        performance_mods: foundCar.performance_mods || {
+          intake: "",
+          exhaust: "",
+          turbo: "",
+          intercooler: "",
+          fuel_system: "",
+          ignition: "",
+          weight_reduction: [],
+          aero: [],
+          chassis: [],
+          cooling: [],
+          other: "",
+        },
       });
     }
   }, [carId]);
@@ -519,10 +894,10 @@ export default function EditCarPage() {
               </CardContent>
             </Card>
 
-            {/* Basic Information */}
+            {/* Basic Car Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
+                <CardTitle>Car Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-3">
@@ -571,159 +946,1793 @@ export default function EditCarPage() {
                     </Select>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="space-y-2">
-                  <Label htmlFor="suspension">Suspension Type</Label>
-                  <Select
-                    value={formData.suspension_type}
-                    onValueChange={(value) =>
-                      handleInputChange("suspension_type", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select suspension type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="air suspension">
-                        Air Suspension
-                      </SelectItem>
-                      <SelectItem value="coilovers">Coilovers</SelectItem>
-                      <SelectItem value="lowering springs">
-                        Lowering Springs
-                      </SelectItem>
-                      <SelectItem value="stock">Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Engine Details */}
+            <Card>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="engine-details">
+                    <AccordionTrigger>Engine Details</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Engine Code</Label>
+                            <Input
+                              value={formData.engine.engine_code}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  engine: {
+                                    ...prev.engine,
+                                    engine_code: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 2JZ-GTE"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Displacement</Label>
+                            <Input
+                              value={formData.engine.displacement}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  engine: {
+                                    ...prev.engine,
+                                    displacement: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 3.0L"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Aspiration</Label>
+                            <Input
+                              value={formData.engine.aspiration}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  engine: {
+                                    ...prev.engine,
+                                    aspiration: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., twin turbo"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Power (HP)</Label>
+                            <Input
+                              type="number"
+                              value={formData.engine.power_hp}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  engine: {
+                                    ...prev.engine,
+                                    power_hp: Number(e.target.value),
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 320"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Torque (Nm)</Label>
+                            <Input
+                              type="number"
+                              value={formData.engine.torque_nm}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  engine: {
+                                    ...prev.engine,
+                                    torque_nm: Number(e.target.value),
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 407"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </CardContent>
+            </Card>
+
+            {/* Engine Modifications */}
+            <Card>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="engine-modifications">
+                    <AccordionTrigger>Engine Modifications</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {/* Turbo */}
+                        <div className="space-y-2">
+                          <Label>Turbo</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.turbo?.brand || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    turbo: {
+                                      ...prev.engine.modifications?.turbo,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Garrett GT2860"
+                          />
+                        </div>
+                        {/* Supercharger */}
+                        <div className="space-y-2">
+                          <Label>Supercharger</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.supercharger
+                                ?.brand || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    supercharger: {
+                                      ...prev.engine.modifications
+                                        ?.supercharger,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Eaton M90"
+                          />
+                        </div>
+                        {/* Intercooler */}
+                        <div className="space-y-2">
+                          <Label>Intercooler</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.intercooler
+                                ?.brand || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    intercooler: {
+                                      ...prev.engine.modifications?.intercooler,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Mishimoto top mount"
+                          />
+                        </div>
+                        {/* Exhaust Header */}
+                        <div className="space-y-2">
+                          <Label>Exhaust Header</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.exhaust?.header ||
+                              ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    exhaust: {
+                                      ...prev.engine.modifications?.exhaust,
+                                      header: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., OEM header"
+                          />
+                        </div>
+                        {/* Exhaust Catback */}
+                        <div className="space-y-2">
+                          <Label>Exhaust Catback</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.exhaust?.catback ||
+                              ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    exhaust: {
+                                      ...prev.engine.modifications?.exhaust,
+                                      catback: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Magnaflow catback"
+                          />
+                        </div>
+                        {/* Intake */}
+                        <div className="space-y-2">
+                          <Label>Intake</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.intake?.brand || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    intake: {
+                                      ...prev.engine.modifications?.intake,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., AEM intake"
+                          />
+                        </div>
+                        {/* ECU */}
+                        <div className="space-y-2">
+                          <Label>ECU</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.ecu?.brand || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    ecu: {
+                                      ...prev.engine.modifications?.ecu,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Haltech Elite 1500"
+                          />
+                        </div>
+                        {/* ECU Tuned By */}
+                        <div className="space-y-2">
+                          <Label>ECU Tuned By</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.ecu?.tuned_by || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    ecu: {
+                                      ...prev.engine.modifications?.ecu,
+                                      tuned_by: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Performance Tuning"
+                          />
+                        </div>
+                        {/* Internals Header */}
+                        <div className="col-span-3">
+                          <h4 className="font-medium mt-4 mb-2">Internals</h4>
+                        </div>
+                        {/* Internals Inputs */}
+                        <div className="space-y-2">
+                          <Label>Pistons</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.internals
+                                ?.pistons || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    internals: {
+                                      ...prev.engine.modifications?.internals,
+                                      pistons: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., OEM pistons"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Rods</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.internals?.rods ||
+                              ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    internals: {
+                                      ...prev.engine.modifications?.internals,
+                                      rods: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., OEM rods"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Valves</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.internals
+                                ?.valves || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    internals: {
+                                      ...prev.engine.modifications?.internals,
+                                      valves: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., OEM valves"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Springs</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.internals
+                                ?.springs || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    internals: {
+                                      ...prev.engine.modifications?.internals,
+                                      springs: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Upgraded springs"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Cams</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.internals?.cams ||
+                              ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    internals: {
+                                      ...prev.engine.modifications?.internals,
+                                      cams: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Upgraded cams"
+                          />
+                        </div>
+                        {/* Fuel System Header */}
+                        <div className="col-span-3">
+                          <h4 className="font-medium mt-4 mb-2">Fuel System</h4>
+                        </div>
+                        {/* Fuel System Inputs */}
+                        <div className="space-y-2">
+                          <Label>Injectors</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.fuel_system
+                                ?.injectors || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    fuel_system: {
+                                      ...prev.engine.modifications?.fuel_system,
+                                      injectors: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Bosch 440cc injectors"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Fuel Pump</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.fuel_system
+                                ?.fuel_pump || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    fuel_system: {
+                                      ...prev.engine.modifications?.fuel_system,
+                                      fuel_pump: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., Deatschwerks fuel pump"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Fuel Rail</Label>
+                          <Input
+                            value={
+                              formData.engine.modifications?.fuel_system
+                                ?.fuel_rail || ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                engine: {
+                                  ...prev.engine,
+                                  modifications: {
+                                    ...prev.engine.modifications,
+                                    fuel_system: {
+                                      ...prev.engine.modifications?.fuel_system,
+                                      fuel_rail: e.target.value,
+                                    },
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="e.g., OEM fuel rail"
+                          />
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </CardContent>
+            </Card>
+
+            {/* Brakes */}
+
+            <Card>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="brakes-details">
+                    <AccordionTrigger>Brakes</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-medium mb-2">Front Brakes</h4>
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <Label>Caliper</Label>
+                              <Input
+                                value={formData.brakes.front.caliper}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    brakes: {
+                                      ...prev.brakes,
+                                      front: {
+                                        ...prev.brakes.front,
+                                        caliper: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                placeholder="e.g., Brembo 6-pot"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Disc Size</Label>
+                              <Input
+                                value={formData.brakes.front.disc_size}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    brakes: {
+                                      ...prev.brakes,
+                                      front: {
+                                        ...prev.brakes.front,
+                                        disc_size: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                placeholder="e.g., 355mm"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Disc Type</Label>
+                              <Input
+                                value={formData.brakes.front.disc_type}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    brakes: {
+                                      ...prev.brakes,
+                                      front: {
+                                        ...prev.brakes.front,
+                                        disc_type: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                placeholder="e.g., vented/drilled"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2 mt-4">
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <div className="space-y-2">
+                                <Label>Pads</Label>
+                                <Input
+                                  value={formData.brakes.front.pads}
+                                  onChange={(e) =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      brakes: {
+                                        ...prev.brakes,
+                                        front: {
+                                          ...prev.brakes.front,
+                                          pads: e.target.value,
+                                        },
+                                      },
+                                    }))
+                                  }
+                                  placeholder="e.g., Project Mu Club Racer"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <Separator className="my-4" />
+                        <div>
+                          <h4 className="font-medium mb-2">Rear Brakes</h4>
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <Label>Caliper</Label>
+                              <Input
+                                value={formData.brakes.rear.caliper}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    brakes: {
+                                      ...prev.brakes,
+                                      rear: {
+                                        ...prev.brakes.rear,
+                                        caliper: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                placeholder="e.g., Brembo 4-pot"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Disc Size</Label>
+                              <Input
+                                value={formData.brakes.rear.disc_size}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    brakes: {
+                                      ...prev.brakes,
+                                      rear: {
+                                        ...prev.brakes.rear,
+                                        disc_size: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                placeholder="e.g., 330mm"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Disc Type</Label>
+                              <Input
+                                value={formData.brakes.rear.disc_type}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    brakes: {
+                                      ...prev.brakes,
+                                      rear: {
+                                        ...prev.brakes.rear,
+                                        disc_type: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                placeholder="e.g., vented/drilled"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2 mt-4">
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <div className="space-y-2">
+                                <Label>Pads</Label>
+                                <Input
+                                  value={formData.brakes.rear.pads}
+                                  onChange={(e) =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      brakes: {
+                                        ...prev.brakes,
+                                        rear: {
+                                          ...prev.brakes.rear,
+                                          pads: e.target.value,
+                                        },
+                                      },
+                                    }))
+                                  }
+                                  placeholder="e.g., Project Mu Club Racer"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <Separator className="my-4" />
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Brake Lines</Label>
+                            <Input
+                              value={formData.brakes.brake_lines}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  brakes: {
+                                    ...prev.brakes,
+                                    brake_lines: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., stainless steel braided"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Master Cylinder</Label>
+                            <Input
+                              value={formData.brakes.master_cylinder}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  brakes: {
+                                    ...prev.brakes,
+                                    master_cylinder: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Brembo upgraded"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </CardContent>
+            </Card>
+
+            {/* Suspension Details */}
+            <Card>
+              {" "}
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="suspension-details">
+                    <AccordionTrigger>Suspension Details</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        <Label htmlFor="suspension">Suspension Type</Label>
+                        <Select
+                          value={formData.suspension_type}
+                          onValueChange={(value) =>
+                            handleInputChange("suspension_type", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select suspension type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="air suspension">
+                              Air Suspension
+                            </SelectItem>
+                            <SelectItem value="coilovers">Coilovers</SelectItem>
+                            <SelectItem value="lowering springs">
+                              Lowering Springs
+                            </SelectItem>
+                            <SelectItem value="stock">Stock</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2">Front Suspension</h4>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Brand</Label>
+                            <Input
+                              value={formData.suspension.front.brand}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    front: {
+                                      ...prev.suspension.front,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., BC Racing"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Model</Label>
+                            <Input
+                              value={formData.suspension.front.model}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    front: {
+                                      ...prev.suspension.front,
+                                      model: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., BR Series"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Spring Rate</Label>
+                            <Input
+                              value={formData.suspension.front.spring_rate}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    front: {
+                                      ...prev.suspension.front,
+                                      spring_rate: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 8K"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-3 mt-4">
+                          <div className="space-y-2">
+                            <Label>Camber</Label>
+                            <Input
+                              type="number"
+                              value={formData.suspension.front.camber}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    front: {
+                                      ...prev.suspension.front,
+                                      camber: Number(e.target.value),
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., -3.2"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Toe</Label>
+                            <Input
+                              value={formData.suspension.front.toe}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    front: {
+                                      ...prev.suspension.front,
+                                      toe: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 0.5°"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Caster</Label>
+                            <Input
+                              value={formData.suspension.front.caster}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    front: {
+                                      ...prev.suspension.front,
+                                      caster: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 6.2°"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <Separator className="my-4" />
+                      <div>
+                        <h4 className="font-medium mb-2">Rear Suspension</h4>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Brand</Label>
+                            <Input
+                              value={formData.suspension.rear.brand}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    rear: {
+                                      ...prev.suspension.rear,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., BC Racing"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Model</Label>
+                            <Input
+                              value={formData.suspension.rear.model}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    rear: {
+                                      ...prev.suspension.rear,
+                                      model: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., BR Series"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Spring Rate</Label>
+                            <Input
+                              value={formData.suspension.rear.spring_rate}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    rear: {
+                                      ...prev.suspension.rear,
+                                      spring_rate: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 6K"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-3 mt-4">
+                          <div className="space-y-2">
+                            <Label>Camber</Label>
+                            <Input
+                              type="number"
+                              value={formData.suspension.rear.camber}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    rear: {
+                                      ...prev.suspension.rear,
+                                      camber: Number(e.target.value),
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., -2.8"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Toe</Label>
+                            <Input
+                              value={formData.suspension.rear.toe}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    rear: {
+                                      ...prev.suspension.rear,
+                                      toe: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 0.2°"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Caster</Label>
+                            <Input
+                              value={formData.suspension.rear.caster}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  suspension: {
+                                    ...prev.suspension,
+                                    rear: {
+                                      ...prev.suspension.rear,
+                                      caster: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 6.2°"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
 
             {/* Wheel Specifications */}
             <Card>
-              <CardHeader>
-                <CardTitle>Wheel Specifications</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Front Wheels */}
-                <div>
-                  <h4 className="font-medium mb-3">Front Wheels</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label>Brand</Label>
-                      <Input
-                        value={formData.wheel_specs.front.brand}
-                        onChange={(e) =>
-                          handleWheelSpecChange(
-                            "front",
-                            "brand",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., Rays, Work, BBS"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Size</Label>
-                      <Input
-                        value={formData.wheel_specs.front.size}
-                        onChange={(e) =>
-                          handleWheelSpecChange("front", "size", e.target.value)
-                        }
-                        placeholder="e.g., 18x9.5"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Offset</Label>
-                      <Input
-                        value={formData.wheel_specs.front.offset}
-                        onChange={(e) =>
-                          handleWheelSpecChange(
-                            "front",
-                            "offset",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., +22"
-                      />
-                    </div>
-                  </div>
-                </div>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="wheel-specifications">
+                    <AccordionTrigger>Wheel Specifications</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-6">
+                        {/* Front Wheels */}
+                        <div>
+                          <h4 className="font-medium mb-3">Front Wheels</h4>
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <Label>Brand</Label>
+                              <Input
+                                value={formData.wheel_specs.front.brand}
+                                onChange={(e) =>
+                                  handleWheelSpecChange(
+                                    "front",
+                                    "brand",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., Rays, Work, BBS"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Size</Label>
+                              <Input
+                                value={formData.wheel_specs.front.size}
+                                onChange={(e) =>
+                                  handleWheelSpecChange(
+                                    "front",
+                                    "size",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., 18x9.5"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Offset</Label>
+                              <Input
+                                value={formData.wheel_specs.front.offset}
+                                onChange={(e) =>
+                                  handleWheelSpecChange(
+                                    "front",
+                                    "offset",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., +22"
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                <Separator />
+                        <Separator />
 
-                {/* Rear Wheels */}
-                <div>
-                  <h4 className="font-medium mb-3">Rear Wheels</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label>Brand</Label>
-                      <Input
-                        value={formData.wheel_specs.rear.brand}
-                        onChange={(e) =>
-                          handleWheelSpecChange("rear", "brand", e.target.value)
-                        }
-                        placeholder="e.g., Rays, Work, BBS"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Size</Label>
-                      <Input
-                        value={formData.wheel_specs.rear.size}
-                        onChange={(e) =>
-                          handleWheelSpecChange("rear", "size", e.target.value)
-                        }
-                        placeholder="e.g., 18x10.5"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Offset</Label>
-                      <Input
-                        value={formData.wheel_specs.rear.offset}
-                        onChange={(e) =>
-                          handleWheelSpecChange(
-                            "rear",
-                            "offset",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., +15"
-                      />
-                    </div>
-                  </div>
-                </div>
+                        {/* Rear Wheels */}
+                        <div>
+                          <h4 className="font-medium mb-3">Rear Wheels</h4>
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <Label>Brand</Label>
+                              <Input
+                                value={formData.wheel_specs.rear.brand}
+                                onChange={(e) =>
+                                  handleWheelSpecChange(
+                                    "rear",
+                                    "brand",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., Rays, Work, BBS"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Size</Label>
+                              <Input
+                                value={formData.wheel_specs.rear.size}
+                                onChange={(e) =>
+                                  handleWheelSpecChange(
+                                    "rear",
+                                    "size",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., 18x10.5"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Offset</Label>
+                              <Input
+                                value={formData.wheel_specs.rear.offset}
+                                onChange={(e) =>
+                                  handleWheelSpecChange(
+                                    "rear",
+                                    "offset",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., +15"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
 
             {/* Tire Specifications */}
             <Card>
-              <CardHeader>
-                <CardTitle>Tire Specifications</CardTitle>
-              </CardHeader>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="tire-specifications">
+                    <AccordionTrigger>Tire Specifications</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="front-tires">Front Tires</Label>
+                          <Input
+                            id="front-tires"
+                            value={formData.tire_specs.front}
+                            onChange={(e) =>
+                              handleTireSpecChange("front", e.target.value)
+                            }
+                            placeholder="e.g., 265/35R18"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="rear-tires">Rear Tires</Label>
+                          <Input
+                            id="rear-tires"
+                            value={formData.tire_specs.rear}
+                            onChange={(e) =>
+                              handleTireSpecChange("rear", e.target.value)
+                            }
+                            placeholder="e.g., 295/30R18"
+                          />
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </CardContent>
+            </Card>
+
+            {/* Exterior Details */}
+
+            <Card>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="front-tires">Front Tires</Label>
-                    <Input
-                      id="front-tires"
-                      value={formData.tire_specs.front}
-                      onChange={(e) =>
-                        handleTireSpecChange("front", e.target.value)
-                      }
-                      placeholder="e.g., 265/35R18"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rear-tires">Rear Tires</Label>
-                    <Input
-                      id="rear-tires"
-                      value={formData.tire_specs.rear}
-                      onChange={(e) =>
-                        handleTireSpecChange("rear", e.target.value)
-                      }
-                      placeholder="e.g., 295/30R18"
-                    />
-                  </div>
-                </div>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="exterior-details">
+                    <AccordionTrigger>Exterior Details</AccordionTrigger>
+                    <AccordionContent>
+                      <div>
+                        <h4 className="font-medium mb-2">Body Kit</h4>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Front Bumper</Label>
+                            <Input
+                              value={formData.exterior.body_kit.front_bumper}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    body_kit: {
+                                      ...prev.exterior.body_kit,
+                                      front_bumper: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Ridox"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Rear Bumper</Label>
+                            <Input
+                              value={formData.exterior.body_kit.rear_bumper}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    body_kit: {
+                                      ...prev.exterior.body_kit,
+                                      rear_bumper: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Ridox"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Side Skirts</Label>
+                            <Input
+                              value={formData.exterior.body_kit.side_skirts}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    body_kit: {
+                                      ...prev.exterior.body_kit,
+                                      side_skirts: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Ridox"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Rear Wing</Label>
+                            <Input
+                              value={formData.exterior.body_kit.rear_wing}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    body_kit: {
+                                      ...prev.exterior.body_kit,
+                                      rear_wing: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., custom carbon GT wing"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <Separator className="my-4" />
+                      <div>
+                        <h4 className="font-medium mb-2">Paint & Lighting</h4>
+                        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Paint Color</Label>
+                            <Input
+                              value={formData.exterior.paint.color}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    paint: {
+                                      ...prev.exterior.paint,
+                                      color: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Renaissance Red"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Paint Type</Label>
+                            <Input
+                              value={formData.exterior.paint.type}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    paint: {
+                                      ...prev.exterior.paint,
+                                      type: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., factory"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Finish</Label>
+                            <Input
+                              value={formData.exterior.paint.finish}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    paint: {
+                                      ...prev.exterior.paint,
+                                      finish: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., metallic"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Headlights</Label>
+                            <Input
+                              value={formData.exterior.lighting.headlights}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    lighting: {
+                                      ...prev.exterior.lighting,
+                                      headlights: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., pop-up LED conversion"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Taillights</Label>
+                            <Input
+                              value={formData.exterior.lighting.taillights}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    lighting: {
+                                      ...prev.exterior.lighting,
+                                      taillights: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., clear LED"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Indicators</Label>
+                            <Input
+                              value={formData.exterior.lighting.indicators}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  exterior: {
+                                    ...prev.exterior,
+                                    lighting: {
+                                      ...prev.exterior.lighting,
+                                      indicators: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., clear"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </CardContent>
+            </Card>
+
+            {/* Interior Details */}
+
+            <Card>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="interior-details">
+                    <AccordionTrigger>Interior Details</AccordionTrigger>
+                    <AccordionContent>
+                      {/* Seats Section */}
+                      <div>
+                        <h4 className="font-medium mb-2">Seats</h4>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Front Seats</Label>
+                            <Input
+                              value={formData.interior?.seats?.front || ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    seats: {
+                                      ...prev.interior?.seats,
+                                      front: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Recaro bucket"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Rear Seats</Label>
+                            <Input
+                              value={formData.interior?.seats?.rear || ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    seats: {
+                                      ...prev.interior?.seats,
+                                      rear: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., removed"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <Separator className="my-4" />
+                      {/* Gauges Section */}
+                      <div>
+                        <h4 className="font-medium mb-2">Gauges</h4>
+                        <div className="space-y-2">
+                          {(formData.interior?.gauges || []).map(
+                            (gauge, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2"
+                              >
+                                <Input
+                                  value={gauge}
+                                  onChange={(e) => {
+                                    const newGauges = [
+                                      ...(formData.interior?.gauges || []),
+                                    ];
+                                    newGauges[idx] = e.target.value;
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      interior: {
+                                        ...prev.interior,
+                                        gauges: newGauges,
+                                      },
+                                    }));
+                                  }}
+                                  placeholder="e.g., Defi Link Meter BF"
+                                />
+                                {idx !== 0 && (
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        interior: {
+                                          ...prev.interior,
+                                          gauges: (
+                                            prev.interior?.gauges || []
+                                          ).filter((_, i) => i !== idx),
+                                        },
+                                      }));
+                                    }}
+                                    aria-label="Remove Gauge"
+                                  >
+                                    &times;
+                                  </Button>
+                                )}
+                              </div>
+                            )
+                          )}
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                interior: {
+                                  ...prev.interior,
+                                  gauges: [
+                                    ...(prev.interior?.gauges || []),
+                                    "",
+                                  ],
+                                },
+                              }));
+                            }}
+                          >
+                            Add Gauge
+                          </Button>
+                        </div>
+                      </div>
+                      <Separator className="my-4" />
+                      {/* Other Interior Section */}
+                      <div>
+                        <h4 className="font-medium mb-2">Other Interior</h4>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          {/* Steering Wheel Brand */}
+                          <div className="space-y-2">
+                            <Label>Steering Wheel Brand</Label>
+                            <Input
+                              value={
+                                formData.interior?.steering_wheel?.brand || ""
+                              }
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    steering_wheel: {
+                                      ...prev.interior?.steering_wheel,
+                                      brand: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., MOMO"
+                            />
+                          </div>
+                          {/* Steering Wheel Model */}
+                          <div className="space-y-2">
+                            <Label>Steering Wheel Model</Label>
+                            <Input
+                              value={
+                                formData.interior?.steering_wheel?.model || ""
+                              }
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    steering_wheel: {
+                                      ...prev.interior?.steering_wheel,
+                                      model: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Race"
+                            />
+                          </div>
+                          {/* Steering Wheel Size */}
+                          <div className="space-y-2">
+                            <Label>Steering Wheel Size</Label>
+                            <Input
+                              value={
+                                formData.interior?.steering_wheel?.size || ""
+                              }
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    steering_wheel: {
+                                      ...prev.interior?.steering_wheel,
+                                      size: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., 350mm"
+                            />
+                          </div>
+                          {/* Roll Cage */}
+                          <div className="space-y-2">
+                            <Label>Roll Cage</Label>
+                            <Input
+                              value={
+                                formData.interior?.roll_cage?.material || ""
+                              }
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    roll_cage: {
+                                      ...prev.interior?.roll_cage,
+                                      material: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Custom"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <Separator className="my-4" />
+                      {/* Audio Section */}
+                      <div>
+                        <h4 className="font-medium mb-2">Audio</h4>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Head Unit</Label>
+                            <Input
+                              value={formData.interior?.audio?.head_unit || ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    audio: {
+                                      ...prev.interior?.audio,
+                                      head_unit: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Sony"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Speakers</Label>
+                            <Input
+                              value={formData.interior?.audio?.speakers || ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    audio: {
+                                      ...prev.interior?.audio,
+                                      speakers: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Zero Flex Speakers"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Subwoofer</Label>
+                            <Input
+                              value={formData.interior?.audio?.subwoofer || ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  interior: {
+                                    ...prev.interior,
+                                    audio: {
+                                      ...prev.interior?.audio,
+                                      subwoofer: e.target.value,
+                                    },
+                                  },
+                                }))
+                              }
+                              placeholder="e.g., Yamaha"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </CardContent>
+            </Card>
+
+            {/* Performance Modifications */}
+            <Card>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="performance-modifications">
+                    <AccordionTrigger>
+                      Performance Modifications
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label>Weight Reduction</Label>
+                          <Input
+                            value={
+                              formData.performance_mods.weight_reduction.join(
+                                ", "
+                              ) ?? ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                performance_mods: {
+                                  ...prev.performance_mods,
+                                  weight_reduction: e.target.value
+                                    .split(",")
+                                    .map((s) => s.trim()),
+                                },
+                              }))
+                            }
+                            placeholder="e.g., air con removed, rear seat delete"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Aero</Label>
+                          <Input
+                            value={
+                              formData.performance_mods.aero.join(", ") ?? ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                performance_mods: {
+                                  ...prev.performance_mods,
+                                  aero: e.target.value
+                                    .split(",")
+                                    .map((s) => s.trim()),
+                                },
+                              }))
+                            }
+                            placeholder="e.g., front splitter, rear diffuser"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Chassis</Label>
+                          <Input
+                            value={
+                              formData.performance_mods.chassis.join(", ") ?? ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                performance_mods: {
+                                  ...prev.performance_mods,
+                                  chassis: e.target.value
+                                    .split(",")
+                                    .map((s) => s.trim()),
+                                },
+                              }))
+                            }
+                            placeholder="e.g., seam welding, roll cage"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Cooling</Label>
+                          <Input
+                            value={
+                              formData.performance_mods.cooling.join(", ") ?? ""
+                            }
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                performance_mods: {
+                                  ...prev.performance_mods,
+                                  cooling: e.target.value
+                                    .split(",")
+                                    .map((s) => s.trim()),
+                                },
+                              }))
+                            }
+                            placeholder="e.g., STI radiator, oil cooler"
+                          />
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
 

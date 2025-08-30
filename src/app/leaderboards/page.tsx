@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Users, Car } from "lucide-react";
+import { Users, Car, Trophy } from "lucide-react";
 import { Navigation } from "@/components/nav";
 import { OwnerRankings } from "@/components/owner-rankings";
 import { ClubRankings } from "@/components/club-rankings";
+import { CarRankings } from "@/components/car-rankings";
 
-type TabType = "owners" | "clubs";
+type TabType = "owners" | "clubs" | "cars";
 
 export default function LeaderboardsPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function LeaderboardsPage() {
   // Get tab from URL parameters
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam === "clubs" || tabParam === "owners") {
+    if (tabParam === "clubs" || tabParam === "owners" || tabParam === "cars") {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -60,12 +61,22 @@ export default function LeaderboardsPage() {
                 <Users className="h-4 w-4" />
                 Club Rankings
               </Button>
+              <Button
+                variant={activeTab === "cars" ? "default" : "ghost"}
+                onClick={() => handleTabChange("cars")}
+                className="flex items-center gap-2"
+              >
+                <Trophy className="h-4 w-4" />
+                Car Rankings
+              </Button>
             </div>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto">
-          {activeTab === "owners" ? <OwnerRankings /> : <ClubRankings />}
+          {activeTab === "owners" && <OwnerRankings />}
+          {activeTab === "clubs" && <ClubRankings />}
+          {activeTab === "cars" && <CarRankings />}
         </div>
       </div>
     </>
