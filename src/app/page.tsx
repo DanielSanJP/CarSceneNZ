@@ -7,10 +7,112 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Navigation } from "@/components/nav";
-import { Calendar, Car, Users, Trophy } from "lucide-react";
+import { Calendar, Car, Users, Trophy, Star } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import { users, cars, events, clubs, carLikes } from "@/data";
+
+interface Car {
+  id: string;
+  owner_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  suspension_type:
+    | "air suspension"
+    | "lowering springs"
+    | "coilovers"
+    | "stock";
+  wheel_specs: {
+    front: {
+      brand: string;
+      size: string;
+      offset: string;
+    };
+    rear: {
+      brand: string;
+      size: string;
+      offset: string;
+    };
+  };
+  tire_specs: {
+    front: string;
+    rear: string;
+  };
+  images: string[];
+  total_likes: number;
+  created_at: string;
+}
+
+interface User {
+  id: string;
+  username: string;
+  display_name: string;
+  email: string;
+  profile_image_url: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function Home() {
+  const upcomingEvents = events
+    .filter((event) => new Date(event.daily_schedule[0].date) > new Date())
+    .sort(
+      (a, b) =>
+        new Date(a.daily_schedule[0].date).getTime() -
+        new Date(b.daily_schedule[0].date).getTime()
+    )
+    .slice(0, 3);
+
+  const carLikesCount: { [key: string]: number } = {};
+  carLikes.forEach((like) => {
+    carLikesCount[like.car_id] = (carLikesCount[like.car_id] || 0) + 1;
+  });
+
+  const usersMap: { [key: string]: User } = {};
+  users.forEach((user) => {
+    usersMap[user.id] = user;
+  });
+
+  const featuredCars = cars
+    .map((car) => ({ ...car, likes: carLikesCount[car.id] || 0 }))
+    .sort((a, b) => b.likes - a.likes)
+    .slice(0, 3);
+
+  // Helper function to format date with ordinal suffix
+  const formatEventDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const weekday = date.toLocaleDateString("en-NZ", { weekday: "long" });
+    const month = date.toLocaleDateString("en-NZ", { month: "long" });
+
+    // Add ordinal suffix
+    const getOrdinalSuffix = (day: number) => {
+      if (day > 3 && day < 21) return "th";
+      switch (day % 10) {
+        case 1:
+          return "st";
+        case 2:
+          return "nd";
+        case 3:
+          return "rd";
+        default:
+          return "th";
+      }
+    };
+
+    return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
+  };
+
+  // Helper function to get car image
+  const getCarImage = (car: Car) => {
+    if (car.brand === "Subaru" && car.model === "Forester") {
+      return "/cars/Forester1.jpg";
+    }
+    // Add more mappings as needed
+    return "/cars/Forester1.jpg"; // Default image
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -42,6 +144,130 @@ export default function Home() {
               </Button>
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Top Upcoming Events Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl font-bold text-foreground mb-4">
+            Upcoming Events
+          </h3>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Do not miss these upcoming car meets and gatherings.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {upcomingEvents.map((event) => (
+            <Link key={event.id} href={`/events/${event.id}`}>
+              <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
+                <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                  <Image
+                    src={event.poster_image_url}
+                    alt={event.title}
+                    width={400}
+                    height={225}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <CardHeader>
+                  <CardTitle>{event.title}</CardTitle>
+                  <CardDescription>
+                    {formatEventDate(event.daily_schedule[0].date)} -{" "}
+                    {event.location}
+                  </CardDescription>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {event.description.slice(0, 100)}...
+                  </p>
+                </CardHeader>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured Cars Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl font-bold text-foreground mb-4">
+            Featured Cars
+          </h3>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Check out the most popular rides in the community.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {featuredCars.map((car) => (
+            <Link key={car.id} href={`/garage/${car.id}`}>
+              <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
+                <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                  <Image
+                    src={getCarImage(car)}
+                    alt={`${car.brand} ${car.model}`}
+                    width={400}
+                    height={225}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <CardHeader>
+                  <CardTitle>
+                    {car.year} {car.brand} {car.model}
+                  </CardTitle>
+                  <CardDescription>
+                    Owned by {usersMap[car.owner_id]?.display_name || "Unknown"}
+                  </CardDescription>
+                  <div className="flex items-center justify-center gap-1 mt-2">
+                    <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
+                    <p className="text-sm text-muted-foreground">
+                      {car.likes} likes
+                    </p>
+                  </div>
+                </CardHeader>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Community Stats Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl font-bold text-foreground mb-4">
+            Community Stats
+          </h3>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Join a growing community of car enthusiasts across New Zealand.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-4 gap-6">
+          <Card className="text-center">
+            <CardHeader>
+              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CardTitle>{users.length}</CardTitle>
+              <CardDescription>Members</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="text-center">
+            <CardHeader>
+              <Car className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CardTitle>{cars.length}</CardTitle>
+              <CardDescription>Cars</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="text-center">
+            <CardHeader>
+              <Calendar className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CardTitle>{events.length}</CardTitle>
+              <CardDescription>Events</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="text-center">
+            <CardHeader>
+              <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CardTitle>{clubs.length}</CardTitle>
+              <CardDescription>Clubs</CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       </section>
 

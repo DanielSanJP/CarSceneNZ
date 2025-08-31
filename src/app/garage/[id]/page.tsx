@@ -279,7 +279,7 @@ export default function CarDetailPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-3xl font-bold">
+                <h1 className="text-2xl md:text-3xl font-bold">
                   {car.year} {car.brand} {car.model}
                 </h1>
               </div>
@@ -287,9 +287,9 @@ export default function CarDetailPage() {
 
             {isOwner && (
               <Link href={`/garage/edit/${car.id}`}>
-                <Button>
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Edit Car
+                <Button size="sm" className="md:px-4">
+                  <Edit3 className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Edit Car</span>
                 </Button>
               </Link>
             )}

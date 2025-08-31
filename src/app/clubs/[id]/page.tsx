@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/nav";
 import { useAuth } from "@/contexts/auth-context";
@@ -64,7 +64,7 @@ interface ClubWithMembers {
   }>;
 }
 
-export default function ClubDetailPage() {
+function ClubDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -634,5 +634,23 @@ export default function ClubDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ClubDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold mb-4">Loading Club...</h1>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <ClubDetailPageContent />
+    </Suspense>
   );
 }

@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/nav";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Users, Plus, Heart } from "lucide-react";
 import { getUserClubMemberships } from "@/data";
-import { CreateClubForm } from "@/components/create-club-form";
-import { JoinClubView } from "@/components/join-club-view";
-import { MyClubView } from "@/components/my-club-view";
+import { CreateClubForm } from "@/components/clubs/create-club-form";
+import { JoinClubView } from "@/components/clubs/join-club-view";
+import { MyClubView } from "@/components/clubs/my-club-view";
 
 interface Club {
   id: string;
@@ -32,7 +32,7 @@ interface ClubMembership {
 
 type MainTab = "myclub" | "join" | "create";
 
-export default function ClubsPage() {
+function ClubsPageContent() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,5 +143,26 @@ export default function ClubsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ClubsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold mb-4">🏁 Car Clubs</h1>
+                <p className="text-muted-foreground mb-6">Loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <ClubsPageContent />
+    </Suspense>
   );
 }

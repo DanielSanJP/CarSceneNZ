@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { users, cars, events, clubs } from '@/data';
+import { users, cars, events, clubs, carLikes } from '@/data';
 
 export async function GET() {
   try {
@@ -8,6 +8,7 @@ export async function GET() {
       cars,
       events,
       clubs,
+      carLikes,
     });
   } catch {
     return NextResponse.json(

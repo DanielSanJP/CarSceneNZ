@@ -10,6 +10,7 @@ import {
   Trophy,
   Calendar,
   Users,
+  Mail,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -189,6 +190,17 @@ export function Navigation() {
                         >
                           <Car className="h-4 w-4" />
                           <span>My Garage</span>
+                        </Link>
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
+                      <NavigationMenuLink asChild>
+                        <Link
+                          href="/inbox"
+                          className="flex flex-row items-center gap-2"
+                        >
+                          <Mail className="h-4 w-4" />
+                          <span>Inbox</span>
                         </Link>
                       </NavigationMenuLink>
                     </NavigationMenuItem>
