@@ -131,7 +131,8 @@ function ClubDetailPageContent() {
   const isCoLeader = club?.members.some(
     (m) => m.user_id === user?.id && m.role === "co-leader"
   );
-  const canManage = isLeader || isCoLeader;
+  const canManage = isLeader;
+  const canManageMembers = isLeader || isCoLeader;
 
   const memberCount = club?.members.length || 0;
 
@@ -393,10 +394,12 @@ function ClubDetailPageContent() {
                     </p>
                     {canManage && (
                       <div className="pt-2">
-                        <Button variant="outline" size="sm">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Manage Club
-                        </Button>
+                        <Link href={`/clubs/edit/${club.id}`}>
+                          <Button variant="outline" size="sm">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Manage Club
+                          </Button>
+                        </Link>
                       </div>
                     )}
                   </div>
@@ -597,7 +600,7 @@ function ClubDetailPageContent() {
                       </div>
 
                       {/* Actions */}
-                      {canManage &&
+                      {canManageMembers &&
                         member.role !== "leader" &&
                         member.user_id !== user?.id && (
                           <DropdownMenu>
@@ -607,11 +610,24 @@ function ClubDetailPageContent() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Shield className="h-4 w-4 mr-2" />
-                                Promote to Co-Leader
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
+                              {canManage && member.role === "co-leader" && (
+                                <>
+                                  <DropdownMenuItem className="text-orange-600">
+                                    <UserMinus className="h-4 w-4 mr-2" />
+                                    Demote to Member
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {canManage && member.role === "member" && (
+                                <>
+                                  <DropdownMenuItem>
+                                    <Shield className="h-4 w-4 mr-2" />
+                                    Promote to Co-Leader
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
                               <DropdownMenuItem className="text-red-600">
                                 <UserMinus className="h-4 w-4 mr-2" />
                                 Remove Member

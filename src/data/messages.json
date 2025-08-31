@@ -6,6 +6,7 @@
       "name": "Jake Thompson",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "New Event Invitation",
     "message": "Hey, check out this new car meetup happening next week at the track!"
   },
@@ -16,6 +17,7 @@
       "name": "Sarah Wilson",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Car Swap Opportunity",
     "message": "I'm looking to swap my Skyline for a Forester. Interested?"
   },
@@ -26,6 +28,7 @@
       "name": "Marcus Chen",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Drift Session Feedback",
     "message": "Thanks for joining the drift session! Your Forester handled great."
   },
@@ -36,6 +39,7 @@
       "name": "Emma Rodriguez",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Euro Car Club Meeting",
     "message": "Don't miss our monthly Euro car club meeting this Saturday."
   },
@@ -46,6 +50,7 @@
       "name": "Tom Anderson",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Stance Setup Tips",
     "message": "Got some great tips on lowering your car. Want to share?"
   },
@@ -56,6 +61,7 @@
       "name": "Priya Patel",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "JDM Parts Available",
     "message": "I have some JDM parts for sale. Let me know if you're interested."
   },
@@ -66,6 +72,7 @@
       "name": "Mike Johnson",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Muscle Car Show",
     "message": "Join us for the annual muscle car show next month!"
   },
@@ -76,6 +83,7 @@
       "name": "Amy Foster",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Track Day Registration",
     "message": "Track day spots are filling up fast. Reserve yours now!"
   },
@@ -86,6 +94,7 @@
       "name": "Daniel Medcalf",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440001",
     "subject": "Garage Tour Invite",
     "message": "Come check out my garage setup this weekend."
   },
@@ -96,6 +105,7 @@
       "name": "Alex Carter",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "New Member Welcome",
     "message": "Welcome to the car scene! Let's connect and talk cars."
   },
@@ -106,6 +116,7 @@
       "name": "Jake Thompson",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Rotary Engine Discussion",
     "message": "Starting a thread on rotary engines. What's your take?"
   },
@@ -116,6 +127,7 @@
       "name": "Sarah Wilson",
       "image": "/profiles/daniel.jpg"
     },
+    "receiver_id": "550e8400-e29b-41d4-a716-446655440009",
     "subject": "Skyline Meetup",
     "message": "Planning a Skyline-only meetup. Who's in?"
   }

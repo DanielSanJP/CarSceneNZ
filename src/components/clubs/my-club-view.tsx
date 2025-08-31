@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { getUserById } from "@/data";
 
 interface Club {
   id: string;
@@ -189,7 +190,8 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
           const { club, role, memberCount } = membership;
           const typeInfo = getClubTypeInfo(club.club_type);
           const isClubLeader = role === "leader";
-          const canManage = role === "leader" || role === "co-leader";
+          const canManage = role === "leader";
+          const canManageMembers = role === "leader" || role === "co-leader";
 
           return (
             <Link href={`/clubs/${club.id}?from=myclub`} key={club.id}>
@@ -262,6 +264,16 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
                     </p>
                   </div>
 
+                  {/* Leader info */}
+                  {(() => {
+                    const leader = getUserById(club.leader_id);
+                    return leader ? (
+                      <div className="text-xs text-muted-foreground mb-4">
+                        Led by {leader.display_name}
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Action buttons */}
                   <div className="flex gap-2">
                     <Button
@@ -276,7 +288,7 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
                     >
                       View Details
                     </Button>
-                    {canManage && (
+                    {canManageMembers && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -291,10 +303,14 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Settings className="h-4 w-4 mr-2" />
-                            Club Settings
-                          </DropdownMenuItem>
+                          {canManage && (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/clubs/edit/${club.id}?from=myclub`}>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Club Settings
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem>
                             <UserPlus className="h-4 w-4 mr-2" />
                             Invite Members
@@ -315,7 +331,7 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
-                    {!canManage && (
+                    {!canManageMembers && (
                       <Button
                         variant="destructive"
                         size="sm"

@@ -8,7 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { users, cars } from "@/data";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  users,
+  cars,
+  getUserFollowers,
+  getUserFollowing,
+  getUserById,
+} from "@/data";
 import {
   Calendar,
   Mail,
@@ -18,6 +31,8 @@ import {
   Eye,
   Settings,
   ExternalLink,
+  Users,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -66,6 +81,8 @@ export default function UserProfilePage() {
   const router = useRouter();
   const userId = params.id as string;
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
+  const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
 
   // Find the user by ID or username
   const profileUser = (users as User[]).find(
@@ -76,6 +93,10 @@ export default function UserProfilePage() {
   const userCars = (cars as Car[]).filter(
     (car) => car.owner_id === profileUser?.id
   );
+
+  // Get followers and following
+  const followers = profileUser ? getUserFollowers(profileUser.id) : [];
+  const following = profileUser ? getUserFollowing(profileUser.id) : [];
 
   const handleBackClick = () => {
     if (window.history.length > 1) {
@@ -174,6 +195,141 @@ export default function UserProfilePage() {
                       </span>
                     </div>
                     <div className="flex items-center space-x-6">
+                      <Dialog
+                        open={followersDialogOpen}
+                        onOpenChange={setFollowersDialogOpen}
+                      >
+                        <DialogTrigger asChild>
+                          <button className="flex items-center space-x-2 hover:bg-muted/50 px-2 py-1 rounded-md transition-colors">
+                            <Users className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm">Followers</span>
+                            <Badge variant="secondary">
+                              {followers.length}
+                            </Badge>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>
+                              {profileUser.display_name}&apos;s Followers (
+                              {followers.length})
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            {followers.length === 0 ? (
+                              <p className="text-center text-muted-foreground py-8">
+                                No followers yet
+                              </p>
+                            ) : (
+                              followers.map((followerId) => {
+                                const follower = getUserById(followerId);
+                                if (!follower) return null;
+
+                                return (
+                                  <Link
+                                    key={follower.id}
+                                    href={`/profile/${follower.id}`}
+                                    onClick={() =>
+                                      setFollowersDialogOpen(false)
+                                    }
+                                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                  >
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarImage
+                                        src={follower.profile_image_url}
+                                        alt={follower.display_name}
+                                      />
+                                      <AvatarFallback>
+                                        {follower.display_name
+                                          .split(" ")
+                                          .map((n) => n[0])
+                                          .join("")}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                      <p className="font-medium">
+                                        {follower.display_name}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground">
+                                        @{follower.username}
+                                      </p>
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                  </Link>
+                                );
+                              })
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Dialog
+                        open={followingDialogOpen}
+                        onOpenChange={setFollowingDialogOpen}
+                      >
+                        <DialogTrigger asChild>
+                          <button className="flex items-center space-x-2 hover:bg-muted/50 px-2 py-1 rounded-md transition-colors">
+                            <UserPlus className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Following</span>
+                            <Badge variant="secondary">
+                              {following.length}
+                            </Badge>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>
+                              Following ({following.length})
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            {following.length === 0 ? (
+                              <p className="text-center text-muted-foreground py-8">
+                                Not following anyone yet
+                              </p>
+                            ) : (
+                              following.map((followingId) => {
+                                const followedUser = getUserById(followingId);
+                                if (!followedUser) return null;
+
+                                return (
+                                  <Link
+                                    key={followedUser.id}
+                                    href={`/profile/${followedUser.id}`}
+                                    onClick={() =>
+                                      setFollowingDialogOpen(false)
+                                    }
+                                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                  >
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarImage
+                                        src={followedUser.profile_image_url}
+                                        alt={followedUser.display_name}
+                                      />
+                                      <AvatarFallback>
+                                        {followedUser.display_name
+                                          .split(" ")
+                                          .map((n) => n[0])
+                                          .join("")}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                      <p className="font-medium">
+                                        {followedUser.display_name}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground">
+                                        @{followedUser.username}
+                                      </p>
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                  </Link>
+                                );
+                              })
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
                       <div className="flex items-center space-x-2">
                         <Car className="h-4 w-4 text-primary" />
                         <span className="text-sm">Public Cars</span>

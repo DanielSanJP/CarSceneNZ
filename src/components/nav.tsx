@@ -101,6 +101,12 @@ function ProfileDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
+          <Link href="/inbox" className="cursor-pointer">
+            <Mail className="mr-2 h-4 w-4" />
+            <span>Inbox</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link href="/garage" className="cursor-pointer">
             <Car className="mr-2 h-4 w-4" />
             <span>My Garage</span>
