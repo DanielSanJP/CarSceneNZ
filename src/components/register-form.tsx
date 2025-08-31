@@ -14,13 +14,14 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, Upload } from "lucide-react";
 import { useState, useRef } from "react";
+import { signup } from "@/app/register/action";
 
 export function RegisterForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const [profileImage, setProfileImage] = useState<string>("");
-  const [displayName, setDisplayName] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,13 +39,14 @@ export function RegisterForm({
     fileInputRef.current?.click();
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const handleSubmit = async (formData: FormData) => {
+    setIsLoading(true);
+    try {
+      await signup(formData);
+    } catch (error) {
+      console.error("Signup error:", error);
+      setIsLoading(false);
+    }
   };
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -56,7 +58,7 @@ export function RegisterForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form action={handleSubmit}>
             <div className="flex flex-col gap-6">
               {/* Profile Picture Section */}
               <div className="grid gap-3">
@@ -71,11 +73,7 @@ export function RegisterForm({
                         <AvatarImage src={profileImage} alt="Profile preview" />
                       ) : (
                         <AvatarFallback className="text-lg">
-                          {displayName ? (
-                            getInitials(displayName)
-                          ) : (
-                            <Camera className="h-8 w-8" />
-                          )}
+                          <Camera className="h-8 w-8" />
                         </AvatarFallback>
                       )}
                     </Avatar>
@@ -107,13 +105,12 @@ export function RegisterForm({
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="display-name">Display Name</Label>
+                <Label htmlFor="displayName">Display Name</Label>
                 <Input
-                  id="display-name"
+                  id="displayName"
+                  name="displayName"
                   type="text"
                   placeholder="Your display name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
                   required
                 />
               </div>
@@ -122,6 +119,7 @@ export function RegisterForm({
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
+                  name="username"
                   type="text"
                   placeholder="username"
                   required
@@ -132,6 +130,7 @@ export function RegisterForm({
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="m@example.com"
                   required
@@ -139,19 +138,12 @@ export function RegisterForm({
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required />
-              </div>
-              <div className="grid gap-3">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input id="confirm-password" type="password" required />
+                <Input id="password" name="password" type="password" required />
               </div>
               <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full">
-                  Create Account
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Creating Account..." : "Create Account"}
                 </Button>
-                {/* <Button variant="outline" className="w-full">
-                  Sign up with Google
-                </Button> */}
               </div>
             </div>
             <div className="mt-4 text-center text-sm">
