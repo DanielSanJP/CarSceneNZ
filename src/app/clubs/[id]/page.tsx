@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Navigation } from "@/components/nav";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,7 +69,7 @@ function ClubDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
   const clubId = params.id as string;
   const fromTab = searchParams.get("from") || "join";
   const leaderboardTab = searchParams.get("tab") || "clubs";
@@ -146,9 +145,10 @@ function ClubDetailPageContent() {
         joined_at: new Date().toISOString(),
         user: {
           id: user.id,
-          username: user.username,
-          display_name: user.username, // display_name not stored in users table
-          profile_image_url: user.profile_image_url || "",
+          username: profile?.username || user.email || "",
+          display_name:
+            profile?.display_name || profile?.username || user.email || "",
+          profile_image_url: profile?.profile_image_url || "",
         },
       };
 
@@ -263,7 +263,6 @@ function ClubDetailPageContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -279,7 +278,6 @@ function ClubDetailPageContent() {
   if (!club) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -310,7 +308,6 @@ function ClubDetailPageContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}

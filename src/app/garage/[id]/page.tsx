@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Navigation } from "@/components/nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -76,7 +75,6 @@ export default function CarDetailPage() {
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Access Denied</h1>
@@ -92,7 +90,6 @@ export default function CarDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Loading...</h1>
@@ -108,7 +105,6 @@ export default function CarDetailPage() {
   if (error || !car) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">{error || "Car Not Found"}</h1>
@@ -165,7 +161,6 @@ export default function CarDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -556,6 +551,61 @@ export default function CarDetailPage() {
                                 </div>
                               )}
                             </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Brakes */}
+              {car.brakes && car.brakes.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Brakes</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {["front", "rear"].map((position) => {
+                      const brake = getBrakesByPosition(
+                        position as "front" | "rear"
+                      );
+                      if (!brake) return null;
+
+                      return (
+                        <div key={position} className="space-y-2">
+                          <h4 className="font-medium capitalize">{position}</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            {brake.caliper && (
+                              <div>
+                                <p className="text-muted-foreground">Caliper</p>
+                                <p className="font-medium">{brake.caliper}</p>
+                              </div>
+                            )}
+                            {brake.disc_size && (
+                              <div>
+                                <p className="text-muted-foreground">
+                                  Disc Size
+                                </p>
+                                <p className="font-medium">{brake.disc_size}</p>
+                              </div>
+                            )}
+                            {brake.disc_type && (
+                              <div>
+                                <p className="text-muted-foreground">
+                                  Disc Type
+                                </p>
+                                <p className="font-medium capitalize">
+                                  {brake.disc_type}
+                                </p>
+                              </div>
+                            )}
+                            {brake.pads && (
+                              <div>
+                                <p className="text-muted-foreground">Pads</p>
+                                <p className="font-medium">{brake.pads}</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

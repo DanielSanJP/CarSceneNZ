@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { Navigation } from "@/components/nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,7 +54,7 @@ const NZ_LOCATIONS = [
 ];
 
 export default function EditClubPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -118,7 +117,6 @@ export default function EditClubPage() {
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Access Denied</h1>
@@ -134,7 +132,6 @@ export default function EditClubPage() {
   if (isLoadingClub) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Loading...</h1>
@@ -150,7 +147,6 @@ export default function EditClubPage() {
   if (clubNotFound) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Club Not Found</h1>
@@ -269,8 +265,6 @@ export default function EditClubPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -530,7 +524,10 @@ export default function EditClubPage() {
                           "Club description will appear here..."}
                       </p>
                       <div className="text-xs text-muted-foreground mb-4">
-                        Led by {user.display_name}
+                        Led by{" "}
+                        {profile?.display_name ||
+                          profile?.username ||
+                          user?.email}
                       </div>
                       <Button className="w-full" size="sm" disabled>
                         Preview Mode

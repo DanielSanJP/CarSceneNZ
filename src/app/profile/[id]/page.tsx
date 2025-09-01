@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Navigation } from "@/components/nav";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -106,7 +105,6 @@ export default function UserProfilePage() {
   if (!profileUser) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">User Not Found</h1>
@@ -127,7 +125,6 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="space-y-6">
@@ -409,7 +406,8 @@ export default function UserProfilePage() {
                             </h3>
                             <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
                               <span className="capitalize">
-                                {car.suspension_type}
+                                {car.suspension?.[0]?.suspension_type ||
+                                  "Stock"}
                               </span>
                               <span className="flex items-center gap-1">
                                 <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />

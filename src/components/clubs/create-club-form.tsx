@@ -61,7 +61,7 @@ export function CreateClubForm({
   onSuccess,
   embedded = false,
 }: CreateClubFormProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -439,7 +439,8 @@ export function CreateClubForm({
                       "Club description will appear here..."}
                   </p>
                   <div className="text-xs text-muted-foreground mb-4">
-                    Led by {user.display_name}
+                    Led by{" "}
+                    {profile?.display_name || profile?.username || user?.email}
                   </div>
                   <Button className="w-full" size="sm" disabled>
                     Preview Mode
