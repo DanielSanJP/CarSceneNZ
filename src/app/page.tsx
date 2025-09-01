@@ -150,15 +150,6 @@ export default function Home() {
     return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
   };
 
-  // Helper function to get car image
-  const getCarImage = (car: Car) => {
-    if (car.brand === "Subaru" && car.model === "Forester") {
-      return "/cars/Forester1.jpg";
-    }
-    // Add more mappings as needed
-    return "/cars/Forester1.jpg"; // Default image
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -268,7 +259,7 @@ export default function Home() {
                 <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
                   <div className="aspect-video w-full overflow-hidden rounded-t-lg">
                     <Image
-                      src={getCarImage(car)}
+                      src={car.images?.[0] || "/cars/default.jpg"}
                       alt={`${car.brand} ${car.model}`}
                       width={400}
                       height={225}

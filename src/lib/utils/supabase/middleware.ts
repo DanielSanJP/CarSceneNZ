@@ -47,6 +47,9 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/events') &&
     !request.nextUrl.pathname.startsWith('/leaderboards') &&
     !request.nextUrl.pathname.startsWith('/clubs') &&
+    !request.nextUrl.pathname.startsWith('/garage') &&
+    !request.nextUrl.pathname.startsWith('/profile') &&
+    !request.nextUrl.pathname.startsWith('/search') &&
     !request.nextUrl.pathname.startsWith('/register')
   ) {
     // no user, potentially respond by redirecting the user to the login page

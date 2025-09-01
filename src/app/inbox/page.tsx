@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getAllMessages } from "@/data";
+import { getAllMessages } from "@/lib/data";
 import type { Message } from "@/types/message";
 
 export default function InboxPage() {

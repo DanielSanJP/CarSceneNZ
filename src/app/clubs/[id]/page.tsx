@@ -31,8 +31,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { getClubById } from "@/data";
-import { getAllCars } from "@/data";
+import { getClubById } from "@/lib/data";
+import { getAllCars } from "@/lib/data";
 
 // Helper function to calculate total likes for a user's cars
 const getUserTotalLikes = async (userId: string): Promise<number> => {

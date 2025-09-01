@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { getClubById } from "@/data";
+import { getClubById } from "@/lib/data";
 
 interface ClubFormData {
   name: string;

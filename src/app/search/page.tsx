@@ -19,7 +19,7 @@ import {
   type User,
   type Event,
   type Club,
-} from "@/data";
+} from "@/lib/data";
 
 function SearchFallback() {
   return (
@@ -238,9 +238,7 @@ function SearchContent() {
                                   {car.year} {car.brand} {car.model}
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
-                                  Owner:{" "}
-                                  {data.users.find((u) => u.id === car.owner_id)
-                                    ?.display_name || "Unknown"}
+                                  Owner: {car.owner?.display_name || "Unknown"}
                                 </p>
 
                                 <Badge variant="outline" className="mt-1">

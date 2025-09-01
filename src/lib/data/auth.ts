@@ -41,7 +41,7 @@ export async function getCurrentUser(): Promise<User | null> {
     const userData = {
       id: profile.id,
       username: profile.username,
-      display_name: user.user_metadata?.display_name || user.user_metadata?.full_name || profile.username,
+      display_name: profile.display_name || user.user_metadata?.display_name || user.user_metadata?.full_name || profile.username,
       email: user.email || '',
       profile_image_url: profile.profile_image_url,
       created_at: profile.created_at,
@@ -112,7 +112,7 @@ export async function getUserById(userId: string): Promise<User | null> {
     return {
       id: profile.id,
       username: profile.username,
-      display_name: profile.username, // display_name not stored in users table
+      display_name: profile.display_name || profile.username, // Now using display_name from users table
       email: '', // Email not available in this context
       profile_image_url: profile.profile_image_url,
       created_at: profile.created_at,
@@ -141,7 +141,7 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     return {
       id: data.id,
       username: data.username,
-      display_name: data.username, // display_name not stored in users table
+      display_name: data.display_name || data.username, // Now using display_name from users table
       email: '', // Email not available in this context
       profile_image_url: data.profile_image_url,
       created_at: data.created_at,

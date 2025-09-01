@@ -234,7 +234,7 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center space-x-2">
-            {isAuthenticated && <SearchBar />}
+            <SearchBar />
             <ModeToggle />
             {loading ? (
               <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />

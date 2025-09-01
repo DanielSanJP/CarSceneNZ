@@ -22,7 +22,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function CarDetailPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const params = useParams();
   const router = useRouter();
   const carId = params.id as string;
@@ -72,21 +72,6 @@ export default function CarDetailPage() {
     }
   };
 
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Access Denied</h1>
-            <p className="text-muted-foreground mt-2">
-              Please log in to view car details.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -121,7 +106,7 @@ export default function CarDetailPage() {
   }
 
   // Check if user owns this car
-  const isOwner = car.owner_id === user.id;
+  const isOwner = user && car.owner_id === user.id;
   const owner = car.owner;
 
   const handleImageError = (imageIndex: number) => {
@@ -542,7 +527,7 @@ export default function CarDetailPage() {
                           <h4 className="font-medium capitalize">
                             Engine Management
                           </h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-3 gap-4 text-sm">
                             {car.engine_management.ecu_brand && (
                               <div>
                                 <p className="text-muted-foreground">

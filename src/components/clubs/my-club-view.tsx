@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { getUserById } from "@/data";
+import { getUserById } from "@/lib/data";
 import type { User } from "@/types";
 
 interface Club {

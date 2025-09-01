@@ -20,6 +20,7 @@ async function getBasicCar(carId: string): Promise<Omit<Car, 'engine' | 'wheels'
         users!cars_owner_id_fkey (
           id,
           username,
+          display_name,
           profile_image_url
         )
       `)
@@ -44,7 +45,7 @@ async function getBasicCar(carId: string): Promise<Omit<Car, 'engine' | 'wheels'
       owner: data.users ? {
         id: data.users.id,
         username: data.users.username,
-        display_name: data.users.username,
+        display_name: data.users.display_name || data.users.username,
         profile_image_url: data.users.profile_image_url,
       } : undefined,
     };
@@ -66,6 +67,7 @@ export async function getAllCars(): Promise<Car[]> {
         users!cars_owner_id_fkey (
           id,
           username,
+          display_name,
           profile_image_url
         )
       `)
@@ -89,7 +91,7 @@ export async function getAllCars(): Promise<Car[]> {
       owner: car.users ? {
         id: car.users.id,
         username: car.users.username,
-        display_name: car.users.username,
+        display_name: car.users.display_name || car.users.username,
         profile_image_url: car.users.profile_image_url,
       } : undefined,
     })) || [];
@@ -144,6 +146,7 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
         users!cars_owner_id_fkey (
           id,
           username,
+          display_name,
           profile_image_url
         )
       `)
@@ -168,7 +171,7 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
       owner: car.users ? {
         id: car.users.id,
         username: car.users.username,
-        display_name: car.users.username,
+        display_name: car.users.display_name || car.users.username,
         profile_image_url: car.users.profile_image_url,
       } : undefined,
     })) || [];

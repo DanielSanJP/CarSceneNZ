@@ -428,10 +428,6 @@ export default function UserProfilePage() {
                               {car.year} {car.brand} {car.model}
                             </h3>
                             <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                              <span className="capitalize">
-                                {car.suspension?.[0]?.suspension_type ||
-                                  "Stock"}
-                              </span>
                               <span className="flex items-center gap-1">
                                 <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                                 {car.total_likes}

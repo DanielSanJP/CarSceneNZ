@@ -137,18 +137,19 @@ export default function EditProfilePage() {
         return;
       }
 
-      // Update username in users table
+      // Update username and display_name in users table
       const { error: profileError } = await supabase
         .from("users")
         .update({
           username: username,
+          display_name: displayName,
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
 
       if (profileError) {
         console.error("Error updating profile:", profileError);
-        setError("Failed to update username");
+        setError("Failed to update profile");
         setSaving(false);
         return;
       }

@@ -19,7 +19,7 @@ import {
   Share2,
   Heart,
 } from "lucide-react";
-import { getEventById, getEventAttendees, getUserById } from "@/data";
+import { getEventById, getEventAttendees, getUserById } from "@/lib/data";
 import Image from "next/image";
 import Link from "next/link";
 import type { Event, EventAttendee } from "@/types/event";
