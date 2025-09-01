@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/utils/supabase/server'
+import { createClient } from '@/lib/utils/supabase/client'
 import type { Message } from '@/types/message'
 
 export async function getAllMessages(): Promise<Message[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('messages')
@@ -59,7 +59,7 @@ export async function getAllMessages(): Promise<Message[]> {
 
 export async function getMessagesByUser(userId: string): Promise<Message[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('messages')
@@ -116,7 +116,7 @@ export async function getMessagesByUser(userId: string): Promise<Message[]> {
 
 export async function getConversation(senderId: string, receiverId: string): Promise<Message[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('messages')
@@ -173,7 +173,7 @@ export async function getConversation(senderId: string, receiverId: string): Pro
 
 export async function sendMessage(messageData: Omit<Message, 'id' | 'created_at' | 'updated_at' | 'read' | 'sender' | 'receiver'>): Promise<Message | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('messages')
@@ -200,7 +200,7 @@ export async function sendMessage(messageData: Omit<Message, 'id' | 'created_at'
 
 export async function getMessageById(messageId: string): Promise<Message | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('messages')
@@ -257,7 +257,7 @@ export async function getMessageById(messageId: string): Promise<Message | null>
 
 export async function markMessageAsRead(messageId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('messages')
@@ -281,7 +281,7 @@ export async function markMessageAsRead(messageId: string): Promise<boolean> {
 
 export async function deleteMessage(messageId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('messages')
@@ -302,7 +302,7 @@ export async function deleteMessage(messageId: string): Promise<boolean> {
 
 export async function getUnreadMessageCount(userId: string): Promise<number> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { count } = await supabase
       .from('messages')

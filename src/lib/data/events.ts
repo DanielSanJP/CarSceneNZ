@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/utils/supabase/server'
+import { createClient } from '@/lib/utils/supabase/client'
 import type { Event, EventAttendee } from '@/types/event'
 
 export async function getAllEvents(): Promise<Event[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('events')
@@ -48,7 +48,7 @@ export async function getAllEvents(): Promise<Event[]> {
 
 export async function getEventById(eventId: string): Promise<Event | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('events')
@@ -94,7 +94,7 @@ export async function getEventById(eventId: string): Promise<Event | null> {
 
 export async function getEventsByHost(hostId: string): Promise<Event[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('events')
@@ -140,7 +140,7 @@ export async function getEventsByHost(hostId: string): Promise<Event[]> {
 
 export async function createEvent(eventData: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'host'>): Promise<Event | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('events')
@@ -169,8 +169,9 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'created_at' | '
 
 export async function updateEvent(eventId: string, updates: Partial<Omit<Event, 'id' | 'created_at' | 'updated_at' | 'host'>>): Promise<Event | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, error } = await supabase
       .from('events')
       .update({
@@ -199,7 +200,7 @@ export async function updateEvent(eventId: string, updates: Partial<Omit<Event, 
 
 export async function deleteEvent(eventId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('events')
@@ -220,7 +221,7 @@ export async function deleteEvent(eventId: string): Promise<boolean> {
 
 export async function getEventAttendees(eventId: string): Promise<EventAttendee[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('event_attendees')
@@ -261,7 +262,7 @@ export async function getEventAttendees(eventId: string): Promise<EventAttendee[
 
 export async function attendEvent(eventId: string, userId: string, status: string = 'interested'): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('event_attendees')
@@ -285,7 +286,7 @@ export async function attendEvent(eventId: string, userId: string, status: strin
 
 export async function unattendEvent(eventId: string, userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('event_attendees')
@@ -307,7 +308,7 @@ export async function unattendEvent(eventId: string, userId: string): Promise<bo
 
 export async function getUserEventStatus(eventId: string, userId: string): Promise<string | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('event_attendees')

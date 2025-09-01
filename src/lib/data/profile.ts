@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/utils/supabase/server'
+import { createClient } from '@/lib/utils/supabase/client'
 import { getCurrentUser, getUserById } from './auth'
 import type { User } from '@/types/user'
 
@@ -12,7 +12,7 @@ export interface UserProfile extends User {
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Get user data
     const user = await getUserById(userId)
@@ -76,7 +76,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
 
 export async function getUserFollowers(userId: string): Promise<User[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('user_follows')
@@ -118,7 +118,7 @@ export async function getUserFollowers(userId: string): Promise<User[]> {
 
 export async function getUserFollowing(userId: string): Promise<User[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('user_follows')
@@ -160,7 +160,7 @@ export async function getUserFollowing(userId: string): Promise<User[]> {
 
 export async function followUser(followerId: string, followingId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('user_follows')
@@ -183,7 +183,7 @@ export async function followUser(followerId: string, followingId: string): Promi
 
 export async function unfollowUser(followerId: string, followingId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('user_follows')
@@ -205,7 +205,7 @@ export async function unfollowUser(followerId: string, followingId: string): Pro
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { count } = await supabase
       .from('user_follows')
@@ -222,7 +222,7 @@ export async function isFollowing(followerId: string, followingId: string): Prom
 
 export async function getAllUsers(): Promise<User[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('users')

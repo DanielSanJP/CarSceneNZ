@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { getUserById } from "@/data";
+import type { User } from "@/types";
 
 interface Club {
   id: string;
@@ -56,6 +58,33 @@ interface MyClubViewProps {
 export function MyClubView({ userClubs }: MyClubViewProps) {
   const { user, isAuthenticated } = useAuth();
   const [isLeaving, setIsLeaving] = useState<string | null>(null); // Track which club is being left
+  const [leaders, setLeaders] = useState<Record<string, User | null>>({}); // Store leader data by club ID
+
+  // Fetch leader data for all clubs
+  useEffect(() => {
+    const fetchLeaders = async () => {
+      const leaderPromises = userClubs.map(async (membership) => {
+        try {
+          const leader = await getUserById(membership.club.leader_id);
+          return { clubId: membership.club.id, leader };
+        } catch (error) {
+          console.error("Error fetching leader:", error);
+          return { clubId: membership.club.id, leader: null };
+        }
+      });
+
+      const leaderResults = await Promise.all(leaderPromises);
+      const leaderMap: Record<string, User | null> = {};
+      leaderResults.forEach(({ clubId, leader }) => {
+        leaderMap[clubId] = leader;
+      });
+      setLeaders(leaderMap);
+    };
+
+    if (userClubs.length > 0) {
+      fetchLeaders();
+    }
+  }, [userClubs]);
 
   // Empty state - user is not in any clubs
   if (!userClubs || userClubs.length === 0) {
@@ -265,14 +294,11 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
                   </div>
 
                   {/* Leader info */}
-                  {(() => {
-                    const leader = getUserById(club.leader_id);
-                    return leader ? (
-                      <div className="text-xs text-muted-foreground mb-4">
-                        Led by {leader.display_name}
-                      </div>
-                    ) : null;
-                  })()}
+                  {leaders[membership.club.id] ? (
+                    <div className="text-xs text-muted-foreground mb-4">
+                      Led by {leaders[membership.club.id]?.display_name}
+                    </div>
+                  ) : null}
 
                   {/* Action buttons */}
                   <div className="flex gap-2">

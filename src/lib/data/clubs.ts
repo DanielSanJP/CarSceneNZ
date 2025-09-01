@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/utils/supabase/server'
+import { createClient } from '@/lib/utils/supabase/client'
 import type { Club, ClubMember } from '@/types/club'
 
 export async function getAllClubs(): Promise<Club[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('clubs')
@@ -49,7 +49,7 @@ export async function getAllClubs(): Promise<Club[]> {
 
 export async function getClubById(clubId: string): Promise<Club | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('clubs')
@@ -96,7 +96,7 @@ export async function getClubById(clubId: string): Promise<Club | null> {
 
 export async function getClubsByLeader(leaderId: string): Promise<Club[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('clubs')
@@ -143,7 +143,7 @@ export async function getClubsByLeader(leaderId: string): Promise<Club[]> {
 
 export async function createClub(clubData: Omit<Club, 'id' | 'created_at' | 'updated_at' | 'total_likes' | 'leader'>): Promise<Club | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('clubs')
@@ -172,8 +172,9 @@ export async function createClub(clubData: Omit<Club, 'id' | 'created_at' | 'upd
 
 export async function updateClub(clubId: string, updates: Partial<Omit<Club, 'id' | 'created_at' | 'updated_at' | 'total_likes' | 'leader'>>): Promise<Club | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, error } = await supabase
       .from('clubs')
       .update({
@@ -202,7 +203,7 @@ export async function updateClub(clubId: string, updates: Partial<Omit<Club, 'id
 
 export async function deleteClub(clubId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('clubs')
@@ -223,7 +224,7 @@ export async function deleteClub(clubId: string): Promise<boolean> {
 
 export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('club_members')
@@ -264,7 +265,7 @@ export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
 
 export async function joinClub(clubId: string, userId: string, role: string = 'member'): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('club_members')
@@ -288,7 +289,7 @@ export async function joinClub(clubId: string, userId: string, role: string = 'm
 
 export async function leaveClub(clubId: string, userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('club_members')
@@ -310,7 +311,7 @@ export async function leaveClub(clubId: string, userId: string): Promise<boolean
 
 export async function isClubMember(clubId: string, userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { count } = await supabase
       .from('club_members')

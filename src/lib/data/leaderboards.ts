@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/utils/supabase/server'
+import { createClient } from '@/lib/utils/supabase/client'
 import type { Car } from '@/types/car'
 import type { User } from '@/types/user'
 import type { Club } from '@/types/club'
@@ -25,7 +25,7 @@ export interface ClubRanking {
 
 export async function getTopCars(limit: number = 10): Promise<CarRanking[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('cars')
@@ -84,7 +84,7 @@ export async function getTopCars(limit: number = 10): Promise<CarRanking[]> {
 
 export async function getTopOwners(limit: number = 10): Promise<OwnerRanking[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Get owners with their total likes and car count
     const { data, error } = await supabase
@@ -127,7 +127,7 @@ export async function getTopOwners(limit: number = 10): Promise<OwnerRanking[]> 
 
 async function getTopOwnersManual(limit: number): Promise<OwnerRanking[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Get all cars grouped by owner
     const { data: cars, error } = await supabase
@@ -211,7 +211,7 @@ async function getTopOwnersManual(limit: number): Promise<OwnerRanking[]> {
 
 export async function getTopClubs(limit: number = 10): Promise<ClubRanking[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('clubs')
@@ -283,7 +283,7 @@ export async function getLeaderboardStats(): Promise<{
   totalLikes: number;
 }> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const [
       { count: totalCars },

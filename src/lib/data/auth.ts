@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/utils/supabase/server'
+import { createClient } from '@/lib/utils/supabase/client'
 import type { User } from '@/types/user'
 import { dataCache } from './cache'
 
@@ -8,7 +8,7 @@ export async function getCurrentUser(): Promise<User | null> {
   if (cached) return cached;
 
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
 
     if (error || !user) {
@@ -46,7 +46,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
 export async function updateUserProfile(userId: string, updates: Partial<User>): Promise<User | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('users')
@@ -82,7 +82,7 @@ export async function updateUserProfile(userId: string, updates: Partial<User>):
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('users')
@@ -111,7 +111,7 @@ export async function getUserById(userId: string): Promise<User | null> {
 
 export async function getUserByUsername(username: string): Promise<User | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('users')
@@ -140,7 +140,7 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 
 // Server Actions for Authentication
 export async function loginAction(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -158,7 +158,7 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function registerAction(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -195,6 +195,6 @@ export async function registerAction(formData: FormData) {
 }
 
 export async function logoutAction() {
-  const supabase = await createClient()
+  const supabase = createClient()
   await supabase.auth.signOut()
 }

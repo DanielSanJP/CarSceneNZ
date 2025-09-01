@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/utils/supabase/server'
+import { createClient } from '@/lib/utils/supabase/client'
 import type { Car } from '@/types/car'
 
 export async function getAllCars(): Promise<Car[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('cars')
@@ -57,7 +57,7 @@ export async function getAllCars(): Promise<Car[]> {
 
 export async function getCarById(carId: string): Promise<Car | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('cars')
@@ -112,7 +112,7 @@ export async function getCarById(carId: string): Promise<Car | null> {
 
 export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('cars')
@@ -167,7 +167,7 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
 
 export async function createCar(carData: Omit<Car, 'id' | 'created_at' | 'updated_at' | 'total_likes' | 'owner'>): Promise<Car | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('cars')
@@ -204,8 +204,9 @@ export async function createCar(carData: Omit<Car, 'id' | 'created_at' | 'update
 
 export async function updateCar(carId: string, updates: Partial<Omit<Car, 'id' | 'created_at' | 'updated_at' | 'total_likes' | 'owner'>>): Promise<Car | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, error } = await supabase
       .from('cars')
       .update({
@@ -242,7 +243,7 @@ export async function updateCar(carId: string, updates: Partial<Omit<Car, 'id' |
 
 export async function deleteCar(carId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('cars')
@@ -263,7 +264,7 @@ export async function deleteCar(carId: string): Promise<boolean> {
 
 export async function likeCar(carId: string, userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Check if already liked
     const { data: existingLike } = await supabase
@@ -306,7 +307,7 @@ export async function likeCar(carId: string, userId: string): Promise<boolean> {
 
 export async function unlikeCar(carId: string, userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { error: unlikeError } = await supabase
       .from('car_likes')
@@ -335,7 +336,7 @@ export async function unlikeCar(carId: string, userId: string): Promise<boolean>
 
 export async function isCarLiked(carId: string, userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     const { count } = await supabase
       .from('car_likes')

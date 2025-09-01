@@ -14,7 +14,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { getAllCars, getAllEvents, getAllClubs, getAllUsers } from "@/lib/data";
-import type { Car, Event, Club } from "@/types";
+import type { Car, Event } from "@/types";
 
 interface User {
   id: string;
