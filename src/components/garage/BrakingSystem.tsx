@@ -141,7 +141,7 @@ export default function BrakingSystem({
                         onChange={(e) =>
                           handleBrakeChange("front", "caliper", e.target.value)
                         }
-                        placeholder="e.g., Brembo GT"
+                        placeholder="e.g., Brembo"
                         disabled={isLoading}
                       />
                     </div>
@@ -202,7 +202,7 @@ export default function BrakingSystem({
                         onChange={(e) =>
                           handleBrakeChange("rear", "caliper", e.target.value)
                         }
-                        placeholder="e.g., Brembo GT"
+                        placeholder="e.g., Brembo"
                         disabled={isLoading}
                       />
                     </div>
@@ -274,7 +274,7 @@ export default function BrakingSystem({
                             e.target.value
                           )
                         }
-                        placeholder="e.g., Brembo"
+                        placeholder="e.g., Stock"
                         disabled={isLoading}
                       />
                     </div>

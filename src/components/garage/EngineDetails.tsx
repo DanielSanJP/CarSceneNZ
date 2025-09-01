@@ -18,7 +18,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// Define types that work with both database and form data
+// Direct database structure interfaces
 interface EngineData {
   engine_code?: string;
   displacement?: string;
@@ -27,19 +27,47 @@ interface EngineData {
   torque_nm?: number;
 }
 
-interface EngineModificationData {
-  component: string;
-  subcomponent?: string;
-  brand?: string;
-  model?: string;
-  description?: string;
-  is_custom?: boolean;
+interface TurboSystemData {
+  turbo_brand?: string;
+  turbo_model?: string;
+  intercooler_brand?: string;
+  intercooler_model?: string;
+}
+
+interface ExhaustSystemData {
+  intake_brand?: string;
+  intake_model?: string;
+  header_brand?: string;
+  catback_brand?: string;
+}
+
+interface EngineManagementData {
+  ecu_brand?: string;
+  ecu_model?: string;
   tuned_by?: string;
+}
+
+interface InternalComponentsData {
+  pistons?: string;
+  connecting_rods?: string;
+  valves?: string;
+  valve_springs?: string;
+  camshafts?: string;
+}
+
+interface FuelSystemData {
+  fuel_injectors?: string;
+  fuel_pump?: string;
+  fuel_rail?: string;
 }
 
 interface EngineDetailsData {
   engine?: EngineData;
-  engine_modifications?: EngineModificationData[];
+  turbo_system?: TurboSystemData;
+  exhaust_system?: ExhaustSystemData;
+  engine_management?: EngineManagementData;
+  internal_components?: InternalComponentsData;
+  fuel_system?: FuelSystemData;
 }
 
 interface EngineDetailsProps {
@@ -64,51 +92,59 @@ export default function EngineDetails({
     onChange({ engine: updatedEngine });
   };
 
-  const handleModificationChange = (
-    component: string,
-    subcomponent: string | null,
-    field: string,
+  const handleTurboSystemChange = (
+    field: keyof TurboSystemData,
     value: string
   ) => {
-    const modifications = data.engine_modifications || [];
-    const existingModIndex = modifications.findIndex(
-      (mod) => mod.component === component && mod.subcomponent === subcomponent
-    );
-
-    let updatedModifications: EngineModificationData[];
-
-    if (existingModIndex >= 0) {
-      // Update existing modification
-      updatedModifications = [...modifications];
-      updatedModifications[existingModIndex] = {
-        ...updatedModifications[existingModIndex],
-        [field]: value,
-      };
-    } else if (value.trim()) {
-      // Create new modification if value is not empty
-      const newMod: EngineModificationData = {
-        component,
-        subcomponent: subcomponent || undefined,
-        [field]: value,
-        is_custom: false,
-      };
-      updatedModifications = [...modifications, newMod];
-    } else {
-      updatedModifications = modifications;
-    }
-
-    onChange({ engine_modifications: updatedModifications });
+    const updatedTurboSystem = {
+      ...data.turbo_system,
+      [field]: value,
+    } as TurboSystemData;
+    onChange({ turbo_system: updatedTurboSystem });
   };
 
-  const getModificationValue = (
-    component: string,
-    subcomponent: string | null,
-    field: string
-  ): string => {
-    const mod = data.engine_modifications?.find(
-      (m) => m.component === component && m.subcomponent === subcomponent
-    );
-    return (mod?.[field as keyof EngineModificationData] as string) || "";
+  const handleExhaustSystemChange = (
+    field: keyof ExhaustSystemData,
+    value: string
+  ) => {
+    const updatedExhaustSystem = {
+      ...data.exhaust_system,
+      [field]: value,
+    } as ExhaustSystemData;
+    onChange({ exhaust_system: updatedExhaustSystem });
+  };
+
+  const handleEngineManagementChange = (
+    field: keyof EngineManagementData,
+    value: string
+  ) => {
+    const updatedEngineManagement = {
+      ...data.engine_management,
+      [field]: value,
+    } as EngineManagementData;
+    onChange({ engine_management: updatedEngineManagement });
+  };
+
+  const handleInternalComponentsChange = (
+    field: keyof InternalComponentsData,
+    value: string
+  ) => {
+    const updatedInternalComponents = {
+      ...data.internal_components,
+      [field]: value,
+    } as InternalComponentsData;
+    onChange({ internal_components: updatedInternalComponents });
+  };
+
+  const handleFuelSystemChange = (
+    field: keyof FuelSystemData,
+    value: string
+  ) => {
+    const updatedFuelSystem = {
+      ...data.fuel_system,
+      [field]: value,
+    } as FuelSystemData;
+    onChange({ fuel_system: updatedFuelSystem });
   };
 
   return (
@@ -215,12 +251,10 @@ export default function EngineDetails({
                       <div className="space-y-2">
                         <Label>Turbo Brand</Label>
                         <Input
-                          value={getModificationValue("turbo", null, "brand")}
+                          value={data.turbo_system?.turbo_brand || ""}
                           onChange={(e) =>
-                            handleModificationChange(
-                              "turbo",
-                              null,
-                              "brand",
+                            handleTurboSystemChange(
+                              "turbo_brand",
                               e.target.value
                             )
                           }
@@ -231,12 +265,10 @@ export default function EngineDetails({
                       <div className="space-y-2">
                         <Label>Turbo Model</Label>
                         <Input
-                          value={getModificationValue("turbo", null, "model")}
+                          value={data.turbo_system?.turbo_model || ""}
                           onChange={(e) =>
-                            handleModificationChange(
-                              "turbo",
-                              null,
-                              "model",
+                            handleTurboSystemChange(
+                              "turbo_model",
                               e.target.value
                             )
                           }
@@ -251,16 +283,10 @@ export default function EngineDetails({
                       <div className="space-y-2">
                         <Label>Intercooler Brand</Label>
                         <Input
-                          value={getModificationValue(
-                            "intercooler",
-                            null,
-                            "brand"
-                          )}
+                          value={data.turbo_system?.intercooler_brand || ""}
                           onChange={(e) =>
-                            handleModificationChange(
-                              "intercooler",
-                              null,
-                              "brand",
+                            handleTurboSystemChange(
+                              "intercooler_brand",
                               e.target.value
                             )
                           }
@@ -271,16 +297,10 @@ export default function EngineDetails({
                       <div className="space-y-2">
                         <Label>Intercooler Model</Label>
                         <Input
-                          value={getModificationValue(
-                            "intercooler",
-                            null,
-                            "model"
-                          )}
+                          value={data.turbo_system?.intercooler_model || ""}
                           onChange={(e) =>
-                            handleModificationChange(
-                              "intercooler",
-                              null,
-                              "model",
+                            handleTurboSystemChange(
+                              "intercooler_model",
                               e.target.value
                             )
                           }
@@ -297,40 +317,28 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Header Brand</Label>
                           <Input
-                            value={getModificationValue(
-                              "exhaust",
-                              "header",
-                              "brand"
-                            )}
+                            value={data.exhaust_system?.header_brand || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "exhaust",
-                                "header",
-                                "brand",
+                              handleExhaustSystemChange(
+                                "header_brand",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g., Tomei"
+                            placeholder="e.g., XForce"
                             disabled={isLoading}
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Catback Brand</Label>
                           <Input
-                            value={getModificationValue(
-                              "exhaust",
-                              "catback",
-                              "brand"
-                            )}
+                            value={data.exhaust_system?.catback_brand || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "exhaust",
-                                "catback",
-                                "brand",
+                              handleExhaustSystemChange(
+                                "catback_brand",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g., Invidia"
+                            placeholder="e.g., Tomei"
                             disabled={isLoading}
                           />
                         </div>
@@ -342,12 +350,10 @@ export default function EngineDetails({
                       <div className="space-y-2">
                         <Label>Intake Brand</Label>
                         <Input
-                          value={getModificationValue("intake", null, "brand")}
+                          value={data.exhaust_system?.intake_brand || ""}
                           onChange={(e) =>
-                            handleModificationChange(
-                              "intake",
-                              null,
-                              "brand",
+                            handleExhaustSystemChange(
+                              "intake_brand",
                               e.target.value
                             )
                           }
@@ -358,12 +364,10 @@ export default function EngineDetails({
                       <div className="space-y-2">
                         <Label>Intake Model</Label>
                         <Input
-                          value={getModificationValue("intake", null, "model")}
+                          value={data.exhaust_system?.intake_model || ""}
                           onChange={(e) =>
-                            handleModificationChange(
-                              "intake",
-                              null,
-                              "model",
+                            handleExhaustSystemChange(
+                              "intake_model",
                               e.target.value
                             )
                           }
@@ -380,12 +384,10 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>ECU Brand</Label>
                           <Input
-                            value={getModificationValue("ecu", null, "brand")}
+                            value={data.engine_management?.ecu_brand || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "ecu",
-                                null,
-                                "brand",
+                              handleEngineManagementChange(
+                                "ecu_brand",
                                 e.target.value
                               )
                             }
@@ -396,12 +398,10 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>ECU Model</Label>
                           <Input
-                            value={getModificationValue("ecu", null, "model")}
+                            value={data.engine_management?.ecu_model || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "ecu",
-                                null,
-                                "model",
+                              handleEngineManagementChange(
+                                "ecu_model",
                                 e.target.value
                               )
                             }
@@ -412,15 +412,9 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Tuned By</Label>
                           <Input
-                            value={getModificationValue(
-                              "ecu",
-                              null,
-                              "tuned_by"
-                            )}
+                            value={data.engine_management?.tuned_by || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "ecu",
-                                null,
+                              handleEngineManagementChange(
                                 "tuned_by",
                                 e.target.value
                               )
@@ -439,16 +433,10 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Pistons</Label>
                           <Input
-                            value={getModificationValue(
-                              "internals",
-                              "pistons",
-                              "brand"
-                            )}
+                            value={data.internal_components?.pistons || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "internals",
+                              handleInternalComponentsChange(
                                 "pistons",
-                                "brand",
                                 e.target.value
                               )
                             }
@@ -459,16 +447,12 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Connecting Rods</Label>
                           <Input
-                            value={getModificationValue(
-                              "internals",
-                              "rods",
-                              "brand"
-                            )}
+                            value={
+                              data.internal_components?.connecting_rods || ""
+                            }
                             onChange={(e) =>
-                              handleModificationChange(
-                                "internals",
-                                "rods",
-                                "brand",
+                              handleInternalComponentsChange(
+                                "connecting_rods",
                                 e.target.value
                               )
                             }
@@ -479,16 +463,10 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Valves</Label>
                           <Input
-                            value={getModificationValue(
-                              "internals",
-                              "valves",
-                              "brand"
-                            )}
+                            value={data.internal_components?.valves || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "internals",
+                              handleInternalComponentsChange(
                                 "valves",
-                                "brand",
                                 e.target.value
                               )
                             }
@@ -499,16 +477,12 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Valve Springs</Label>
                           <Input
-                            value={getModificationValue(
-                              "internals",
-                              "springs",
-                              "brand"
-                            )}
+                            value={
+                              data.internal_components?.valve_springs || ""
+                            }
                             onChange={(e) =>
-                              handleModificationChange(
-                                "internals",
-                                "springs",
-                                "brand",
+                              handleInternalComponentsChange(
+                                "valve_springs",
                                 e.target.value
                               )
                             }
@@ -519,16 +493,10 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Camshafts</Label>
                           <Input
-                            value={getModificationValue(
-                              "internals",
-                              "cams",
-                              "brand"
-                            )}
+                            value={data.internal_components?.camshafts || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "internals",
-                                "cams",
-                                "brand",
+                              handleInternalComponentsChange(
+                                "camshafts",
                                 e.target.value
                               )
                             }
@@ -546,56 +514,38 @@ export default function EngineDetails({
                         <div className="space-y-2">
                           <Label>Fuel Injectors</Label>
                           <Input
-                            value={getModificationValue(
-                              "fuel_system",
-                              "injectors",
-                              "brand"
-                            )}
+                            value={data.fuel_system?.fuel_injectors || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "fuel_system",
-                                "injectors",
-                                "brand",
+                              handleFuelSystemChange(
+                                "fuel_injectors",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g., ID1050X"
+                            placeholder="e.g., 1000cc"
                             disabled={isLoading}
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Fuel Pump</Label>
                           <Input
-                            value={getModificationValue(
-                              "fuel_system",
-                              "fuel_pump",
-                              "brand"
-                            )}
+                            value={data.fuel_system?.fuel_pump || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "fuel_system",
+                              handleFuelSystemChange(
                                 "fuel_pump",
-                                "brand",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g., DeatschWerks"
+                            placeholder="e.g., Walbro 450"
                             disabled={isLoading}
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Fuel Rail</Label>
                           <Input
-                            value={getModificationValue(
-                              "fuel_system",
-                              "fuel_rail",
-                              "brand"
-                            )}
+                            value={data.fuel_system?.fuel_rail || ""}
                             onChange={(e) =>
-                              handleModificationChange(
-                                "fuel_system",
+                              handleFuelSystemChange(
                                 "fuel_rail",
-                                "brand",
                                 e.target.value
                               )
                             }

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -10,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
@@ -19,19 +20,38 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-interface ExteriorData {
-  category: string; // 'body_kit', 'paint', 'lighting'
-  component?: string; // 'front_bumper', 'rear_bumper', 'headlights', etc.
-  brand?: string;
-  model?: string;
-  color?: string;
-  type?: string;
-  finish?: string;
-  description?: string;
+// Direct database structure interfaces
+interface PaintFinishData {
+  paint_color?: string;
+  paint_finish?: string;
+  wrap_brand?: string;
+  wrap_color?: string;
+}
+
+interface LightingModificationsData {
+  headlights?: string;
+  taillights?: string;
+  fog_lights?: string;
+  underglow?: string;
+  interior_lighting?: string;
+}
+
+interface BodykitModificationsData {
+  front_bumper?: string;
+  front_lip?: string;
+  rear_bumper?: string;
+  rear_lip?: string;
+  side_skirts?: string;
+  rear_spoiler?: string;
+  diffuser?: string;
+  fender_flares?: string;
+  hood?: string;
 }
 
 interface ExteriorModsData {
-  exterior?: ExteriorData[];
+  paint_finish?: PaintFinishData;
+  lighting_modifications?: LightingModificationsData;
+  bodykit_modifications?: BodykitModificationsData;
 }
 
 interface ExteriorModsProps {
@@ -45,50 +65,46 @@ export default function ExteriorMods({
   onChange,
   isLoading,
 }: ExteriorModsProps) {
-  const handleExteriorChange = (
-    category: string,
-    component: string | null,
-    field: keyof Omit<ExteriorData, "category">,
+  // Auto-detect if should start in wrap mode based on existing data
+  const hasWrapData = !!(
+    data.paint_finish?.wrap_brand || data.paint_finish?.wrap_color
+  );
+  const hasPaintData = !!(
+    data.paint_finish?.paint_color || data.paint_finish?.paint_finish
+  );
+  const [isWrap, setIsWrap] = useState(hasWrapData && !hasPaintData);
+
+  const handlePaintFinishChange = (
+    field: keyof PaintFinishData,
     value: string
   ) => {
-    const exterior = data.exterior || [];
-    const existingItemIndex = exterior.findIndex(
-      (e) => e.category === category && e.component === component
-    );
-
-    let updatedExterior: ExteriorData[];
-
-    if (existingItemIndex >= 0) {
-      // Update existing item
-      updatedExterior = [...exterior];
-      updatedExterior[existingItemIndex] = {
-        ...updatedExterior[existingItemIndex],
-        [field]: value,
-      };
-    } else if (value.trim()) {
-      // Create new item if value is not empty
-      const newItem: ExteriorData = {
-        category,
-        component: component || undefined,
-        [field]: value,
-      };
-      updatedExterior = [...exterior, newItem];
-    } else {
-      updatedExterior = exterior;
-    }
-
-    onChange({ exterior: updatedExterior });
+    const updatedPaintFinish = {
+      ...data.paint_finish,
+      [field]: value,
+    } as PaintFinishData;
+    onChange({ paint_finish: updatedPaintFinish });
   };
 
-  const getExteriorValue = (
-    category: string,
-    component: string | null,
-    field: keyof Omit<ExteriorData, "category">
-  ): string => {
-    const item = data.exterior?.find(
-      (e) => e.category === category && e.component === component
-    );
-    return item?.[field] || "";
+  const handleLightingChange = (
+    field: keyof LightingModificationsData,
+    value: string
+  ) => {
+    const updatedLighting = {
+      ...data.lighting_modifications,
+      [field]: value,
+    } as LightingModificationsData;
+    onChange({ lighting_modifications: updatedLighting });
+  };
+
+  const handleBodykitChange = (
+    field: keyof BodykitModificationsData,
+    value: string
+  ) => {
+    const updatedBodykit = {
+      ...data.bodykit_modifications,
+      [field]: value,
+    } as BodykitModificationsData;
+    onChange({ bodykit_modifications: updatedBodykit });
   };
 
   return (
@@ -99,64 +115,100 @@ export default function ExteriorMods({
             <AccordionTrigger>Exterior Modifications</AccordionTrigger>
             <AccordionContent>
               <div className="space-y-6">
-                {/* Paint */}
+                {/* Paint & Finish */}
                 <div>
-                  <h4 className="font-medium mb-4">Paint & Finish</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label>Paint Color</Label>
-                      <Input
-                        value={getExteriorValue("paint", null, "color")}
-                        onChange={(e) =>
-                          handleExteriorChange(
-                            "paint",
-                            null,
-                            "color",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., World Rally Blue"
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium">Paint & Finish</h4>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="wrap-mode" className="text-sm">
+                        Paint
+                      </Label>
+                      <Switch
+                        id="wrap-mode"
+                        checked={isWrap}
+                        onCheckedChange={setIsWrap}
                         disabled={isLoading}
                       />
+                      <Label htmlFor="wrap-mode" className="text-sm">
+                        Wrap
+                      </Label>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Paint Type</Label>
-                      <Select
-                        value={getExteriorValue("paint", null, "type")}
-                        onValueChange={(value) =>
-                          handleExteriorChange("paint", null, "type", value)
-                        }
-                        disabled={isLoading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select paint type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="metallic">Metallic</SelectItem>
-                          <SelectItem value="pearl">Pearl</SelectItem>
-                          <SelectItem value="matte">Matte</SelectItem>
-                          <SelectItem value="satin">Satin</SelectItem>
-                          <SelectItem value="gloss">Gloss</SelectItem>
-                          <SelectItem value="factory">Factory</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Finish</Label>
-                      <Input
-                        value={getExteriorValue("paint", null, "finish")}
-                        onChange={(e) =>
-                          handleExteriorChange(
-                            "paint",
-                            null,
-                            "finish",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., Clear coat"
-                        disabled={isLoading}
-                      />
-                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {!isWrap ? (
+                      // Paint fields
+                      <>
+                        <div className="space-y-2">
+                          <Label>Paint Color</Label>
+                          <Input
+                            value={data.paint_finish?.paint_color || ""}
+                            onChange={(e) =>
+                              handlePaintFinishChange(
+                                "paint_color",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., Championship White"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Finish Type</Label>
+                          <Select
+                            value={data.paint_finish?.paint_finish || ""}
+                            onValueChange={(value) =>
+                              handlePaintFinishChange("paint_finish", value)
+                            }
+                            disabled={isLoading}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select finish type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Gloss">Gloss</SelectItem>
+                              <SelectItem value="Matte">Matte</SelectItem>
+                              <SelectItem value="Satin">Satin</SelectItem>
+                              <SelectItem value="Metallic">Metallic</SelectItem>
+                              <SelectItem value="Pearl">Pearl</SelectItem>
+                              <SelectItem value="Chrome">Chrome</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    ) : (
+                      // Wrap fields
+                      <>
+                        <div className="space-y-2">
+                          <Label>Wrap Brand</Label>
+                          <Input
+                            value={data.paint_finish?.wrap_brand || ""}
+                            onChange={(e) =>
+                              handlePaintFinishChange(
+                                "wrap_brand",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., 3M, Avery Dennison"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Wrap Color</Label>
+                          <Input
+                            value={data.paint_finish?.wrap_color || ""}
+                            onChange={(e) =>
+                              handlePaintFinishChange(
+                                "wrap_color",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., Matte Black"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -165,90 +217,105 @@ export default function ExteriorMods({
                 {/* Body Kit */}
                 <div>
                   <h4 className="font-medium mb-4">Body Kit</h4>
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Front Bumper</Label>
-                        <Input
-                          value={getExteriorValue(
-                            "body_kit",
-                            "front_bumper",
-                            "brand"
-                          )}
-                          onChange={(e) =>
-                            handleExteriorChange(
-                              "body_kit",
-                              "front_bumper",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., STI"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Rear Bumper</Label>
-                        <Input
-                          value={getExteriorValue(
-                            "body_kit",
-                            "rear_bumper",
-                            "brand"
-                          )}
-                          onChange={(e) =>
-                            handleExteriorChange(
-                              "body_kit",
-                              "rear_bumper",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., STI"
-                          disabled={isLoading}
-                        />
-                      </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Front Bumper</Label>
+                      <Input
+                        value={data.bodykit_modifications?.front_bumper || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("front_bumper", e.target.value)
+                        }
+                        placeholder="e.g., Mugen"
+                        disabled={isLoading}
+                      />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Side Skirts</Label>
-                        <Input
-                          value={getExteriorValue(
-                            "body_kit",
-                            "side_skirts",
-                            "brand"
-                          )}
-                          onChange={(e) =>
-                            handleExteriorChange(
-                              "body_kit",
-                              "side_skirts",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., STI"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Rear Wing/Spoiler</Label>
-                        <Input
-                          value={getExteriorValue(
-                            "body_kit",
-                            "rear_wing",
-                            "brand"
-                          )}
-                          onChange={(e) =>
-                            handleExteriorChange(
-                              "body_kit",
-                              "rear_wing",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., STI"
-                          disabled={isLoading}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Front Lip</Label>
+                      <Input
+                        value={data.bodykit_modifications?.front_lip || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("front_lip", e.target.value)
+                        }
+                        placeholder="e.g., Carbon Fiber Lip"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rear Bumper</Label>
+                      <Input
+                        value={data.bodykit_modifications?.rear_bumper || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("rear_bumper", e.target.value)
+                        }
+                        placeholder="e.g., Spoon Sports"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rear Lip</Label>
+                      <Input
+                        value={data.bodykit_modifications?.rear_lip || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("rear_lip", e.target.value)
+                        }
+                        placeholder="e.g., Mugen Rear Lip"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Side Skirts</Label>
+                      <Input
+                        value={data.bodykit_modifications?.side_skirts || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("side_skirts", e.target.value)
+                        }
+                        placeholder="e.g., Mugen"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rear Spoiler</Label>
+                      <Input
+                        value={data.bodykit_modifications?.rear_spoiler || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("rear_spoiler", e.target.value)
+                        }
+                        placeholder="e.g., Mugen"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Diffuser</Label>
+                      <Input
+                        value={data.bodykit_modifications?.diffuser || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("diffuser", e.target.value)
+                        }
+                        placeholder="e.g., Carbon Fiber Diffuser"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fender Flares</Label>
+                      <Input
+                        value={data.bodykit_modifications?.fender_flares || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("fender_flares", e.target.value)
+                        }
+                        placeholder="e.g., Rocket Bunny"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hood</Label>
+                      <Input
+                        value={data.bodykit_modifications?.hood || ""}
+                        onChange={(e) =>
+                          handleBodykitChange("hood", e.target.value)
+                        }
+                        placeholder="e.g., Carbon Fiber Hood"
+                        disabled={isLoading}
+                      />
                     </div>
                   </div>
                 </div>
@@ -262,140 +329,63 @@ export default function ExteriorMods({
                     <div className="space-y-2">
                       <Label>Headlights</Label>
                       <Input
-                        value={getExteriorValue(
-                          "lighting",
-                          "headlights",
-                          "brand"
-                        )}
+                        value={data.lighting_modifications?.headlights || ""}
                         onChange={(e) =>
-                          handleExteriorChange(
-                            "lighting",
-                            "headlights",
-                            "brand",
-                            e.target.value
-                          )
+                          handleLightingChange("headlights", e.target.value)
                         }
-                        placeholder="e.g., Spec-D"
+                        placeholder="e.g., Projector HID"
                         disabled={isLoading}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Taillights</Label>
                       <Input
-                        value={getExteriorValue(
-                          "lighting",
-                          "taillights",
-                          "brand"
-                        )}
+                        value={data.lighting_modifications?.taillights || ""}
                         onChange={(e) =>
-                          handleExteriorChange(
-                            "lighting",
-                            "taillights",
-                            "brand",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., Spec-D"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Indicators</Label>
-                      <Input
-                        value={getExteriorValue(
-                          "lighting",
-                          "indicators",
-                          "brand"
-                        )}
-                        onChange={(e) =>
-                          handleExteriorChange(
-                            "lighting",
-                            "indicators",
-                            "brand",
-                            e.target.value
-                          )
+                          handleLightingChange("taillights", e.target.value)
                         }
                         placeholder="e.g., LED"
                         disabled={isLoading}
                       />
                     </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Aero Modifications */}
-                <div>
-                  <h4 className="font-medium mb-4">
-                    Aerodynamic Modifications
-                  </h4>
-                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Front Splitter</Label>
+                      <Label>Underglow</Label>
                       <Input
-                        value={getExteriorValue(
-                          "aero",
-                          "front_splitter",
-                          "brand"
-                        )}
+                        value={data.lighting_modifications?.underglow || ""}
                         onChange={(e) =>
-                          handleExteriorChange(
-                            "aero",
-                            "front_splitter",
-                            "brand",
-                            e.target.value
-                          )
+                          handleLightingChange("underglow", e.target.value)
                         }
-                        placeholder="e.g., APR Performance"
+                        placeholder="e.g., RGB LED Kit"
                         disabled={isLoading}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Rear Diffuser</Label>
+                      <Label>Fog Lights</Label>
                       <Input
-                        value={getExteriorValue(
-                          "aero",
-                          "rear_diffuser",
-                          "brand"
-                        )}
+                        value={data.lighting_modifications?.fog_lights || ""}
                         onChange={(e) =>
-                          handleExteriorChange(
-                            "aero",
-                            "rear_diffuser",
-                            "brand",
-                            e.target.value
-                          )
+                          handleLightingChange("fog_lights", e.target.value)
                         }
-                        placeholder="e.g., APR Performance"
+                        placeholder="e.g., LED Fog Lights"
                         disabled={isLoading}
                       />
                     </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Other Exterior Modifications */}
-                <div>
-                  <h4 className="font-medium mb-4">
-                    Other Exterior Modifications
-                  </h4>
-                  <div className="space-y-2">
-                    <Label>Additional Modifications</Label>
-                    <Textarea
-                      value={getExteriorValue("other", null, "description")}
-                      onChange={(e) =>
-                        handleExteriorChange(
-                          "other",
-                          null,
-                          "description",
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g., Window tinting, carbon fiber hood, fender flares..."
-                      className="min-h-[100px]"
-                      disabled={isLoading}
-                    />
+                    <div className="space-y-2">
+                      <Label>Interior Lighting</Label>
+                      <Input
+                        value={
+                          data.lighting_modifications?.interior_lighting || ""
+                        }
+                        onChange={(e) =>
+                          handleLightingChange(
+                            "interior_lighting",
+                            e.target.value
+                          )
+                        }
+                        placeholder="e.g., RGB Ambient Kit"
+                        disabled={isLoading}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   images: {
     // Use modern formats for better compression and quality
     formats: ['image/webp', 'image/avif'],
+    // Configure allowed quality values
+    qualities: [75, 90, 95, 100],
     // Allow images from Supabase storage
     remotePatterns: [
       {

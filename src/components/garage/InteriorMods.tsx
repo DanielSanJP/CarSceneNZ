@@ -3,7 +3,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
@@ -12,17 +11,40 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-interface InteriorData {
-  category: string; // 'seats', 'audio', 'steering_wheel', 'gauges', 'roll_cage'
-  position?: string; // 'front', 'rear', or null for general items
-  brand?: string;
-  model?: string;
+// Direct database structure interfaces
+interface SeatsData {
+  front_seats?: string;
+  rear_seats?: string;
+  seat_material?: string;
+  seat_color?: string;
+}
+
+interface AudioSystemData {
+  head_unit?: string;
+  speakers?: string;
+  amplifier?: string;
+  subwoofer?: string;
+}
+
+interface SteeringWheelData {
+  steering_wheel_brand?: string;
+  steering_wheel_model?: string;
+  material?: string;
   size?: string;
-  description?: string;
+}
+
+interface RollcageData {
+  rollcage_type?: string;
+  rollcage_brand?: string;
+  material?: string;
+  points?: number;
 }
 
 interface InteriorModsData {
-  interior?: InteriorData[];
+  seats?: SeatsData;
+  audio_system?: AudioSystemData;
+  steering_wheel?: SteeringWheelData;
+  rollcage?: RollcageData;
 }
 
 interface InteriorModsProps {
@@ -36,50 +58,42 @@ export default function InteriorMods({
   onChange,
   isLoading,
 }: InteriorModsProps) {
-  const handleInteriorChange = (
-    category: string,
-    position: string | null,
-    field: keyof Omit<InteriorData, "category">,
-    value: string
-  ) => {
-    const interior = data.interior || [];
-    const existingItemIndex = interior.findIndex(
-      (i) => i.category === category && i.position === position
-    );
-
-    let updatedInterior: InteriorData[];
-
-    if (existingItemIndex >= 0) {
-      // Update existing item
-      updatedInterior = [...interior];
-      updatedInterior[existingItemIndex] = {
-        ...updatedInterior[existingItemIndex],
-        [field]: value,
-      };
-    } else if (value.trim()) {
-      // Create new item if value is not empty
-      const newItem: InteriorData = {
-        category,
-        position: position || undefined,
-        [field]: value,
-      };
-      updatedInterior = [...interior, newItem];
-    } else {
-      updatedInterior = interior;
-    }
-
-    onChange({ interior: updatedInterior });
+  const handleSeatsChange = (field: keyof SeatsData, value: string) => {
+    const updatedSeats = {
+      ...data.seats,
+      [field]: value,
+    } as SeatsData;
+    onChange({ seats: updatedSeats });
   };
 
-  const getInteriorValue = (
-    category: string,
-    position: string | null,
-    field: keyof Omit<InteriorData, "category">
-  ): string => {
-    const item = data.interior?.find(
-      (i) => i.category === category && i.position === position
-    );
-    return item?.[field] || "";
+  const handleAudioSystemChange = (
+    field: keyof AudioSystemData,
+    value: string
+  ) => {
+    const updatedAudioSystem = {
+      ...data.audio_system,
+      [field]: value,
+    } as AudioSystemData;
+    onChange({ audio_system: updatedAudioSystem });
+  };
+
+  const handleSteeringWheelChange = (
+    field: keyof SteeringWheelData,
+    value: string
+  ) => {
+    const updatedSteeringWheel = {
+      ...data.steering_wheel,
+      [field]: value,
+    } as SteeringWheelData;
+    onChange({ steering_wheel: updatedSteeringWheel });
+  };
+
+  const handleRollcageChange = (field: keyof RollcageData, value: string) => {
+    const updatedRollcage = {
+      ...data.rollcage,
+      [field]: value,
+    } as RollcageData;
+    onChange({ rollcage: updatedRollcage });
   };
 
   return (
@@ -93,74 +107,50 @@ export default function InteriorMods({
                 {/* Seats */}
                 <div>
                   <h4 className="font-medium mb-4">Seats</h4>
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Front Seats Brand</Label>
-                        <Input
-                          value={getInteriorValue("seats", "front", "brand")}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "seats",
-                              "front",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Recaro"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Front Seats Model</Label>
-                        <Input
-                          value={getInteriorValue("seats", "front", "model")}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "seats",
-                              "front",
-                              "model",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., SPG"
-                          disabled={isLoading}
-                        />
-                      </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Front Seats</Label>
+                      <Input
+                        value={data.seats?.front_seats || ""}
+                        onChange={(e) =>
+                          handleSeatsChange("front_seats", e.target.value)
+                        }
+                        placeholder="e.g., Recaro SPG"
+                        disabled={isLoading}
+                      />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Rear Seats Brand</Label>
-                        <Input
-                          value={getInteriorValue("seats", "rear", "brand")}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "seats",
-                              "rear",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Stock"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Rear Seats Model</Label>
-                        <Input
-                          value={getInteriorValue("seats", "rear", "model")}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "seats",
-                              "rear",
-                              "model",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Factory"
-                          disabled={isLoading}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Rear Seats</Label>
+                      <Input
+                        value={data.seats?.rear_seats || ""}
+                        onChange={(e) =>
+                          handleSeatsChange("rear_seats", e.target.value)
+                        }
+                        placeholder="e.g., Stock"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Seat Material</Label>
+                      <Input
+                        value={data.seats?.seat_material || ""}
+                        onChange={(e) =>
+                          handleSeatsChange("seat_material", e.target.value)
+                        }
+                        placeholder="e.g., Alcantara"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Seat Color</Label>
+                      <Input
+                        value={data.seats?.seat_color || ""}
+                        onChange={(e) =>
+                          handleSeatsChange("seat_color", e.target.value)
+                        }
+                        placeholder="e.g., Black"
+                        disabled={isLoading}
+                      />
                     </div>
                   </div>
                 </div>
@@ -170,58 +160,52 @@ export default function InteriorMods({
                 {/* Steering Wheel */}
                 <div>
                   <h4 className="font-medium mb-4">Steering Wheel</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Brand</Label>
                       <Input
-                        value={getInteriorValue(
-                          "steering_wheel",
-                          null,
-                          "brand"
-                        )}
+                        value={data.steering_wheel?.steering_wheel_brand || ""}
                         onChange={(e) =>
-                          handleInteriorChange(
-                            "steering_wheel",
-                            null,
-                            "brand",
+                          handleSteeringWheelChange(
+                            "steering_wheel_brand",
                             e.target.value
                           )
                         }
-                        placeholder="e.g., Momo"
+                        placeholder="e.g., MOMO"
                         disabled={isLoading}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Model</Label>
                       <Input
-                        value={getInteriorValue(
-                          "steering_wheel",
-                          null,
-                          "model"
-                        )}
+                        value={data.steering_wheel?.steering_wheel_model || ""}
                         onChange={(e) =>
-                          handleInteriorChange(
-                            "steering_wheel",
-                            null,
-                            "model",
+                          handleSteeringWheelChange(
+                            "steering_wheel_model",
                             e.target.value
                           )
                         }
-                        placeholder="e.g., Race"
+                        placeholder="e.g., Prototipo"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Material</Label>
+                      <Input
+                        value={data.steering_wheel?.material || ""}
+                        onChange={(e) =>
+                          handleSteeringWheelChange("material", e.target.value)
+                        }
+                        placeholder="e.g., Leather"
                         disabled={isLoading}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Size</Label>
                       <Input
-                        value={getInteriorValue("steering_wheel", null, "size")}
+                        value={data.steering_wheel?.size || ""}
                         onChange={(e) =>
-                          handleInteriorChange(
-                            "steering_wheel",
-                            null,
-                            "size",
-                            e.target.value
-                          )
+                          handleSteeringWheelChange("size", e.target.value)
                         }
                         placeholder="e.g., 350mm"
                         disabled={isLoading}
@@ -235,111 +219,51 @@ export default function InteriorMods({
                 {/* Audio System */}
                 <div>
                   <h4 className="font-medium mb-4">Audio System</h4>
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Head Unit Brand</Label>
-                        <Input
-                          value={getInteriorValue(
-                            "audio",
-                            "head_unit",
-                            "brand"
-                          )}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "audio",
-                              "head_unit",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Pioneer"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Head Unit Model</Label>
-                        <Input
-                          value={getInteriorValue(
-                            "audio",
-                            "head_unit",
-                            "model"
-                          )}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "audio",
-                              "head_unit",
-                              "model",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., AVH-Z5100DAB"
-                          disabled={isLoading}
-                        />
-                      </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Head Unit</Label>
+                      <Input
+                        value={data.audio_system?.head_unit || ""}
+                        onChange={(e) =>
+                          handleAudioSystemChange("head_unit", e.target.value)
+                        }
+                        placeholder="e.g., Pioneer DEH-X7800DAB"
+                        disabled={isLoading}
+                      />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Speakers</Label>
-                        <Input
-                          value={getInteriorValue("audio", "speakers", "brand")}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "audio",
-                              "speakers",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., JL Audio"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Subwoofer</Label>
-                        <Input
-                          value={getInteriorValue(
-                            "audio",
-                            "subwoofer",
-                            "brand"
-                          )}
-                          onChange={(e) =>
-                            handleInteriorChange(
-                              "audio",
-                              "subwoofer",
-                              "brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., JL Audio 12W6v3"
-                          disabled={isLoading}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Speakers</Label>
+                      <Input
+                        value={data.audio_system?.speakers || ""}
+                        onChange={(e) =>
+                          handleAudioSystemChange("speakers", e.target.value)
+                        }
+                        placeholder="e.g., JL Audio C2-650X"
+                        disabled={isLoading}
+                      />
                     </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Gauges */}
-                <div>
-                  <h4 className="font-medium mb-4">Gauges & Instrumentation</h4>
-                  <div className="space-y-2">
-                    <Label>Additional Gauges</Label>
-                    <Textarea
-                      value={getInteriorValue("gauges", null, "description")}
-                      onChange={(e) =>
-                        handleInteriorChange(
-                          "gauges",
-                          null,
-                          "description",
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g., Defi boost gauge, oil pressure gauge, exhaust gas temperature..."
-                      className="min-h-[80px]"
-                      disabled={isLoading}
-                    />
+                    <div className="space-y-2">
+                      <Label>Amplifier</Label>
+                      <Input
+                        value={data.audio_system?.amplifier || ""}
+                        onChange={(e) =>
+                          handleAudioSystemChange("amplifier", e.target.value)
+                        }
+                        placeholder="e.g., JL Audio XD400/4v2"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Subwoofer</Label>
+                      <Input
+                        value={data.audio_system?.subwoofer || ""}
+                        onChange={(e) =>
+                          handleAudioSystemChange("subwoofer", e.target.value)
+                        }
+                        placeholder="e.g., JL Audio 10W3v3-4"
+                        disabled={isLoading}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -350,90 +274,49 @@ export default function InteriorMods({
                   <h4 className="font-medium mb-4">Roll Cage</h4>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
+                      <Label>Type</Label>
+                      <Input
+                        value={data.rollcage?.rollcage_type || ""}
+                        onChange={(e) =>
+                          handleRollcageChange("rollcage_type", e.target.value)
+                        }
+                        placeholder="e.g., Half Cage"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label>Brand</Label>
                       <Input
-                        value={getInteriorValue("roll_cage", null, "brand")}
+                        value={data.rollcage?.rollcage_brand || ""}
                         onChange={(e) =>
-                          handleInteriorChange(
-                            "roll_cage",
-                            null,
-                            "brand",
-                            e.target.value
-                          )
+                          handleRollcageChange("rollcage_brand", e.target.value)
                         }
-                        placeholder="e.g., Cusco"
+                        placeholder="e.g., OMP"
                         disabled={isLoading}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Material</Label>
                       <Input
-                        value={getInteriorValue(
-                          "roll_cage",
-                          null,
-                          "description"
-                        )}
+                        value={data.rollcage?.material || ""}
                         onChange={(e) =>
-                          handleInteriorChange(
-                            "roll_cage",
-                            null,
-                            "description",
-                            e.target.value
-                          )
+                          handleRollcageChange("material", e.target.value)
                         }
-                        placeholder="e.g., Chromoly steel"
+                        placeholder="e.g., Steel"
                         disabled={isLoading}
                       />
                     </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Dashboard & Trim */}
-                <div>
-                  <h4 className="font-medium mb-4">Dashboard & Trim</h4>
-                  <div className="space-y-2">
-                    <Label>Dashboard Modifications</Label>
-                    <Input
-                      value={getInteriorValue("dashboard", null, "description")}
-                      onChange={(e) =>
-                        handleInteriorChange(
-                          "dashboard",
-                          null,
-                          "description",
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g., Carbon fiber trim"
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Other Interior Modifications */}
-                <div>
-                  <h4 className="font-medium mb-4">
-                    Other Interior Modifications
-                  </h4>
-                  <div className="space-y-2">
-                    <Label>Additional Modifications</Label>
-                    <Textarea
-                      value={getInteriorValue("other", null, "description")}
-                      onChange={(e) =>
-                        handleInteriorChange(
-                          "other",
-                          null,
-                          "description",
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g., Custom floor mats, shift knob, pedals, harnesses..."
-                      className="min-h-[100px]"
-                      disabled={isLoading}
-                    />
+                    <div className="space-y-2">
+                      <Label>Points</Label>
+                      <Input
+                        value={data.rollcage?.points || ""}
+                        onChange={(e) =>
+                          handleRollcageChange("points", e.target.value)
+                        }
+                        placeholder="e.g., 6-point"
+                        disabled={isLoading}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

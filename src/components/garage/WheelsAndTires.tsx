@@ -17,7 +17,6 @@ interface WheelData {
   wheel_size?: string;
   wheel_offset?: string;
   tire_size?: string;
-  camber_degrees?: number;
 }
 
 interface WheelsAndTiresData {
@@ -144,28 +143,6 @@ export default function WheelsAndTires({
                         disabled={isLoading}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Camber (degrees)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={
-                          (getWheelValue(
-                            "front",
-                            "camber_degrees"
-                          ) as number) || ""
-                        }
-                        onChange={(e) =>
-                          handleWheelChange(
-                            "front",
-                            "camber_degrees",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        placeholder="e.g., -2.5"
-                        disabled={isLoading}
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -228,26 +205,6 @@ export default function WheelsAndTires({
                           handleWheelChange("rear", "tire_size", e.target.value)
                         }
                         placeholder="e.g., 275/40R18"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Camber (degrees)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={
-                          (getWheelValue("rear", "camber_degrees") as number) ||
-                          ""
-                        }
-                        onChange={(e) =>
-                          handleWheelChange(
-                            "rear",
-                            "camber_degrees",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        placeholder="e.g., -1.8"
                         disabled={isLoading}
                       />
                     </div>

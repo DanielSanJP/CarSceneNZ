@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getCarById, updateCarWithComponents } from "@/lib/data/cars";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
-import type { Car } from "@/types";
+import type { Car } from "@/types/car";
 
 // Import all garage components
 import {
@@ -22,7 +22,7 @@ import {
   PerformanceMods,
 } from "@/components/garage";
 
-// Complete form data structure for all components
+// Complete form data structure - using direct database types
 interface CompleteEditCarFormData {
   // Basic car info
   brand: string;
@@ -39,94 +39,102 @@ interface CompleteEditCarFormData {
     torque_nm?: number;
   };
 
-  // Engine modifications
-  engine_modifications?: {
-    component: string;
-    subcomponent?: string;
-    brand?: string;
-    model?: string;
-    description?: string;
-    is_custom?: boolean;
+  // Engine modifications (direct database structure)
+  turbo_system?: {
+    turbo_brand?: string;
+    turbo_model?: string;
+    intercooler_brand?: string;
+    intercooler_model?: string;
+  };
+  exhaust_system?: {
+    intake_brand?: string;
+    intake_model?: string;
+    header_brand?: string;
+    catback_brand?: string;
+  };
+  engine_management?: {
+    ecu_brand?: string;
+    ecu_model?: string;
     tuned_by?: string;
-  }[];
+  };
+  internal_components?: {
+    pistons?: string;
+    connecting_rods?: string;
+    valves?: string;
+    valve_springs?: string;
+    camshafts?: string;
+  };
+  fuel_system?: {
+    fuel_injectors?: string;
+    fuel_pump?: string;
+    fuel_rail?: string;
+  };
 
-  // Wheels data
-  wheels?: {
-    position: "front" | "rear";
-    wheel_brand?: string;
-    wheel_size?: string;
-    wheel_offset?: string;
-    tire_size?: string;
-    camber_degrees?: number;
-  }[];
+  // Exterior modifications (direct database structure)
+  paint_finish?: {
+    paint_color?: string;
+    paint_finish?: string;
+    wrap_brand?: string;
+    wrap_color?: string;
+  };
+  lighting_modifications?: {
+    headlights?: string;
+    taillights?: string;
+    fog_lights?: string;
+    underglow?: string;
+    interior_lighting?: string;
+  };
+  bodykit_modifications?: {
+    front_bumper?: string;
+    front_lip?: string;
+    rear_bumper?: string;
+    rear_lip?: string;
+    side_skirts?: string;
+    rear_spoiler?: string;
+    diffuser?: string;
+    fender_flares?: string;
+    hood?: string;
+  };
 
-  // Braking system
-  brakes?: {
-    position: "front" | "rear";
-    caliper?: string;
-    disc_size?: string;
-    disc_type?: string;
-    pads?: string;
-  }[];
-
-  brake_accessories?: {
-    component: string;
-    brand?: string;
-    model?: string;
-    description?: string;
-  }[];
-
-  // Suspension
-  suspension?: {
-    position?: "front" | "rear";
-    suspension_type?: string;
-    brand?: string;
-    model?: string;
-    spring_rate?: string;
-    camber_degrees?: number;
-    toe_degrees?: string;
-    caster_degrees?: string;
-  }[];
-
-  suspension_accessories?: {
-    accessory_type: string;
-    position?: string;
-    brand?: string;
-    model?: string;
-    size?: string;
-    description?: string;
-  }[];
-
-  // Exterior modifications
-  exterior?: {
-    category: string;
-    component?: string;
-    brand?: string;
-    model?: string;
+  // Interior modifications (direct database structure)
+  seats?: {
+    front_seats?: string;
+    rear_seats?: string;
+    material?: string;
     color?: string;
-    type?: string;
-    finish?: string;
-    description?: string;
-  }[];
-
-  // Interior modifications
-  interior?: {
-    category: string;
-    position?: string;
-    brand?: string;
-    model?: string;
+  };
+  audio_system?: {
+    head_unit?: string;
+    speakers?: string;
+    amplifier?: string;
+    subwoofer?: string;
+  };
+  steering_wheel?: {
+    steering_wheel_brand?: string;
+    steering_wheel_model?: string;
+    material?: string;
     size?: string;
-    description?: string;
-  }[];
+  };
+  rollcage?: {
+    rollcage_type?: string;
+    rollcage_brand?: string;
+    material?: string;
+    points?: number;
+  };
 
-  // Performance modifications
-  performance_mods?: {
-    category: string;
-    modification: string;
-    brand?: string;
-    model?: string;
-    description?: string;
-  }[];
+  // Other component data - arrays for components not yet converted
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  wheels?: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  brakes?: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  brake_accessories?: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  suspension?: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  suspension_accessories?: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  performance_mods?: any[];
 }
 
 export default function CompleteEditCarPage() {
@@ -143,14 +151,23 @@ export default function CompleteEditCarPage() {
     year: "",
     images: [],
     engine: undefined,
-    engine_modifications: [],
+    turbo_system: undefined,
+    exhaust_system: undefined,
+    engine_management: undefined,
+    internal_components: undefined,
+    fuel_system: undefined,
+    paint_finish: undefined,
+    lighting_modifications: undefined,
+    bodykit_modifications: undefined,
+    seats: undefined,
+    audio_system: undefined,
+    steering_wheel: undefined,
+    rollcage: undefined,
     wheels: [],
     brakes: [],
     brake_accessories: [],
     suspension: [],
     suspension_accessories: [],
-    exterior: [],
-    interior: [],
     performance_mods: [],
   });
 
@@ -160,21 +177,32 @@ export default function CompleteEditCarPage() {
         const foundCar = await getCarById(carId);
         if (foundCar) {
           setCar(foundCar);
+
+          // Convert new normalized format to direct format for the form components
           setFormData({
             brand: foundCar.brand,
             model: foundCar.model,
             year: foundCar.year,
             images: foundCar.images || [],
             engine: foundCar.engine,
-            engine_modifications: foundCar.engine_modifications || [],
+            turbo_system: foundCar.turbo_system,
+            exhaust_system: foundCar.exhaust_system,
+            engine_management: foundCar.engine_management,
+            internal_components: foundCar.internal_components,
+            fuel_system: foundCar.fuel_system,
+            paint_finish: foundCar.paint_finish,
+            lighting_modifications: foundCar.lighting_modifications,
+            bodykit_modifications: foundCar.bodykit_modifications,
+            seats: foundCar.seats,
+            audio_system: foundCar.audio_system,
+            steering_wheel: foundCar.steering_wheel,
+            rollcage: foundCar.rollcage,
             wheels: foundCar.wheels || [],
             brakes: foundCar.brakes || [],
-            brake_accessories: foundCar.brake_accessories || [],
+            brake_accessories: [], // TODO: Convert from new structure
             suspension: foundCar.suspension || [],
-            suspension_accessories: foundCar.suspension_accessories || [],
-            exterior: foundCar.exterior || [],
-            interior: foundCar.interior || [],
-            performance_mods: foundCar.performance_mods || [],
+            suspension_accessories: [], // TODO: Convert from new structure
+            performance_mods: [], // Not needed since table was deleted
           });
         }
       } catch (error) {
@@ -254,7 +282,7 @@ export default function CompleteEditCarPage() {
     setIsLoading(true);
 
     try {
-      // Prepare data for the normalized database structure
+      // Data is already in the correct normalized format
       const updateData: Parameters<typeof updateCarWithComponents>[1] = {
         brand: formData.brand,
         model: formData.model,
@@ -263,24 +291,32 @@ export default function CompleteEditCarPage() {
             ? formData.year
             : parseInt(formData.year as string),
         images: formData.images,
-        engine: formData.engine,
-        engine_modifications: formData.engine_modifications?.filter(
-          (mod) => mod.component
-        ) as {
-          component: string;
-          subcomponent?: string;
-          brand?: string;
-          model?: string;
-          description?: string;
-          is_custom?: boolean;
-          tuned_by?: string;
-        }[],
-        wheels: formData.wheels,
-        brakes: formData.brakes,
-        suspension: formData.suspension,
-        exterior: formData.exterior,
-        interior: formData.interior,
-        performance_mods: formData.performance_mods,
+        engine: {
+          engine: formData.engine,
+          turbo_system: formData.turbo_system,
+          exhaust_system: formData.exhaust_system,
+          engine_management: formData.engine_management,
+          internal_components: formData.internal_components,
+          fuel_system: formData.fuel_system,
+        },
+        chassis: {
+          wheels: formData.wheels || [],
+          brakes: formData.brakes || [],
+          suspension: formData.suspension || [],
+        },
+        exterior: {
+          paint_finish: formData.paint_finish,
+          lighting_modifications: formData.lighting_modifications,
+          bodykit_modifications: formData.bodykit_modifications,
+        },
+        interior: {
+          seats: formData.seats,
+          steering_wheel: formData.steering_wheel,
+          audio_system: formData.audio_system,
+          rollcage: formData.rollcage,
+          gauges: [], // TODO: Handle gauges if needed
+        },
+        performance: undefined, // Not needed since table was deleted
       };
 
       const updatedCar = await updateCarWithComponents(carId, updateData);
@@ -358,7 +394,11 @@ export default function CompleteEditCarPage() {
             <EngineDetails
               data={{
                 engine: formData.engine,
-                engine_modifications: formData.engine_modifications,
+                turbo_system: formData.turbo_system,
+                exhaust_system: formData.exhaust_system,
+                engine_management: formData.engine_management,
+                internal_components: formData.internal_components,
+                fuel_system: formData.fuel_system,
               }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
@@ -385,7 +425,6 @@ export default function CompleteEditCarPage() {
             <SuspensionDetails
               data={{
                 suspension: formData.suspension,
-                suspension_accessories: formData.suspension_accessories,
               }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
@@ -393,14 +432,23 @@ export default function CompleteEditCarPage() {
 
             {/* Exterior Modifications */}
             <ExteriorMods
-              data={{ exterior: formData.exterior }}
+              data={{
+                paint_finish: formData.paint_finish,
+                lighting_modifications: formData.lighting_modifications,
+                bodykit_modifications: formData.bodykit_modifications,
+              }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
             />
 
             {/* Interior Modifications */}
             <InteriorMods
-              data={{ interior: formData.interior }}
+              data={{
+                seats: formData.seats,
+                audio_system: formData.audio_system,
+                steering_wheel: formData.steering_wheel,
+                rollcage: formData.rollcage,
+              }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
             />

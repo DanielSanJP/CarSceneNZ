@@ -38,16 +38,36 @@ interface CreateCarFormData {
     torque_nm?: number;
   };
 
-  // Engine modifications
-  engine_modifications?: {
-    component: string;
-    subcomponent?: string;
-    brand?: string;
-    model?: string;
-    description?: string;
-    is_custom?: boolean;
+  // Engine modifications (direct database structure)
+  turbo_system?: {
+    turbo_brand?: string;
+    turbo_model?: string;
+    intercooler_brand?: string;
+    intercooler_model?: string;
+  };
+  exhaust_system?: {
+    intake_brand?: string;
+    intake_model?: string;
+    header_brand?: string;
+    catback_brand?: string;
+  };
+  engine_management?: {
+    ecu_brand?: string;
+    ecu_model?: string;
     tuned_by?: string;
-  }[];
+  };
+  internal_components?: {
+    pistons?: string;
+    connecting_rods?: string;
+    valves?: string;
+    valve_springs?: string;
+    camshafts?: string;
+  };
+  fuel_system?: {
+    fuel_injectors?: string;
+    fuel_pump?: string;
+    fuel_rail?: string;
+  };
 
   // Wheels data
   wheels?: {
@@ -56,7 +76,6 @@ interface CreateCarFormData {
     wheel_size?: string;
     wheel_offset?: string;
     tire_size?: string;
-    camber_degrees?: number;
   }[];
 
   // Braking system
@@ -85,38 +104,63 @@ interface CreateCarFormData {
     camber_degrees?: number;
     toe_degrees?: string;
     caster_degrees?: string;
+    front_anti_roll_bar?: string;
+    rear_anti_roll_bar?: string;
+    front_strut_brace?: string;
+    rear_strut_brace?: string;
   }[];
 
-  suspension_accessories?: {
-    accessory_type: string;
-    position?: string;
-    brand?: string;
-    model?: string;
-    size?: string;
-    description?: string;
-  }[];
+  // Exterior modifications (direct database structure)
+  paint_finish?: {
+    paint_color?: string;
+    paint_finish?: string;
+    wrap_brand?: string;
+    wrap_color?: string;
+  };
+  lighting_modifications?: {
+    headlights?: string;
+    taillights?: string;
+    fog_lights?: string;
+    underglow?: string;
+    interior_lighting?: string;
+  };
+  bodykit_modifications?: {
+    front_bumper?: string;
+    front_lip?: string;
+    rear_bumper?: string;
+    rear_lip?: string;
+    side_skirts?: string;
+    rear_spoiler?: string;
+    diffuser?: string;
+    fender_flares?: string;
+    hood?: string;
+  };
 
-  // Exterior modifications
-  exterior?: {
-    category: string;
-    component?: string;
-    brand?: string;
-    model?: string;
+  // Interior modifications (direct database structure)
+  seats?: {
+    front_seats?: string;
+    rear_seats?: string;
+    material?: string;
     color?: string;
-    type?: string;
-    finish?: string;
-    description?: string;
-  }[];
-
-  // Interior modifications
-  interior?: {
-    category: string;
-    position?: string;
-    brand?: string;
-    model?: string;
+  };
+  audio_system?: {
+    head_unit?: string;
+    speakers?: string;
+    amplifier?: string;
+    subwoofer?: string;
+  };
+  steering_wheel?: {
+    steering_wheel_brand?: string;
+    steering_wheel_model?: string;
+    material?: string;
     size?: string;
-    description?: string;
-  }[];
+  };
+  rollcage?: {
+    rollcage_type?: string;
+    rollcage_brand?: string;
+    material?: string;
+    points?: number;
+  };
 
   // Performance modifications
   performance_mods?: {
@@ -139,14 +183,22 @@ export default function CreateCarPage() {
     year: "",
     images: [],
     engine: undefined,
-    engine_modifications: [],
+    turbo_system: undefined,
+    exhaust_system: undefined,
+    engine_management: undefined,
+    internal_components: undefined,
+    fuel_system: undefined,
     wheels: [],
     brakes: [],
     brake_accessories: [],
     suspension: [],
-    suspension_accessories: [],
-    exterior: [],
-    interior: [],
+    paint_finish: undefined,
+    lighting_modifications: undefined,
+    bodykit_modifications: undefined,
+    seats: undefined,
+    audio_system: undefined,
+    steering_wheel: undefined,
+    rollcage: undefined,
     performance_mods: [],
   });
 
@@ -201,24 +253,34 @@ export default function CreateCarPage() {
             ? formData.year
             : parseInt(formData.year as string),
         images: formData.images, // Use images from form data
-        engine: formData.engine,
-        engine_modifications: formData.engine_modifications?.filter(
-          (mod) => mod.component
-        ) as {
-          component: string;
-          subcomponent?: string;
-          brand?: string;
-          model?: string;
-          description?: string;
-          is_custom?: boolean;
-          tuned_by?: string;
-        }[],
-        wheels: formData.wheels,
-        brakes: formData.brakes,
-        suspension: formData.suspension,
-        exterior: formData.exterior,
-        interior: formData.interior,
-        performance_mods: formData.performance_mods,
+        engine: formData.engine
+          ? {
+              engine: formData.engine,
+              turbo_system: formData.turbo_system,
+              exhaust_system: formData.exhaust_system,
+              engine_management: formData.engine_management,
+              internal_components: formData.internal_components,
+              fuel_system: formData.fuel_system,
+            }
+          : undefined,
+        chassis: {
+          wheels: formData.wheels || [],
+          brakes: formData.brakes || [],
+          suspension: formData.suspension || [],
+        },
+        exterior: {
+          paint_finish: formData.paint_finish,
+          lighting_modifications: formData.lighting_modifications,
+          bodykit_modifications: formData.bodykit_modifications,
+        },
+        interior: {
+          seats: formData.seats,
+          steering_wheel: formData.steering_wheel,
+          audio_system: formData.audio_system,
+          rollcage: formData.rollcage,
+          gauges: [], // TODO: Handle gauges if needed
+        },
+        performance: undefined, // Not needed since table was deleted
       };
 
       console.log("Creating car with components:", createData);
@@ -286,7 +348,11 @@ export default function CreateCarPage() {
             <EngineDetails
               data={{
                 engine: formData.engine,
-                engine_modifications: formData.engine_modifications,
+                turbo_system: formData.turbo_system,
+                exhaust_system: formData.exhaust_system,
+                engine_management: formData.engine_management,
+                internal_components: formData.internal_components,
+                fuel_system: formData.fuel_system,
               }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
@@ -313,7 +379,6 @@ export default function CreateCarPage() {
             <SuspensionDetails
               data={{
                 suspension: formData.suspension,
-                suspension_accessories: formData.suspension_accessories,
               }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
@@ -321,14 +386,23 @@ export default function CreateCarPage() {
 
             {/* Exterior Modifications */}
             <ExteriorMods
-              data={{ exterior: formData.exterior }}
+              data={{
+                paint_finish: formData.paint_finish,
+                lighting_modifications: formData.lighting_modifications,
+                bodykit_modifications: formData.bodykit_modifications,
+              }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
             />
 
             {/* Interior Modifications */}
             <InteriorMods
-              data={{ interior: formData.interior }}
+              data={{
+                seats: formData.seats,
+                audio_system: formData.audio_system,
+                steering_wheel: formData.steering_wheel,
+                rollcage: formData.rollcage,
+              }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
             />
