@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Navigation } from "@/components/nav";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { createCar } from "@/lib/data/cars";
+import { uploadCarImages } from "@/lib/utils/upload-car-images";
 
 interface WheelSpec {
   brand: string;
@@ -173,6 +174,7 @@ export default function CreateCarPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]); // Track actual File objects
 
   const [formData, setFormData] = useState<CarFormData>({
     brand: "",
@@ -298,7 +300,6 @@ export default function CreateCarPage() {
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Access Denied</h1>
@@ -350,10 +351,19 @@ export default function CreateCarPage() {
   };
 
   const handleDeleteImage = (imageUrl: string) => {
+    const indexToRemove = formData.images.indexOf(imageUrl);
+
     setFormData((prev) => ({
       ...prev,
       images: prev.images.filter((img) => img !== imageUrl),
     }));
+
+    // Also remove the corresponding file from imageFiles
+    if (indexToRemove !== -1) {
+      setImageFiles((prev) =>
+        prev.filter((_, index) => index !== indexToRemove)
+      );
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -378,9 +388,12 @@ export default function CreateCarPage() {
       );
     }
 
-    // In a real app, you would upload these files to your server/cloud storage
-    // For now, we'll simulate adding them as URLs
+    // Process files and create preview URLs
     filesToProcess.forEach((file) => {
+      // Add to actual files array for upload
+      setImageFiles((prev) => [...prev, file]);
+
+      // Create preview URL for display
       const reader = new FileReader();
       reader.onload = (event) => {
         const imageUrl = event.target?.result as string;
@@ -407,17 +420,157 @@ export default function CreateCarPage() {
     setIsLoading(true);
 
     try {
-      // In a real app, this would be an API call
-      // For now, we'll just simulate saving and redirect
+      if (!user) {
+        console.error("User not authenticated");
+        return;
+      }
+
+      // Validate required fields
+      if (!formData.brand || !formData.model || !formData.year) {
+        alert("Please fill in at least the brand, model, and year.");
+        return;
+      }
+
       console.log("Creating car:", formData);
+      console.log("Image files to upload:", imageFiles.length);
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Create a temporary car ID for the folder structure
+      const tempCarId = crypto.randomUUID();
 
-      // Redirect to garage
-      router.push("/garage");
+      // Upload images first if any
+      let uploadedImageUrls: string[] = [];
+      if (imageFiles.length > 0) {
+        console.log("Uploading images...");
+        uploadedImageUrls = await uploadCarImages(imageFiles, tempCarId);
+        console.log("Uploaded image URLs:", uploadedImageUrls);
+      }
+
+      // Prepare car data for insertion - transform complex form data to match Car type
+      const carData = {
+        owner_id: user.id,
+        brand: formData.brand,
+        model: formData.model,
+        year: Number(formData.year),
+        suspension_type: formData.suspension_type || undefined,
+        wheel_specs: {
+          size: `F: ${formData.wheel_specs.front.size}, R: ${formData.wheel_specs.rear.size}`,
+          offset: `F: ${formData.wheel_specs.front.offset}, R: ${formData.wheel_specs.rear.offset}`,
+          brand: `F: ${formData.wheel_specs.front.brand}, R: ${formData.wheel_specs.rear.brand}`,
+        },
+        tire_specs: {
+          size: `F: ${formData.tire_specs.front}, R: ${formData.tire_specs.rear}`,
+        },
+        engine: {
+          type: formData.engine.engine_code,
+          displacement: formData.engine.displacement,
+          horsepower: Number(formData.engine.power_hp) || undefined,
+          torque: Number(formData.engine.torque_nm) || undefined,
+          modifications: [
+            formData.engine.modifications?.turbo?.brand &&
+              `Turbo: ${formData.engine.modifications.turbo.brand}`,
+            formData.engine.modifications?.supercharger?.brand &&
+              `Supercharger: ${formData.engine.modifications.supercharger.brand}`,
+            formData.engine.modifications?.intercooler?.brand &&
+              `Intercooler: ${formData.engine.modifications.intercooler.brand}`,
+            formData.engine.modifications?.exhaust?.header &&
+              `Header: ${formData.engine.modifications.exhaust.header}`,
+            formData.engine.modifications?.exhaust?.catback &&
+              `Catback: ${formData.engine.modifications.exhaust.catback}`,
+            formData.engine.modifications?.intake?.brand &&
+              `Intake: ${formData.engine.modifications.intake.brand}`,
+            formData.engine.modifications?.ecu?.brand &&
+              `ECU: ${formData.engine.modifications.ecu.brand}`,
+          ].filter(Boolean) as string[],
+        },
+        suspension: {
+          type: formData.suspension_type,
+          brand: `F: ${formData.suspension.front.brand}, R: ${formData.suspension.rear.brand}`,
+          modifications: [
+            formData.suspension.front.model &&
+              `Front: ${formData.suspension.front.model}`,
+            formData.suspension.rear.model &&
+              `Rear: ${formData.suspension.rear.model}`,
+            formData.suspension.front.spring_rate &&
+              `F Spring Rate: ${formData.suspension.front.spring_rate}`,
+            formData.suspension.rear.spring_rate &&
+              `R Spring Rate: ${formData.suspension.rear.spring_rate}`,
+          ].filter(Boolean) as string[],
+        },
+        brakes: {
+          brand: `F: ${formData.brakes.front.caliper}, R: ${formData.brakes.rear.caliper}`,
+          modifications: [
+            formData.brakes.front.disc_size &&
+              `F Disc: ${formData.brakes.front.disc_size}`,
+            formData.brakes.rear.disc_size &&
+              `R Disc: ${formData.brakes.rear.disc_size}`,
+            formData.brakes.front.pads &&
+              `F Pads: ${formData.brakes.front.pads}`,
+            formData.brakes.rear.pads && `R Pads: ${formData.brakes.rear.pads}`,
+            formData.brakes.brake_lines &&
+              `Lines: ${formData.brakes.brake_lines}`,
+          ].filter(Boolean) as string[],
+        },
+        exterior: {
+          color: formData.exterior.paint.color,
+          modifications: [
+            formData.exterior.body_kit.front_bumper &&
+              `Front Bumper: ${formData.exterior.body_kit.front_bumper}`,
+            formData.exterior.body_kit.rear_bumper &&
+              `Rear Bumper: ${formData.exterior.body_kit.rear_bumper}`,
+            formData.exterior.body_kit.side_skirts &&
+              `Side Skirts: ${formData.exterior.body_kit.side_skirts}`,
+            formData.exterior.body_kit.rear_wing &&
+              `Wing: ${formData.exterior.body_kit.rear_wing}`,
+            formData.exterior.lighting.headlights &&
+              `Headlights: ${formData.exterior.lighting.headlights}`,
+          ].filter(Boolean) as string[],
+        },
+        interior: {
+          seats: `F: ${formData.interior.seats.front}, R: ${formData.interior.seats.rear}`,
+          modifications: [
+            formData.interior.steering_wheel.brand &&
+              `Steering: ${formData.interior.steering_wheel.brand} ${formData.interior.steering_wheel.model}`,
+            formData.interior.roll_cage.material &&
+              `Roll Cage: ${formData.interior.roll_cage.material}`,
+            formData.interior.audio.head_unit &&
+              `Audio: ${formData.interior.audio.head_unit}`,
+            ...formData.interior.gauges.filter(Boolean),
+          ].filter(Boolean) as string[],
+        },
+        performance_mods: {
+          intake: formData.engine.modifications?.intake?.brand,
+          exhaust: `${formData.engine.modifications?.exhaust?.header || ""} ${
+            formData.engine.modifications?.exhaust?.catback || ""
+          }`.trim(),
+          turbo: !!formData.engine.modifications?.turbo?.brand,
+          other: [
+            ...formData.performance_mods.weight_reduction,
+            ...formData.performance_mods.aero,
+            ...formData.performance_mods.chassis,
+            ...formData.performance_mods.cooling,
+          ].filter(Boolean) as string[],
+        },
+        images: uploadedImageUrls,
+      };
+
+      console.log("Inserting car data:", carData);
+
+      // Create the car
+      const newCar = await createCar(carData);
+
+      if (!newCar) {
+        console.error("Failed to create car");
+        alert("Failed to create car. Please try again.");
+        return;
+      }
+
+      console.log("Car created successfully:", newCar);
+
+      // Redirect to the new car's detail page
+      router.push(`/garage/${newCar.id}`);
     } catch (error) {
       console.error("Error creating car:", error);
+      alert("An error occurred while creating the car. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -455,11 +608,18 @@ export default function CreateCarPage() {
     // Insert it at the new position
     newImages.splice(dropIndex, 0, draggedImage);
 
+    // Also reorder the imageFiles array
+    const newImageFiles = [...imageFiles];
+    const draggedFile = newImageFiles[draggedIndex];
+    newImageFiles.splice(draggedIndex, 1);
+    newImageFiles.splice(dropIndex, 0, draggedFile);
+
     setFormData((prev) => ({
       ...prev,
       images: newImages,
     }));
 
+    setImageFiles(newImageFiles);
     setDraggedIndex(null);
   };
 
@@ -472,7 +632,6 @@ export default function CreateCarPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

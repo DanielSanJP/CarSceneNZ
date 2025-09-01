@@ -12,11 +12,32 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/app/login/action";
+import { useState } from "react";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  const handleSubmit = async (formData: FormData) => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await login(formData);
+    } catch (error) {
+      console.error("Login error:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Login failed. Please try again."
+      );
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -27,7 +48,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={login}>
+          <form action={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>
@@ -52,9 +73,14 @@ export function LoginForm({
                 <Input id="password" name="password" type="password" required />
               </div>
               <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full">
-                  Login
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Logging in..." : "Login"}
                 </Button>
+                {error && (
+                  <p className="text-sm text-destructive text-center">
+                    {error}
+                  </p>
+                )}
               </div>
             </div>
             <div className="mt-4 text-center text-sm">

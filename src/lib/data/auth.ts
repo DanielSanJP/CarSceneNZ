@@ -23,7 +23,19 @@ export async function getCurrentUser(): Promise<User | null> {
       .single()
 
     if (profileError || !profile) {
-      return null
+      console.warn('User profile not found for authenticated user:', user.id)
+      // Return basic user data without profile for now
+      const userData = {
+        id: user.id,
+        username: user.email?.split('@')[0] || 'user', // Fallback to email prefix
+        display_name: user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        email: user.email || '',
+        profile_image_url: undefined,
+        created_at: user.created_at || new Date().toISOString(),
+        updated_at: user.updated_at || new Date().toISOString(),
+      };
+      dataCache.set(cacheKey, userData, 5 * 60 * 1000); // Cache for 5 minutes
+      return userData;
     }
 
     const userData = {
@@ -36,7 +48,7 @@ export async function getCurrentUser(): Promise<User | null> {
       updated_at: profile.updated_at,
     };
 
-    dataCache.set(cacheKey, userData); // Cache for 5 minutes
+    dataCache.set(cacheKey, userData, 5 * 60 * 1000); // Cache for 5 minutes
     return userData;
   } catch (error) {
     console.error('Error getting current user:', error)
@@ -200,4 +212,26 @@ export async function registerAction(formData: FormData) {
 export async function logoutAction() {
   const supabase = createClient()
   await supabase.auth.signOut()
+}
+
+export async function updateUserDisplayName(displayName: string): Promise<boolean> {
+  try {
+    const supabase = createClient()
+    
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        display_name: displayName,
+      }
+    })
+
+    if (error) {
+      console.error('Error updating display name:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error updating display name:', error)
+    return false
+  }
 }

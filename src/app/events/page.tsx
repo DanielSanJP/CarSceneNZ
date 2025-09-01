@@ -1,6 +1,5 @@
 "use client";
 
-import { Navigation } from "@/components/nav";
 import {
   Card,
   CardContent,
@@ -168,8 +167,6 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen">
-      <Navigation />
-
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">

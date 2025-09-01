@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Navigation } from "@/components/nav";
 import { Button } from "@/components/ui/button";
 import { Users, Plus } from "lucide-react";
 import { CreateClubForm } from "@/components/clubs/create-club-form";
@@ -46,7 +45,6 @@ function ClubsPageContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

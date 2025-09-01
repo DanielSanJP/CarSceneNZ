@@ -2,11 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Medal, Award, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trophy, Medal, Award, Star, Users } from "lucide-react";
 import { getTopClubs } from "@/lib/data/leaderboards";
 import Link from "next/link";
 import Image from "next/image";
 import type { ClubRanking } from "@/lib/data/leaderboards";
+
+// Helper function to add timeout to any promise
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+    ),
+  ]);
+}
 
 interface ClubLeaderboardEntry {
   club: ClubRanking["club"];
@@ -19,12 +30,11 @@ export function ClubRankings() {
   const [clubLeaderboard, setClubLeaderboard] = useState<
     ClubLeaderboardEntry[]
   >([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadClubLeaderboard() {
       try {
-        const clubRankings = await getTopClubs(10);
+        const clubRankings = await withTimeout(getTopClubs(10), 3000);
 
         // Transform to our component's format
         const clubEntries: ClubLeaderboardEntry[] = clubRankings.map(
@@ -38,9 +48,10 @@ export function ClubRankings() {
 
         setClubLeaderboard(clubEntries);
       } catch (error) {
-        console.error("Error loading club leaderboard:", error);
-      } finally {
-        setLoading(false);
+        if (error instanceof Error && !error.message?.includes("Timeout")) {
+          console.error("Error loading club leaderboard:", error);
+        }
+        // Keep empty array - component will show empty state
       }
     }
 
@@ -53,14 +64,6 @@ export function ClubRankings() {
     if (rank === 3) return <Award className="h-5 w-5 text-amber-600" />;
     return null;
   };
-
-  if (loading) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Loading club rankings...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-2 md:space-y-3">
@@ -133,7 +136,16 @@ export function ClubRankings() {
 
       {clubLeaderboard.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No club data found</p>
+          <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h4 className="text-lg font-semibold text-muted-foreground mb-2">
+            No club rankings yet
+          </h4>
+          <p className="text-muted-foreground mb-4">
+            Create or join a club to start building your community presence!
+          </p>
+          <Link href="/clubs">
+            <Button>Explore Clubs</Button>
+          </Link>
         </div>
       )}
     </div>

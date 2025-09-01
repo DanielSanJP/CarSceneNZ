@@ -13,7 +13,17 @@ export async function getAllCars(): Promise<Car[]> {
           id,
           username,
           profile_image_url
-        )
+        ),
+        car_engines (*),
+        car_engine_modifications (*),
+        car_wheels (*),
+        car_suspension (*),
+        car_suspension_accessories (*),
+        car_brakes (*),
+        car_brake_accessories (*),
+        car_exterior (*),
+        car_interior (*),
+        car_performance_mods (*)
       `)
       .order('created_at', { ascending: false })
 
@@ -28,15 +38,6 @@ export async function getAllCars(): Promise<Car[]> {
       brand: car.brand,
       model: car.model,
       year: car.year,
-      suspension_type: car.suspension_type,
-      wheel_specs: car.wheel_specs,
-      tire_specs: car.tire_specs,
-      engine: car.engine,
-      suspension: car.suspension,
-      brakes: car.brakes,
-      exterior: car.exterior,
-      interior: car.interior,
-      performance_mods: car.performance_mods,
       images: car.images || [],
       total_likes: car.total_likes || 0,
       created_at: car.created_at,
@@ -44,9 +45,19 @@ export async function getAllCars(): Promise<Car[]> {
       owner: {
         id: car.users.id,
         username: car.users.username,
-        display_name: car.users.username, // display_name not stored in users table
+        display_name: car.users.username,
         profile_image_url: car.users.profile_image_url,
-      }
+      },
+      engine: car.car_engines?.[0] || undefined,
+      engine_modifications: car.car_engine_modifications || [],
+      wheels: car.car_wheels || [],
+      suspension: car.car_suspension || [],
+      suspension_accessories: car.car_suspension_accessories || [],
+      brakes: car.car_brakes || [],
+      brake_accessories: car.car_brake_accessories || [],
+      exterior: car.car_exterior || [],
+      interior: car.car_interior || [],
+      performance_mods: car.car_performance_mods || [],
     })) || []
   } catch (error) {
     console.error('Error getting all cars:', error)
@@ -66,7 +77,17 @@ export async function getCarById(carId: string): Promise<Car | null> {
           id,
           username,
           profile_image_url
-        )
+        ),
+        car_engines (*),
+        car_engine_modifications (*),
+        car_wheels (*),
+        car_suspension (*),
+        car_suspension_accessories (*),
+        car_brakes (*),
+        car_brake_accessories (*),
+        car_exterior (*),
+        car_interior (*),
+        car_performance_mods (*)
       `)
       .eq('id', carId)
       .single()
@@ -82,15 +103,6 @@ export async function getCarById(carId: string): Promise<Car | null> {
       brand: data.brand,
       model: data.model,
       year: data.year,
-      suspension_type: data.suspension_type,
-      wheel_specs: data.wheel_specs,
-      tire_specs: data.tire_specs,
-      engine: data.engine,
-      suspension: data.suspension,
-      brakes: data.brakes,
-      exterior: data.exterior,
-      interior: data.interior,
-      performance_mods: data.performance_mods,
       images: data.images || [],
       total_likes: data.total_likes || 0,
       created_at: data.created_at,
@@ -98,9 +110,19 @@ export async function getCarById(carId: string): Promise<Car | null> {
       owner: {
         id: data.users.id,
         username: data.users.username,
-        display_name: data.users.username, // display_name not stored in users table
+        display_name: data.users.username,
         profile_image_url: data.users.profile_image_url,
-      }
+      },
+      engine: data.car_engines?.[0] || undefined,
+      engine_modifications: data.car_engine_modifications || [],
+      wheels: data.car_wheels || [],
+      suspension: data.car_suspension || [],
+      suspension_accessories: data.car_suspension_accessories || [],
+      brakes: data.car_brakes || [],
+      brake_accessories: data.car_brake_accessories || [],
+      exterior: data.car_exterior || [],
+      interior: data.car_interior || [],
+      performance_mods: data.car_performance_mods || [],
     }
   } catch (error) {
     console.error('Error getting car by ID:', error)
@@ -120,7 +142,17 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
           id,
           username,
           profile_image_url
-        )
+        ),
+        car_engines (*),
+        car_engine_modifications (*),
+        car_wheels (*),
+        car_suspension (*),
+        car_suspension_accessories (*),
+        car_brakes (*),
+        car_brake_accessories (*),
+        car_exterior (*),
+        car_interior (*),
+        car_performance_mods (*)
       `)
       .eq('owner_id', ownerId)
       .order('created_at', { ascending: false })
@@ -136,15 +168,6 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
       brand: car.brand,
       model: car.model,
       year: car.year,
-      suspension_type: car.suspension_type,
-      wheel_specs: car.wheel_specs,
-      tire_specs: car.tire_specs,
-      engine: car.engine,
-      suspension: car.suspension,
-      brakes: car.brakes,
-      exterior: car.exterior,
-      interior: car.interior,
-      performance_mods: car.performance_mods,
       images: car.images || [],
       total_likes: car.total_likes || 0,
       created_at: car.created_at,
@@ -152,9 +175,19 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
       owner: {
         id: car.users.id,
         username: car.users.username,
-        display_name: car.users.username, // display_name not stored in users table
+        display_name: car.users.username,
         profile_image_url: car.users.profile_image_url,
-      }
+      },
+      engine: car.car_engines?.[0] || undefined,
+      engine_modifications: car.car_engine_modifications || [],
+      wheels: car.car_wheels || [],
+      suspension: car.car_suspension || [],
+      suspension_accessories: car.car_suspension_accessories || [],
+      brakes: car.car_brakes || [],
+      brake_accessories: car.car_brake_accessories || [],
+      exterior: car.car_exterior || [],
+      interior: car.car_interior || [],
+      performance_mods: car.car_performance_mods || [],
     })) || []
   } catch (error) {
     console.error('Error getting cars by owner:', error)
@@ -162,7 +195,14 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
   }
 }
 
-export async function createCar(carData: Omit<Car, 'id' | 'created_at' | 'updated_at' | 'total_likes' | 'owner'>): Promise<Car | null> {
+// Create basic car (just core info)
+export async function createCar(carData: {
+  owner_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  images?: string[];
+}): Promise<Car | null> {
   try {
     const supabase = createClient()
 
@@ -173,16 +213,7 @@ export async function createCar(carData: Omit<Car, 'id' | 'created_at' | 'update
         brand: carData.brand,
         model: carData.model,
         year: carData.year,
-        suspension_type: carData.suspension_type,
-        wheel_specs: carData.wheel_specs,
-        tire_specs: carData.tire_specs,
-        engine: carData.engine,
-        suspension: carData.suspension,
-        brakes: carData.brakes,
-        exterior: carData.exterior,
-        interior: carData.interior,
-        performance_mods: carData.performance_mods,
-        images: carData.images,
+        images: carData.images || [],
       })
       .select()
       .single()
@@ -199,27 +230,20 @@ export async function createCar(carData: Omit<Car, 'id' | 'created_at' | 'update
   }
 }
 
-export async function updateCar(carId: string, updates: Partial<Omit<Car, 'id' | 'created_at' | 'updated_at' | 'total_likes' | 'owner'>>): Promise<Car | null> {
+// Update basic car info
+export async function updateCar(carId: string, updates: {
+  brand?: string;
+  model?: string;
+  year?: number;
+  images?: string[];
+}): Promise<Car | null> {
   try {
     const supabase = createClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('cars')
       .update({
-        brand: updates.brand,
-        model: updates.model,
-        year: updates.year,
-        suspension_type: updates.suspension_type,
-        wheel_specs: updates.wheel_specs,
-        tire_specs: updates.tire_specs,
-        engine: updates.engine,
-        suspension: updates.suspension,
-        brakes: updates.brakes,
-        exterior: updates.exterior,
-        interior: updates.interior,
-        performance_mods: updates.performance_mods,
-        images: updates.images,
+        ...updates,
         updated_at: new Date().toISOString(),
       })
       .eq('id', carId)
@@ -236,6 +260,68 @@ export async function updateCar(carId: string, updates: Partial<Omit<Car, 'id' |
     console.error('Error updating car:', error)
     return null
   }
+}
+
+// Helper functions for normalized car components
+
+// Engine functions
+export async function createCarEngine(carId: string, engineData: {
+  engine_code?: string;
+  displacement?: string;
+  aspiration?: string;
+  power_hp?: number;
+  torque_nm?: number;
+}) {
+  const supabase = createClient()
+  return await supabase
+    .from('car_engines')
+    .upsert({ car_id: carId, ...engineData }, { onConflict: 'car_id' })
+    .select()
+    .single()
+}
+
+// Wheel functions
+export async function createCarWheels(carId: string, wheelsData: {
+  position: 'front' | 'rear';
+  wheel_brand?: string;
+  wheel_size?: string;
+  wheel_offset?: string;
+  tire_size?: string;
+  camber_degrees?: number;
+}[]) {
+  const supabase = createClient()
+  
+  // Delete existing wheels first
+  await supabase.from('car_wheels').delete().eq('car_id', carId)
+  
+  // Insert new wheels
+  return await supabase
+    .from('car_wheels')
+    .insert(wheelsData.map(wheel => ({ car_id: carId, ...wheel })))
+    .select()
+}
+
+// Suspension functions
+export async function createCarSuspension(carId: string, suspensionData: {
+  position?: 'front' | 'rear';
+  suspension_type?: string;
+  brand?: string;
+  model?: string;
+  spring_rate?: string;
+  camber_degrees?: number;
+  toe_degrees?: string;
+  caster_degrees?: string;
+}[]) {
+  const supabase = createClient()
+  
+  // Delete existing suspension first
+  await supabase.from('car_suspension').delete().eq('car_id', carId)
+  
+  // Insert new suspension
+  return await supabase
+    .from('car_suspension')
+    .insert(suspensionData.map(susp => ({ car_id: carId, ...susp })))
+    .select()
 }
 
 export async function deleteCar(carId: string): Promise<boolean> {

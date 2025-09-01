@@ -15,18 +15,36 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { signup } from "@/app/register/action";
+import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
+import { createClient } from "@/lib/utils/supabase/client";
 
 export function RegisterForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const [profileImage, setProfileImage] = useState<string>("");
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [error, setError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image must be less than 5MB");
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file");
+        return;
+      }
+
+      setProfileImageFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
         setProfileImage(e.target?.result as string);
@@ -41,15 +59,53 @@ export function RegisterForm({
 
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
+    setUploadStatus("Creating account...");
+    setError("");
+
     try {
-      // Add profile image to form data if it exists
-      if (profileImage) {
-        formData.append("profileImage", profileImage);
-      }
+      // First, create the account without the image
       await signup(formData);
+
+      // If there's a profile image, upload it after account creation
+      if (profileImageFile) {
+        setUploadStatus("Uploading profile image...");
+
+        // Wait a moment for user profile to be fully created
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Get the current user to get their ID
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          console.log("Attempting to upload profile image for user:", user.id);
+          const imageUrl = await uploadProfileImage(profileImageFile, user.id);
+          if (imageUrl) {
+            setUploadStatus("Profile image uploaded successfully!");
+            console.log("Profile image uploaded:", imageUrl);
+          } else {
+            setUploadStatus(
+              "Account created, but image upload failed. You can add it later in your profile."
+            );
+            console.error("Profile image upload failed");
+          }
+        } else {
+          console.error("No user found after registration");
+        }
+      }
+
+      // The signup function will redirect automatically
     } catch (error) {
       console.error("Signup error:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Registration failed. Please try again."
+      );
       setIsLoading(false);
+      setUploadStatus("");
     }
   };
   return (
@@ -148,6 +204,16 @@ export function RegisterForm({
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating Account..." : "Create Account"}
                 </Button>
+                {error && (
+                  <p className="text-sm text-destructive text-center">
+                    {error}
+                  </p>
+                )}
+                {uploadStatus && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    {uploadStatus}
+                  </p>
+                )}
               </div>
             </div>
             <div className="mt-4 text-center text-sm">

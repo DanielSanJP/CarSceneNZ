@@ -8,13 +8,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Navigation } from "@/components/nav";
 import { Calendar, Car as CarIcon, Users, Trophy, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { getAllCars, getAllEvents, getAllClubs, getAllUsers } from "@/lib/data";
 import type { Car, Event, User } from "@/types";
+
+// Helper function to add timeout to any promise
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+    ),
+  ]);
+}
 
 export default function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
@@ -26,27 +35,57 @@ export default function Home() {
     events: 0,
     clubs: 0,
   });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [eventsData, carsData, clubsData, usersData] = await Promise.all([
-          getAllEvents(),
-          getAllCars(),
-          getAllClubs(),
-          getAllUsers(),
-        ]);
+        // Fetch data with individual error handling and fast timeouts (3 seconds each)
+        const [eventsData, carsData, clubsData, usersData] =
+          await Promise.allSettled([
+            withTimeout(getAllEvents(), 3000),
+            withTimeout(getAllCars(), 3000),
+            withTimeout(getAllClubs(), 3000),
+            withTimeout(getAllUsers(), 3000),
+          ]);
+
+        // Process results, using empty arrays for failed fetches
+        const events =
+          eventsData.status === "fulfilled" ? eventsData.value : [];
+        const cars = carsData.status === "fulfilled" ? carsData.value : [];
+        const clubs = clubsData.status === "fulfilled" ? clubsData.value : [];
+        const users = usersData.status === "fulfilled" ? usersData.value : [];
+
+        // Only log errors if they're not timeouts (to reduce noise)
+        if (
+          eventsData.status === "rejected" &&
+          !eventsData.reason.message?.includes("Timeout")
+        )
+          console.error("Error fetching events:", eventsData.reason);
+        if (
+          carsData.status === "rejected" &&
+          !carsData.reason.message?.includes("Timeout")
+        )
+          console.error("Error fetching cars:", carsData.reason);
+        if (
+          clubsData.status === "rejected" &&
+          !clubsData.reason.message?.includes("Timeout")
+        )
+          console.error("Error fetching clubs:", clubsData.reason);
+        if (
+          usersData.status === "rejected" &&
+          !usersData.reason.message?.includes("Timeout")
+        )
+          console.error("Error fetching users:", usersData.reason);
 
         // Create users map for quick lookups
         const usersMapData: Record<string, User> = {};
-        usersData.forEach((user) => {
+        users.forEach((user) => {
           usersMapData[user.id] = user;
         });
         setUsersMap(usersMapData);
 
         // Process upcoming events
-        const upcoming = eventsData
+        const upcoming = events
           .filter((event) => {
             if (!event.daily_schedule || event.daily_schedule.length === 0)
               return false;
@@ -64,7 +103,7 @@ export default function Home() {
         setUpcomingEvents(upcoming);
 
         // Process featured cars (sort by total_likes)
-        const featured = carsData
+        const featured = cars
           .sort((a, b) => (b.total_likes || 0) - (a.total_likes || 0))
           .slice(0, 3);
 
@@ -72,15 +111,14 @@ export default function Home() {
 
         // Set stats
         setStats({
-          users: usersData.length,
-          cars: carsData.length,
-          events: eventsData.length,
-          clubs: clubsData.length,
+          users: users.length,
+          cars: cars.length,
+          events: events.length,
+          clubs: clubs.length,
         });
       } catch (error) {
-        console.error("Error fetching homepage data:", error);
-      } finally {
-        setLoading(false);
+        console.error("Error in fetchData:", error);
+        // Keep empty data - page will still function
       }
     };
 
@@ -121,24 +159,8 @@ export default function Home() {
     return "/cars/Forester1.jpg"; // Default image
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center">
-            <CarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="text-center space-y-6">
@@ -180,35 +202,52 @@ export default function Home() {
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {upcomingEvents.map((event: Event) => (
-            <Link key={event.id} href={`/events/${event.id}`}>
-              <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
-                <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                  <Image
-                    src={event.poster_image_url || "/events/default-event.jpg"}
-                    alt={event.title}
-                    width={400}
-                    height={225}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <CardHeader>
-                  <CardTitle>{event.title}</CardTitle>
-                  <CardDescription>
-                    {event.daily_schedule && event.daily_schedule.length > 0
-                      ? formatEventDate(event.daily_schedule[0].date)
-                      : "Date TBD"}{" "}
-                    - {event.location}
-                  </CardDescription>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {event.description
-                      ? event.description.slice(0, 100) + "..."
-                      : "No description available"}
-                  </p>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
+          {upcomingEvents.length > 0 ? (
+            upcomingEvents.map((event: Event) => (
+              <Link key={event.id} href={`/events/${event.id}`}>
+                <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
+                  <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                    <Image
+                      src={
+                        event.poster_image_url || "/events/default-event.jpg"
+                      }
+                      alt={event.title}
+                      width={400}
+                      height={225}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <CardHeader>
+                    <CardTitle>{event.title}</CardTitle>
+                    <CardDescription>
+                      {event.daily_schedule && event.daily_schedule.length > 0
+                        ? formatEventDate(event.daily_schedule[0].date)
+                        : "Date TBD"}{" "}
+                      - {event.location}
+                    </CardDescription>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {event.description
+                        ? event.description.slice(0, 100) + "..."
+                        : "No description available"}
+                    </p>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-12">
+              <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h4 className="text-lg font-semibold text-muted-foreground mb-2">
+                No upcoming events
+              </h4>
+              <p className="text-muted-foreground">
+                Be the first to create an event for the community!
+              </p>
+              <Link href="/events/create">
+                <Button className="mt-4">Create Event</Button>
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
@@ -223,35 +262,53 @@ export default function Home() {
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {featuredCars.map((car) => (
-            <Link key={car.id} href={`/garage/${car.id}`}>
-              <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
-                <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                  <Image
-                    src={getCarImage(car)}
-                    alt={`${car.brand} ${car.model}`}
-                    width={400}
-                    height={225}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <CardHeader>
-                  <CardTitle>
-                    {car.year} {car.brand} {car.model}
-                  </CardTitle>
-                  <CardDescription>
-                    Owned by {usersMap[car.owner_id]?.display_name || "Unknown"}
-                  </CardDescription>
-                  <div className="flex items-center justify-center gap-1 mt-2">
-                    <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
-                    <p className="text-sm text-muted-foreground">
-                      {car.total_likes || 0} likes
-                    </p>
+          {featuredCars.length > 0 ? (
+            featuredCars.map((car) => (
+              <Link key={car.id} href={`/garage/${car.id}`}>
+                <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
+                  <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                    <Image
+                      src={getCarImage(car)}
+                      alt={`${car.brand} ${car.model}`}
+                      width={400}
+                      height={225}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
+                  <CardHeader>
+                    <CardTitle>
+                      {car.year} {car.brand} {car.model}
+                    </CardTitle>
+                    <CardDescription>
+                      Owned by{" "}
+                      {usersMap[car.owner_id]?.display_name ||
+                        usersMap[car.owner_id]?.username ||
+                        "Unknown User"}
+                    </CardDescription>
+                    <div className="flex items-center justify-center gap-1 mt-2">
+                      <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
+                      <p className="text-sm text-muted-foreground">
+                        {car.total_likes || 0} likes
+                      </p>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-12">
+              <CarIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h4 className="text-lg font-semibold text-muted-foreground mb-2">
+                No cars to feature yet
+              </h4>
+              <p className="text-muted-foreground">
+                Share your ride and be the first featured car!
+              </p>
+              <Link href="/garage/create">
+                <Button className="mt-4">Add Your Car</Button>
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

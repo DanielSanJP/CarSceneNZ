@@ -32,6 +32,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchBar } from "@/components/search-bar";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { createClient } from "@/lib/utils/supabase/client";
 
 export function ModeToggle() {
   const { setTheme } = useTheme();
@@ -61,25 +62,42 @@ export function ModeToggle() {
 }
 
 function ProfileDropdown() {
-  const { user, signOut } = useAuth();
+  const { user, profile } = useAuth();
 
   if (!user) return null;
 
   const handleLogout = async () => {
-    await signOut();
+    const supabase = createClient();
+    await supabase.auth.signOut();
   };
+
+  // Use profile data from database, fallback to auth metadata
+  const displayName =
+    profile?.display_name ||
+    user.user_metadata?.display_name ||
+    user.user_metadata?.full_name ||
+    user.email?.split("@")[0] ||
+    "User";
+  const username = profile?.username || user.email?.split("@")[0] || "user";
+  const avatarUrl =
+    profile?.profile_image_url || user.user_metadata?.avatar_url;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user.profile_image_url} alt={user.display_name} />
+            <AvatarImage
+              src={avatarUrl}
+              alt={displayName}
+              className="object-cover"
+            />
             <AvatarFallback>
-              {(user.display_name || user.username)
+              {displayName
                 .split(" ")
                 .map((n: string) => n[0])
-                .join("")}
+                .join("")
+                .toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -87,9 +105,9 @@ function ProfileDropdown() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <div className="flex items-center justify-start gap-2 p-2">
           <div className="flex flex-col space-y-1 leading-none">
-            <p className="font-medium">{user.display_name}</p>
+            <p className="font-medium">{displayName}</p>
             <p className="w-[200px] truncate text-sm text-muted-foreground">
-              @{user.username}
+              @{username}
             </p>
           </div>
         </div>
@@ -129,7 +147,7 @@ function ProfileDropdown() {
 }
 
 export function Navigation() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   return (
     <div className="border-b">
@@ -219,7 +237,9 @@ export function Navigation() {
           <div className="flex items-center space-x-2">
             {isAuthenticated && <SearchBar />}
             <ModeToggle />
-            {isAuthenticated ? (
+            {loading ? (
+              <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+            ) : isAuthenticated ? (
               <ProfileDropdown />
             ) : (
               <>

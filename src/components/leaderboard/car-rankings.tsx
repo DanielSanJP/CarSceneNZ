@@ -2,11 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Medal, Award, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trophy, Medal, Award, Star, Car } from "lucide-react";
 import { getTopCars } from "@/lib/data/leaderboards";
 import Link from "next/link";
 import Image from "next/image";
 import type { CarRanking } from "@/lib/data/leaderboards";
+
+// Helper function to add timeout to any promise
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+    ),
+  ]);
+}
 
 interface CarLeaderboardEntry {
   car: CarRanking["car"];
@@ -19,12 +30,11 @@ export function CarRankings() {
   const [carLeaderboard, setCarLeaderboard] = useState<CarLeaderboardEntry[]>(
     []
   );
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadCarLeaderboard() {
       try {
-        const carRankings = await getTopCars(10);
+        const carRankings = await withTimeout(getTopCars(10), 3000);
 
         // Transform to our component's format
         const carEntries: CarLeaderboardEntry[] = carRankings.map(
@@ -42,9 +52,10 @@ export function CarRankings() {
 
         setCarLeaderboard(carEntries);
       } catch (error) {
-        console.error("Error loading car leaderboard:", error);
-      } finally {
-        setLoading(false);
+        if (error instanceof Error && !error.message?.includes("Timeout")) {
+          console.error("Error loading car leaderboard:", error);
+        }
+        // Keep empty array - component will show empty state
       }
     }
 
@@ -57,14 +68,6 @@ export function CarRankings() {
     if (rank === 3) return <Award className="h-5 w-5 text-amber-600" />;
     return null;
   };
-
-  if (loading) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Loading car rankings...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-2 md:space-y-3">
@@ -139,7 +142,16 @@ export function CarRankings() {
 
       {carLeaderboard.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No car data found</p>
+          <Car className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h4 className="text-lg font-semibold text-muted-foreground mb-2">
+            No car rankings yet
+          </h4>
+          <p className="text-muted-foreground mb-4">
+            Upload photos of your car and start collecting likes to compete!
+          </p>
+          <Link href="/garage/create">
+            <Button>Share Your Car</Button>
+          </Link>
         </div>
       )}
     </div>

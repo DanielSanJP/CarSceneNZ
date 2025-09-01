@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getUserFollowers, getUserFollowing, getUserById } from "@/data";
+import { getUserFollowers, getUserFollowing, getUserById } from "@/lib/data";
 import {
   Calendar,
   Mail,
@@ -57,18 +57,30 @@ export default function UserProfilePage() {
         }
         setProfileUser(user);
 
-        // Get user's cars (you'll need to import getCarsByOwner from cars.ts)
-        // For now, we'll leave this empty
+        // Get user's cars (leaving empty for now as per the original comment)
         setUserCars([]);
 
         // Get followers and following
-        const [followersData, followingData] = await Promise.all([
+        const [followersResult, followingResult] = await Promise.allSettled([
           getUserFollowers(user.id),
           getUserFollowing(user.id),
         ]);
 
+        const followersData =
+          followersResult.status === "fulfilled" ? followersResult.value : [];
+        const followingData =
+          followingResult.status === "fulfilled" ? followingResult.value : [];
+
         setFollowers(followersData);
         setFollowing(followingData);
+
+        // Log errors
+        if (followersResult.status === "rejected") {
+          console.error("Error fetching followers:", followersResult.reason);
+        }
+        if (followingResult.status === "rejected") {
+          console.error("Error fetching following:", followingResult.reason);
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
@@ -213,6 +225,7 @@ export default function UserProfilePage() {
                                     <AvatarImage
                                       src={follower.profile_image_url}
                                       alt={follower.username}
+                                      className="object-cover"
                                     />
                                     <AvatarFallback>
                                       {follower.username
@@ -273,6 +286,7 @@ export default function UserProfilePage() {
                                     <AvatarImage
                                       src={followedUser.profile_image_url}
                                       alt={followedUser.username}
+                                      className="object-cover"
                                     />
                                     <AvatarFallback>
                                       {followedUser.username

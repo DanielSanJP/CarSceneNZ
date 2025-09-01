@@ -1,10 +1,16 @@
-import { Navigation } from "@/components/nav";
-import { getCurrentUser } from "@/lib/data/auth";
+"use client";
+
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getCarsByOwner, getUserFollowers, getUserFollowing } from "@/data";
+import {
+  getCarsByOwner,
+  getUserFollowers,
+  getUserFollowing,
+  getUserById,
+} from "@/lib/data";
 import {
   Calendar,
   Edit,
@@ -18,52 +24,116 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import type { Car as CarType } from "@/types/car";
+import type { User } from "@/types/user";
+import { useEffect, useState } from "react";
 
-interface Car {
-  id: string;
-  owner_id: string;
-  brand: string;
-  model: string;
-  year: number;
-  suspension_type: string;
-  wheel_specs?: {
-    front?: {
-      brand: string;
-      size: string;
-      offset: string;
+export default function ProfilePage() {
+  const { user: authUser, isAuthenticated, loading } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [userCars, setUserCars] = useState<CarType[]>([]);
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [following, setFollowing] = useState<User[]>([]);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      redirect("/login");
+      return;
+    }
+
+    if (!authUser) return;
+
+    const fetchProfileData = async () => {
+      try {
+        // Get full user profile from database
+        const profileUser = await getUserById(authUser.id);
+        if (profileUser) {
+          // Merge auth data with profile data
+          const fullUser = {
+            ...profileUser,
+            email: authUser.email || profileUser.email,
+            display_name:
+              authUser.user_metadata?.display_name ||
+              authUser.user_metadata?.full_name ||
+              profileUser.username,
+          };
+          setUser(fullUser);
+        } else {
+          // Fallback to auth user data
+          const fallbackUser = {
+            id: authUser.id,
+            username: authUser.email?.split("@")[0] || "user",
+            display_name:
+              authUser.user_metadata?.display_name ||
+              authUser.user_metadata?.full_name ||
+              authUser.email?.split("@")[0] ||
+              "User",
+            email: authUser.email || "",
+            profile_image_url: authUser.user_metadata?.avatar_url,
+            created_at: authUser.created_at || new Date().toISOString(),
+            updated_at: authUser.updated_at || new Date().toISOString(),
+          };
+          setUser(fallbackUser);
+        }
+
+        // Fetch data with error handling
+        const [carsResult, followersResult, followingResult] =
+          await Promise.allSettled([
+            getCarsByOwner(authUser.id),
+            getUserFollowers(authUser.id),
+            getUserFollowing(authUser.id),
+          ]);
+
+        setUserCars(carsResult.status === "fulfilled" ? carsResult.value : []);
+        setFollowers(
+          followersResult.status === "fulfilled" ? followersResult.value : []
+        );
+        setFollowing(
+          followingResult.status === "fulfilled" ? followingResult.value : []
+        );
+
+        // Log errors
+        if (carsResult.status === "rejected") {
+          console.error("Error fetching user cars:", carsResult.reason);
+        }
+        if (followersResult.status === "rejected") {
+          console.error("Error fetching followers:", followersResult.reason);
+        }
+        if (followingResult.status === "rejected") {
+          console.error("Error fetching following:", followingResult.reason);
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      } finally {
+        setProfileLoading(false);
+      }
     };
-    rear?: {
-      brand: string;
-      size: string;
-      offset: string;
-    };
-  };
-  tire_specs?: {
-    front?: string;
-    rear?: string;
-  };
-  images: string[];
-  total_likes: number;
-  created_at: string;
-}
 
-export default async function ProfilePage() {
-  const user = await getCurrentUser();
+    fetchProfileData();
+  }, [authUser, isAuthenticated, loading]);
 
-  if (!user) {
-    redirect("/login");
+  if (loading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center">
+              <p>Loading profile...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Get user's cars
-  const userCars = await getCarsByOwner(user.id);
-
-  // Get followers and following
-  const followers = await getUserFollowers(user.id);
-  const following = await getUserFollowing(user.id);
+  if (!isAuthenticated || !user) {
+    redirect("/login");
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">Profile</h1>
@@ -78,6 +148,7 @@ export default async function ProfilePage() {
                       <AvatarImage
                         src={user.profile_image_url}
                         alt={user.username}
+                        className="object-cover"
                       />
                       <AvatarFallback className="text-lg">
                         {user.username
@@ -93,10 +164,12 @@ export default async function ProfilePage() {
                       <p className="text-muted-foreground">@{user.username}</p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
+                  <Link href="/profile/edit">
+                    <Button variant="outline" size="sm">
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  </Link>
                 </div>
               </CardHeader>
               <CardContent>
@@ -135,7 +208,7 @@ export default async function ProfilePage() {
                       <span className="text-sm">Total Likes</span>
                       <Badge variant="secondary">
                         {userCars.reduce(
-                          (sum, car) => sum + car.total_likes,
+                          (sum, car) => sum + (car.total_likes || 0),
                           0
                         )}
                       </Badge>

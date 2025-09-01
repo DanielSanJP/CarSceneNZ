@@ -6,71 +6,58 @@ import { createClient } from '@/lib/utils/supabase/server'
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
+  // Validate required fields
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const username = formData.get('username') as string
+  const displayName = formData.get('displayName') as string
+
+  if (!email || !password || !username || !displayName) {
+    throw new Error('All fields are required')
+  }
+
   const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+    email,
+    password,
+    options: {
+      data: {
+        display_name: displayName,
+      }
+    }
   }
 
   const { data: authData, error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/error')
+    console.error('Auth signup error:', error)
+    throw new Error(error.message || 'Registration failed')
   }
 
-  // Handle profile image upload
-  let profileImageUrl: string | null = null;
-  const profileImage = formData.get('profileImage') as string;
-
-  if (profileImage && profileImage.startsWith('data:image/') && authData.user) {
-    try {
-      // Extract the base64 data and mime type
-      const [mimeInfo, base64Data] = profileImage.split(',');
-      const mimeType = mimeInfo.split(':')[1].split(';')[0];
-
-      // Convert base64 to buffer
-      const buffer = Buffer.from(base64Data, 'base64');
-
-      // Generate unique filename
-      const fileName = `${authData.user.id}_${Date.now()}.${mimeType.split('/')[1]}`;
-
-      // Upload to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('profiles')
-        .upload(fileName, buffer, {
-          contentType: mimeType,
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('Profile image upload error:', uploadError);
-        // Continue without profile image if upload fails
-      } else {
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('profiles')
-          .getPublicUrl(fileName);
-
-        profileImageUrl = urlData.publicUrl;
-      }
-    } catch (error) {
-      console.error('Error processing profile image:', error);
-      // Continue without profile image if processing fails
-    }
-  }
-
-  // Create user profile in the users table
   if (authData.user) {
+    console.log('User created successfully:', {
+      id: authData.user.id,
+      email: authData.user.email,
+      display_name: authData.user.user_metadata?.display_name
+    })
+
+    // Create user profile in the users table first
+    const userData = {
+      id: authData.user.id,
+      username: username,
+      profile_image_url: null, // We'll update this later via client-side upload
+    }
+
+    console.log('Inserting user profile:', userData)
+
     const { error: profileError } = await supabase
       .from('users')
-      .insert({
-        id: authData.user.id,
-        username: formData.get('username') as string,
-        profile_image_url: profileImageUrl,
-      })
+      .insert(userData)
 
     if (profileError) {
       console.error('Profile creation error:', profileError)
-      // You might want to handle this error differently
+      throw new Error('Failed to create user profile')
+    } else {
+      console.log('User profile created successfully')
     }
   }
 

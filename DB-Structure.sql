@@ -1,5 +1,88 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
+CREATE TABLE public.car_brake_accessories (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    component character varying NOT NULL,
+    brand character varying,
+    model character varying,
+    description character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_brake_accessories_pkey PRIMARY KEY (id),
+    CONSTRAINT car_brake_accessories_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_brakes (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    position character varying NOT NULL CHECK (
+        "position"::text = ANY (
+            ARRAY ['front'::character varying, 'rear'::character varying]::text []
+        )
+    ),
+    caliper character varying,
+    disc_size character varying,
+    disc_type character varying,
+    pads character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_brakes_pkey PRIMARY KEY (id),
+    CONSTRAINT car_brakes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_engine_modifications (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    component character varying NOT NULL,
+    subcomponent character varying,
+    brand character varying,
+    model character varying,
+    description text,
+    is_custom boolean DEFAULT false,
+    tuned_by character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_engine_modifications_pkey PRIMARY KEY (id),
+    CONSTRAINT car_engine_modifications_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_engines (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL UNIQUE,
+    engine_code character varying,
+    displacement character varying,
+    aspiration character varying,
+    power_hp integer,
+    torque_nm integer,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_engines_pkey PRIMARY KEY (id),
+    CONSTRAINT car_engines_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_exterior (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    category character varying NOT NULL,
+    component character varying,
+    brand character varying,
+    model character varying,
+    color character varying,
+    type character varying,
+    finish character varying,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_exterior_pkey PRIMARY KEY (id),
+    CONSTRAINT car_exterior_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_interior (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    category character varying NOT NULL,
+    position character varying,
+    brand character varying,
+    model character varying,
+    size character varying,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_interior_pkey PRIMARY KEY (id),
+    CONSTRAINT car_interior_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
 CREATE TABLE public.car_likes (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
     car_id uuid NOT NULL,
@@ -8,6 +91,69 @@ CREATE TABLE public.car_likes (
     CONSTRAINT car_likes_pkey PRIMARY KEY (id),
     CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
     CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_performance_mods (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    category character varying NOT NULL,
+    modification character varying NOT NULL,
+    brand character varying,
+    model character varying,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_performance_mods_pkey PRIMARY KEY (id),
+    CONSTRAINT car_performance_mods_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_suspension (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    position character varying CHECK (
+        "position"::text = ANY (
+            ARRAY ['front'::character varying, 'rear'::character varying]::text []
+        )
+    ),
+    suspension_type character varying,
+    brand character varying,
+    model character varying,
+    spring_rate character varying,
+    camber_degrees numeric,
+    toe_degrees character varying,
+    caster_degrees character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_suspension_pkey PRIMARY KEY (id),
+    CONSTRAINT car_suspension_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_suspension_accessories (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    accessory_type character varying NOT NULL,
+    position character varying,
+    brand character varying,
+    model character varying,
+    size character varying,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_suspension_accessories_pkey PRIMARY KEY (id),
+    CONSTRAINT car_suspension_accessories_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_wheels (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    car_id uuid NOT NULL,
+    position character varying NOT NULL CHECK (
+        "position"::text = ANY (
+            ARRAY ['front'::character varying, 'rear'::character varying]::text []
+        )
+    ),
+    wheel_brand character varying,
+    wheel_size character varying,
+    wheel_offset character varying,
+    tire_size character varying,
+    camber_degrees numeric,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT car_wheels_pkey PRIMARY KEY (id),
+    CONSTRAINT car_wheels_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
 );
 CREATE TABLE public.cars (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -42,8 +188,8 @@ CREATE TABLE public.club_members (
     ),
     joined_at timestamp with time zone DEFAULT now(),
     CONSTRAINT club_members_pkey PRIMARY KEY (id),
-    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
+    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
+    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.clubs (
     id character varying NOT NULL,
@@ -75,8 +221,8 @@ CREATE TABLE public.event_attendees (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT event_attendees_pkey PRIMARY KEY (id),
-    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.events (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),

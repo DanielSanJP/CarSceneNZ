@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Navigation } from "@/components/nav";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -634,7 +633,6 @@ export default function EditCarPage() {
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Access Denied</h1>
@@ -650,7 +648,6 @@ export default function EditCarPage() {
   if (!car) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Car Not Found</h1>
@@ -670,7 +667,6 @@ export default function EditCarPage() {
   if (car.owner_id !== user.id) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Access Denied</h1>
@@ -880,7 +876,6 @@ export default function EditCarPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}

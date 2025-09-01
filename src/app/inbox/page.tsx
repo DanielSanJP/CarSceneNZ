@@ -2,7 +2,6 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Navigation } from "@/components/nav";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getAllMessages } from "@/data";
@@ -30,7 +29,6 @@ export default function InboxPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
@@ -48,8 +46,6 @@ export default function InboxPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

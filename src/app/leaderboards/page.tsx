@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Users, Car, Trophy } from "lucide-react";
-import { Navigation } from "@/components/nav";
 import { OwnerRankings } from "@/components/leaderboard/owner-rankings";
 import { ClubRankings } from "@/components/leaderboard/club-rankings";
 import { CarRankings } from "@/components/leaderboard/car-rankings";
@@ -34,7 +33,6 @@ function LeaderboardsPageContent() {
 
   return (
     <>
-      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4">🏆 Leaderboards</h1>
