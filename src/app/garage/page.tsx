@@ -1,48 +1,38 @@
 "use client";
 
 import { Navigation } from "@/components/nav";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cars } from "@/data";
-import { Plus, Car, Edit3, Eye, Star } from "lucide-react";
+import { getCarsByOwner } from "@/lib/data/cars";
+import { Plus, Car as CarIcon, Edit3, Eye, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
-
-interface Car {
-  id: string;
-  owner_id: string;
-  brand: string;
-  model: string;
-  year: number;
-  suspension_type: string;
-  wheel_specs?: {
-    front?: {
-      brand: string;
-      size: string;
-      offset: string;
-      camber?: number;
-    };
-    rear?: {
-      brand: string;
-      size: string;
-      offset: string;
-      camber?: number;
-    };
-  };
-  tire_specs?: {
-    front?: string;
-    rear?: string;
-  };
-  images: string[];
-  total_likes: number;
-  created_at: string;
-}
+import { useState, useEffect } from "react";
+import type { Car } from "@/types/car";
 
 export default function GaragePage() {
   const { user, isAuthenticated } = useAuth();
+  const [userCars, setUserCars] = useState<Car[]>([]);
+  const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const fetchUserCars = async () => {
+      if (!user) return;
+
+      try {
+        const cars = await getCarsByOwner(user.id);
+        setUserCars(cars);
+      } catch (error) {
+        console.error("Error fetching user cars:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserCars();
+  }, [user]);
 
   if (!isAuthenticated || !user) {
     return (
@@ -60,8 +50,21 @@ export default function GaragePage() {
     );
   }
 
-  // Get user's cars
-  const userCars = (cars as Car[]).filter((car) => car.owner_id === user.id);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <CarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
+              <p className="text-muted-foreground">Loading your garage...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
@@ -92,7 +95,7 @@ export default function GaragePage() {
           {userCars.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
-                <Car className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <CarIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">
                   No cars in your garage yet
                 </h3>
@@ -114,9 +117,9 @@ export default function GaragePage() {
                   <Card className="overflow-hidden pt-0 ">
                     {/* Car Image */}
                     <div className="relative aspect-square overflow-hidden">
-                      {failedImages.has(car.id) || !car.images[0] ? (
+                      {failedImages.has(car.id) || !car.images?.[0] ? (
                         <div className="aspect-square bg-muted flex items-center justify-center">
-                          <Car className="h-16 w-16 text-muted-foreground" />
+                          <CarIcon className="h-16 w-16 text-muted-foreground" />
                         </div>
                       ) : (
                         <Image

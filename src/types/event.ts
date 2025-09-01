@@ -4,7 +4,11 @@ export interface Event {
   title: string;
   description?: string;
   poster_image_url?: string;
-  daily_schedule?: unknown; // JSONB - adjust based on actual structure
+  daily_schedule?: Array<{
+    date: string;
+    start_time?: string;
+    end_time?: string;
+  }>; // JSONB - array of schedule objects
   location?: string;
   created_at: string;
   updated_at: string;

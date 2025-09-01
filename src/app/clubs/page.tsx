@@ -3,51 +3,27 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/nav";
-import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
-import { Users, Plus, Heart } from "lucide-react";
-import { getUserClubMemberships } from "@/data";
+import { Users, Plus } from "lucide-react";
 import { CreateClubForm } from "@/components/clubs/create-club-form";
 import { JoinClubView } from "@/components/clubs/join-club-view";
-import { MyClubView } from "@/components/clubs/my-club-view";
 
-interface Club {
-  id: string;
-  name: string;
-  description: string;
-  banner_image_url: string;
-  club_type: "open" | "invite" | "closed";
-  location: string;
-  leader_id: string;
-  total_likes: number;
-  created_at: string;
-}
-
-interface ClubMembership {
-  club: Club;
-  role: "leader" | "co-leader" | "member";
-  joined_at: string;
-  memberCount: number;
-}
-
-type MainTab = "myclub" | "join" | "create";
+type MainTab = "join" | "create";
 
 function ClubsPageContent() {
-  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   // Get tab from URL or use default
   const getInitialTab = (): MainTab => {
     const tabFromUrl = searchParams.get("tab") as MainTab;
-    if (tabFromUrl && ["myclub", "join", "create"].includes(tabFromUrl)) {
+    if (tabFromUrl && ["join", "create"].includes(tabFromUrl)) {
       return tabFromUrl;
     }
-    return isAuthenticated ? "myclub" : "join";
+    return "join";
   };
 
   const [mainTab, setMainTab] = useState<MainTab>(getInitialTab());
-  const [userClubs, setUserClubs] = useState<ClubMembership[]>([]);
 
   // Handle tab change and update URL
   const handleTabChange = (tab: MainTab) => {
@@ -59,31 +35,14 @@ function ClubsPageContent() {
   // Sync tab state with URL changes
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab") as MainTab;
-    if (tabFromUrl && ["myclub", "join", "create"].includes(tabFromUrl)) {
+    if (tabFromUrl && ["join", "create"].includes(tabFromUrl)) {
       setMainTab(tabFromUrl);
     } else {
       // If no valid tab in URL, set default and update URL
-      const defaultTab = userClubs.length > 0 ? "myclub" : "join";
-      setMainTab(defaultTab);
-      router.replace(`/clubs?tab=${defaultTab}`, { scroll: false });
+      setMainTab("join");
+      router.replace(`/clubs?tab=join`, { scroll: false });
     }
-  }, [searchParams, userClubs.length, router]);
-
-  // Load user's club memberships
-  useEffect(() => {
-    if (!isAuthenticated || !user) {
-      setUserClubs([]);
-      return;
-    }
-
-    const memberships = getUserClubMemberships(user.id);
-    setUserClubs(memberships);
-
-    // Update default tab based on whether user has clubs
-    if (isAuthenticated) {
-      setMainTab(memberships.length > 0 ? "myclub" : "join");
-    }
-  }, [isAuthenticated, user]);
+  }, [searchParams, router]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,16 +60,6 @@ function ClubsPageContent() {
           {/* Main Navigation Tabs */}
           <div className="flex justify-center mb-8">
             <div className="bg-muted p-1 rounded-lg flex gap-1">
-              {userClubs.length > 0 && (
-                <Button
-                  variant={mainTab === "myclub" ? "default" : "ghost"}
-                  onClick={() => handleTabChange("myclub")}
-                  className="flex items-center gap-2"
-                >
-                  <Heart className="h-4 w-4" />
-                  My Club{userClubs.length > 1 ? "s" : ""}
-                </Button>
-              )}
               <Button
                 variant={mainTab === "join" ? "default" : "ghost"}
                 onClick={() => handleTabChange("join")}
@@ -130,10 +79,7 @@ function ClubsPageContent() {
             </div>
           </div>
 
-          {mainTab === "myclub" ? (
-            /* My Club Section */
-            <MyClubView userClubs={userClubs} />
-          ) : mainTab === "join" ? (
+          {mainTab === "join" ? (
             /* Join Club Section */
             <JoinClubView currentTab={mainTab} />
           ) : (

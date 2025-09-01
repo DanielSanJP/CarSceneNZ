@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Navigation } from "@/components/nav";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  users,
-  cars,
-  getUserFollowers,
-  getUserFollowing,
-  getUserById,
-} from "@/data";
+import { getUserFollowers, getUserFollowing, getUserById } from "@/data";
 import {
   Calendar,
   Mail,
@@ -36,67 +30,54 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-
-interface User {
-  id: string;
-  username: string;
-  display_name: string;
-  email: string;
-  profile_image_url: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Car {
-  id: string;
-  owner_id: string;
-  brand: string;
-  model: string;
-  year: number;
-  suspension_type: string;
-  wheel_specs?: {
-    front?: {
-      brand: string;
-      size: string;
-      offset: string;
-    };
-    rear?: {
-      brand: string;
-      size: string;
-      offset: string;
-    };
-  };
-  tire_specs?: {
-    front?: string;
-    rear?: string;
-  };
-  images: string[];
-  total_likes: number;
-  created_at: string;
-}
+import type { User } from "@/types/user";
+import type { Car as CarType } from "@/types/car";
 
 export default function UserProfilePage() {
   const { user: currentUser } = useAuth();
   const params = useParams();
   const router = useRouter();
   const userId = params.id as string;
+
+  const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [userCars, setUserCars] = useState<CarType[]>([]);
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [following, setFollowing] = useState<User[]>([]);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
 
-  // Find the user by ID or username
-  const profileUser = (users as User[]).find(
-    (u) => u.id === userId || u.username === userId
-  );
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // Get user profile
+        const user = await getUserById(userId);
+        if (!user) {
+          return;
+        }
+        setProfileUser(user);
 
-  // Get user's cars
-  const userCars = (cars as Car[]).filter(
-    (car) => car.owner_id === profileUser?.id
-  );
+        // Get user's cars (you'll need to import getCarsByOwner from cars.ts)
+        // For now, we'll leave this empty
+        setUserCars([]);
 
-  // Get followers and following
-  const followers = profileUser ? getUserFollowers(profileUser.id) : [];
-  const following = profileUser ? getUserFollowing(profileUser.id) : [];
+        // Get followers and following
+        const [followersData, followingData] = await Promise.all([
+          getUserFollowers(user.id),
+          getUserFollowing(user.id),
+        ]);
+
+        setFollowers(followersData);
+        setFollowing(followingData);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    if (userId) {
+      fetchUserData();
+    }
+  }, [userId]);
 
   const handleBackClick = () => {
     if (window.history.length > 1) {
@@ -221,43 +202,36 @@ export default function UserProfilePage() {
                                 No followers yet
                               </p>
                             ) : (
-                              followers.map((followerId) => {
-                                const follower = getUserById(followerId);
-                                if (!follower) return null;
-
-                                return (
-                                  <Link
-                                    key={follower.id}
-                                    href={`/profile/${follower.id}`}
-                                    onClick={() =>
-                                      setFollowersDialogOpen(false)
-                                    }
-                                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                                  >
-                                    <Avatar className="h-10 w-10">
-                                      <AvatarImage
-                                        src={follower.profile_image_url}
-                                        alt={follower.display_name}
-                                      />
-                                      <AvatarFallback>
-                                        {follower.display_name
-                                          .split(" ")
-                                          .map((n) => n[0])
-                                          .join("")}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                      <p className="font-medium">
-                                        {follower.display_name}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        @{follower.username}
-                                      </p>
-                                    </div>
-                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                                  </Link>
-                                );
-                              })
+                              followers.map((follower) => (
+                                <Link
+                                  key={follower.id}
+                                  href={`/profile/${follower.id}`}
+                                  onClick={() => setFollowersDialogOpen(false)}
+                                  className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                  <Avatar className="h-10 w-10">
+                                    <AvatarImage
+                                      src={follower.profile_image_url}
+                                      alt={follower.display_name}
+                                    />
+                                    <AvatarFallback>
+                                      {follower.display_name
+                                        .split(" ")
+                                        .map((n: string) => n[0])
+                                        .join("")}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <p className="font-medium">
+                                      {follower.display_name}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      @{follower.username}
+                                    </p>
+                                  </div>
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                </Link>
+                              ))
                             )}
                           </div>
                         </DialogContent>
@@ -288,43 +262,36 @@ export default function UserProfilePage() {
                                 Not following anyone yet
                               </p>
                             ) : (
-                              following.map((followingId) => {
-                                const followedUser = getUserById(followingId);
-                                if (!followedUser) return null;
-
-                                return (
-                                  <Link
-                                    key={followedUser.id}
-                                    href={`/profile/${followedUser.id}`}
-                                    onClick={() =>
-                                      setFollowingDialogOpen(false)
-                                    }
-                                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                                  >
-                                    <Avatar className="h-10 w-10">
-                                      <AvatarImage
-                                        src={followedUser.profile_image_url}
-                                        alt={followedUser.display_name}
-                                      />
-                                      <AvatarFallback>
-                                        {followedUser.display_name
-                                          .split(" ")
-                                          .map((n) => n[0])
-                                          .join("")}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                      <p className="font-medium">
-                                        {followedUser.display_name}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        @{followedUser.username}
-                                      </p>
-                                    </div>
-                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                                  </Link>
-                                );
-                              })
+                              following.map((followedUser) => (
+                                <Link
+                                  key={followedUser.id}
+                                  href={`/profile/${followedUser.id}`}
+                                  onClick={() => setFollowingDialogOpen(false)}
+                                  className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                  <Avatar className="h-10 w-10">
+                                    <AvatarImage
+                                      src={followedUser.profile_image_url}
+                                      alt={followedUser.display_name}
+                                    />
+                                    <AvatarFallback>
+                                      {followedUser.display_name
+                                        .split(" ")
+                                        .map((n: string) => n[0])
+                                        .join("")}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <p className="font-medium">
+                                      {followedUser.display_name}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      @{followedUser.username}
+                                    </p>
+                                  </div>
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                </Link>
+                              ))
                             )}
                           </div>
                         </DialogContent>
@@ -404,7 +371,9 @@ export default function UserProfilePage() {
                         <Card className="overflow-hidden pt-0">
                           {/* Car Image */}
                           <div className="relative aspect-square overflow-hidden">
-                            {failedImages.has(car.id) || !car.images[0] ? (
+                            {failedImages.has(car.id) ||
+                            !car.images ||
+                            !car.images[0] ? (
                               <div className="aspect-square bg-muted flex items-center justify-center">
                                 <Car className="h-12 w-12 text-muted-foreground" />
                               </div>

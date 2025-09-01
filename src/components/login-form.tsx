@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,18 +17,6 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true);
-    try {
-      await login(formData);
-    } catch (error) {
-      console.error("Login error:", error);
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -40,7 +27,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={handleSubmit}>
+          <form action={login}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>
@@ -65,8 +52,8 @@ export function LoginForm({
                 <Input id="password" name="password" type="password" required />
               </div>
               <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Logging in..." : "Login"}
+                <Button type="submit" className="w-full">
+                  Login
                 </Button>
               </div>
             </div>

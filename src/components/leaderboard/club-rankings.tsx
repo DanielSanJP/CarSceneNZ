@@ -3,19 +3,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Medal, Award, Star } from "lucide-react";
-import { clubs, clubMembers } from "@/data";
+import { getTopClubs } from "@/lib/data/leaderboards";
 import Link from "next/link";
 import Image from "next/image";
-
-interface Club {
-  id: string;
-  name: string;
-  banner_image_url: string;
-  total_likes: number;
-}
+import type { ClubRanking } from "@/lib/data/leaderboards";
 
 interface ClubLeaderboardEntry {
-  club: Club;
+  club: ClubRanking["club"];
   totalLikes: number;
   memberCount: number;
   rank: number;
@@ -28,36 +22,23 @@ export function ClubRankings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    function loadClubLeaderboard() {
+    async function loadClubLeaderboard() {
       try {
-        // Use imported data directly
-        const clubsData = clubs;
-        const clubMembersData = clubMembers;
+        const clubRankings = await getTopClubs(10);
 
-        // Calculate club member counts
-        const clubMemberCounts = new Map<string, number>();
-        clubMembersData.forEach((membership) => {
-          const count = clubMemberCounts.get(membership.club_id) || 0;
-          clubMemberCounts.set(membership.club_id, count + 1);
-        });
-
-        // Create club leaderboard entries
-        const clubEntries: ClubLeaderboardEntry[] = clubsData.map((club) => ({
-          club,
-          totalLikes: club.total_likes,
-          memberCount: clubMemberCounts.get(club.id) || 0,
-          rank: 0,
-        }));
-
-        // Sort by total likes (descending) and assign ranks
-        clubEntries.sort((a, b) => b.totalLikes - a.totalLikes);
-        clubEntries.forEach((entry, index) => {
-          entry.rank = index + 1;
-        });
+        // Transform to our component's format
+        const clubEntries: ClubLeaderboardEntry[] = clubRankings.map(
+          (ranking) => ({
+            club: ranking.club,
+            totalLikes: ranking.likes,
+            memberCount: ranking.memberCount,
+            rank: ranking.rank,
+          })
+        );
 
         setClubLeaderboard(clubEntries);
       } catch (error) {
-        console.error("Failed to load club leaderboard data:", error);
+        console.error("Error loading club leaderboard:", error);
       } finally {
         setLoading(false);
       }

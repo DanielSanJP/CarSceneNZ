@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Navigation } from "@/components/nav";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { cars } from "@/data";
+import { getCarById } from "@/data";
 import {
   ArrowLeft,
   Save,
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/accordion";
 import Link from "next/link";
 import Image from "next/image";
+import type { Car } from "@/types";
 
 interface WheelSpec {
   brand: string;
@@ -199,40 +200,6 @@ interface CarFormData {
   performance_mods: PerformanceModsSpec;
 }
 
-interface Car {
-  id: string;
-  owner_id: string;
-  brand: string;
-  model: string;
-  year: number;
-  suspension_type: string;
-  wheel_specs?: {
-    front?: {
-      brand: string;
-      size: string;
-      offset: string;
-    };
-    rear?: {
-      brand: string;
-      size: string;
-      offset: string;
-    };
-  };
-  tire_specs?: {
-    front?: string;
-    rear?: string;
-  };
-  images: string[];
-  total_likes: number;
-  created_at: string;
-  engine?: EngineSpec;
-  brakes?: BrakeSpec;
-  suspension?: SuspensionSpec;
-  exterior?: ExteriorSpec;
-  interior?: InteriorSpec;
-  performance_mods?: PerformanceModsSpec;
-}
-
 export default function EditCarPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -363,151 +330,305 @@ export default function EditCarPage() {
   });
 
   useEffect(() => {
-    const foundCar = (cars as Car[]).find((c) => c.id === carId);
-    if (foundCar) {
-      setCar(foundCar);
-      setFormData({
-        brand: foundCar.brand,
-        model: foundCar.model,
-        year: foundCar.year,
-        suspension_type: foundCar.suspension_type,
-        wheel_specs: {
-          front: foundCar.wheel_specs?.front || {
-            brand: "",
-            size: "",
-            offset: "",
-          },
-          rear: foundCar.wheel_specs?.rear || {
-            brand: "",
-            size: "",
-            offset: "",
-          },
-        },
-        tire_specs: {
-          front: foundCar.tire_specs?.front || "",
-          rear: foundCar.tire_specs?.rear || "",
-        },
-        images: foundCar.images,
-        engine: foundCar.engine || {
-          type: "",
-          displacement: "",
-          horsepower: "",
-          torque: "",
-          fuel_system: "",
-          aspiration: "",
-          engine_code: "",
-          power_hp: 0,
-          torque_nm: 0,
-          modifications: {
-            turbo: { brand: "" },
-            supercharger: { brand: "" },
-            intercooler: { brand: "" },
-            exhaust: { header: "", catback: "" },
-            intake: { brand: "" },
-            ecu: { brand: "", tuned_by: "" },
-            internals: {
-              pistons: "",
-              rods: "",
-              valves: "",
-              springs: "",
-              cams: "",
+    const loadCar = async () => {
+      try {
+        const foundCar = await getCarById(carId);
+        if (foundCar) {
+          setCar(foundCar);
+          setFormData({
+            brand: foundCar.brand,
+            model: foundCar.model,
+            year: foundCar.year,
+            suspension_type: foundCar.suspension_type || "",
+            wheel_specs: {
+              front:
+                foundCar.wheel_specs?.front &&
+                typeof foundCar.wheel_specs.front === "object" &&
+                foundCar.wheel_specs.front !== null &&
+                "brand" in foundCar.wheel_specs.front
+                  ? (foundCar.wheel_specs.front as WheelSpec)
+                  : {
+                      brand: "",
+                      size: "",
+                      offset: "",
+                    },
+              rear:
+                foundCar.wheel_specs?.rear &&
+                typeof foundCar.wheel_specs.rear === "object" &&
+                foundCar.wheel_specs.rear !== null &&
+                "brand" in foundCar.wheel_specs.rear
+                  ? (foundCar.wheel_specs.rear as WheelSpec)
+                  : {
+                      brand: "",
+                      size: "",
+                      offset: "",
+                    },
             },
-            fuel_system: { injectors: "", fuel_pump: "", fuel_rail: "" },
-          },
-        },
-        brakes: foundCar.brakes || {
-          front: {
-            brand: "",
-            size: "",
-            type: "",
-            caliper: "",
-            disc_size: "",
-            disc_type: "",
-            pads: "",
-          },
-          rear: {
-            brand: "",
-            size: "",
-            type: "",
-            caliper: "",
-            disc_size: "",
-            disc_type: "",
-            pads: "",
-          },
-          brake_lines: "",
-          master_cylinder: "",
-        },
-        suspension: foundCar.suspension || {
-          front: {
-            brand: "",
-            type: "",
-            spring_rate: "",
-            damper: "",
-            model: "",
-            camber: 0,
-            toe: "",
-            caster: "",
-          },
-          rear: {
-            brand: "",
-            type: "",
-            spring_rate: "",
-            damper: "",
-            model: "",
-            camber: 0,
-            toe: "",
-            caster: "",
-          },
-        },
-        exterior: foundCar.exterior || {
-          paint: { color: "", type: "", finish: "" },
-          body_kit: {
-            front_bumper: "",
-            rear_bumper: "",
-            side_skirts: "",
-            rear_wing: "",
-          },
-          wheels: "",
-          exhaust: "",
-          spoiler: "",
-          lighting: { headlights: "", taillights: "", indicators: "" },
-          other: "",
-        },
-        interior: foundCar.interior
-          ? {
-              ...foundCar.interior,
-              gauges: Array.isArray(foundCar.interior.gauges)
-                ? foundCar.interior.gauges
-                : typeof foundCar.interior.gauges === "string"
-                ? [foundCar.interior.gauges]
-                : [],
-            }
-          : {
-              seats: { front: "", rear: "" },
-              steering_wheel: { brand: "", model: "", size: "" },
-              dashboard: "",
-              carpet: "",
-              gauges: [],
-              audio_system: "",
-              roll_cage: { material: "" },
-              audio: { head_unit: "", speakers: "", subwoofer: "" },
-              other: "",
+            tire_specs: {
+              front:
+                foundCar.tire_specs?.front &&
+                typeof foundCar.tire_specs.front === "string"
+                  ? foundCar.tire_specs.front
+                  : "",
+              rear:
+                foundCar.tire_specs?.rear &&
+                typeof foundCar.tire_specs.rear === "string"
+                  ? foundCar.tire_specs.rear
+                  : "",
             },
-        performance_mods: foundCar.performance_mods || {
-          intake: "",
-          exhaust: "",
-          turbo: "",
-          intercooler: "",
-          fuel_system: "",
-          ignition: "",
-          weight_reduction: [],
-          aero: [],
-          chassis: [],
-          cooling: [],
-          other: "",
-        },
-      });
-    }
+            images: foundCar.images || [],
+            engine: foundCar.engine
+              ? {
+                  type: foundCar.engine.type || "",
+                  displacement: foundCar.engine.displacement || "",
+                  horsepower: String(foundCar.engine.horsepower || ""),
+                  torque: String(foundCar.engine.torque || ""),
+                  fuel_system: "",
+                  aspiration: "",
+                  engine_code: "",
+                  power_hp: foundCar.engine.horsepower || 0,
+                  torque_nm: foundCar.engine.torque || 0,
+                  modifications: {
+                    turbo: { brand: "" },
+                    supercharger: { brand: "" },
+                    intercooler: { brand: "" },
+                    exhaust: { header: "", catback: "" },
+                    intake: { brand: "" },
+                    ecu: { brand: "", tuned_by: "" },
+                    internals: {
+                      pistons: "",
+                      rods: "",
+                      valves: "",
+                      springs: "",
+                      cams: "",
+                    },
+                    fuel_system: {
+                      injectors: "",
+                      fuel_pump: "",
+                      fuel_rail: "",
+                    },
+                  },
+                }
+              : {
+                  type: "",
+                  displacement: "",
+                  horsepower: "",
+                  torque: "",
+                  fuel_system: "",
+                  aspiration: "",
+                  engine_code: "",
+                  power_hp: 0,
+                  torque_nm: 0,
+                  modifications: {
+                    turbo: { brand: "" },
+                    supercharger: { brand: "" },
+                    intercooler: { brand: "" },
+                    exhaust: { header: "", catback: "" },
+                    intake: { brand: "" },
+                    ecu: { brand: "", tuned_by: "" },
+                    internals: {
+                      pistons: "",
+                      rods: "",
+                      valves: "",
+                      springs: "",
+                      cams: "",
+                    },
+                    fuel_system: {
+                      injectors: "",
+                      fuel_pump: "",
+                      fuel_rail: "",
+                    },
+                  },
+                },
+            brakes: foundCar.brakes
+              ? {
+                  front: {
+                    brand: foundCar.brakes.brand || "",
+                    size: "",
+                    type: foundCar.brakes.type || "",
+                    caliper: "",
+                    disc_size: "",
+                    disc_type: "",
+                    pads: "",
+                  },
+                  rear: {
+                    brand: foundCar.brakes.brand || "",
+                    size: "",
+                    type: foundCar.brakes.type || "",
+                    caliper: "",
+                    disc_size: "",
+                    disc_type: "",
+                    pads: "",
+                  },
+                  brake_lines: "",
+                  master_cylinder: "",
+                }
+              : {
+                  front: {
+                    brand: "",
+                    size: "",
+                    type: "",
+                    caliper: "",
+                    disc_size: "",
+                    disc_type: "",
+                    pads: "",
+                  },
+                  rear: {
+                    brand: "",
+                    size: "",
+                    type: "",
+                    caliper: "",
+                    disc_size: "",
+                    disc_type: "",
+                    pads: "",
+                  },
+                  brake_lines: "",
+                  master_cylinder: "",
+                },
+            suspension: foundCar.suspension
+              ? {
+                  front: {
+                    brand: foundCar.suspension.brand || "",
+                    type: foundCar.suspension.type || "",
+                    spring_rate: "",
+                    damper: "",
+                    model: "",
+                    camber: 0,
+                    toe: "",
+                    caster: "",
+                  },
+                  rear: {
+                    brand: foundCar.suspension.brand || "",
+                    type: foundCar.suspension.type || "",
+                    spring_rate: "",
+                    damper: "",
+                    model: "",
+                    camber: 0,
+                    toe: "",
+                    caster: "",
+                  },
+                }
+              : {
+                  front: {
+                    brand: "",
+                    type: "",
+                    spring_rate: "",
+                    damper: "",
+                    model: "",
+                    camber: 0,
+                    toe: "",
+                    caster: "",
+                  },
+                  rear: {
+                    brand: "",
+                    type: "",
+                    spring_rate: "",
+                    damper: "",
+                    model: "",
+                    camber: 0,
+                    toe: "",
+                    caster: "",
+                  },
+                },
+            exterior: foundCar.exterior
+              ? {
+                  paint: {
+                    color: foundCar.exterior.color || "",
+                    type: "",
+                    finish: "",
+                  },
+                  body_kit: {
+                    front_bumper: "",
+                    rear_bumper: "",
+                    side_skirts: "",
+                    rear_wing: "",
+                  },
+                  wheels: "",
+                  exhaust: "",
+                  spoiler: "",
+                  lighting: { headlights: "", taillights: "", indicators: "" },
+                  other: "",
+                }
+              : {
+                  paint: { color: "", type: "", finish: "" },
+                  body_kit: {
+                    front_bumper: "",
+                    rear_bumper: "",
+                    side_skirts: "",
+                    rear_wing: "",
+                  },
+                  wheels: "",
+                  exhaust: "",
+                  spoiler: "",
+                  lighting: { headlights: "", taillights: "", indicators: "" },
+                  other: "",
+                },
+            interior: foundCar.interior
+              ? {
+                  seats: {
+                    front: foundCar.interior.seats || "",
+                    rear: "",
+                  },
+                  steering_wheel: { brand: "", model: "", size: "" },
+                  dashboard: "",
+                  carpet: "",
+                  gauges: Array.isArray(foundCar.interior.gauges)
+                    ? foundCar.interior.gauges
+                    : [],
+                  audio_system: "",
+                  roll_cage: { material: "" },
+                  audio: { head_unit: "", speakers: "", subwoofer: "" },
+                  other: "",
+                }
+              : {
+                  seats: { front: "", rear: "" },
+                  steering_wheel: { brand: "", model: "", size: "" },
+                  dashboard: "",
+                  carpet: "",
+                  gauges: [],
+                  audio_system: "",
+                  roll_cage: { material: "" },
+                  audio: { head_unit: "", speakers: "", subwoofer: "" },
+                  other: "",
+                },
+            performance_mods: foundCar.performance_mods
+              ? {
+                  intake: foundCar.performance_mods.intake || "",
+                  exhaust: foundCar.performance_mods.exhaust || "",
+                  turbo: "",
+                  intercooler: "",
+                  fuel_system: "",
+                  ignition: "",
+                  weight_reduction: Array.isArray(
+                    foundCar.performance_mods.other
+                  )
+                    ? foundCar.performance_mods.other
+                    : [],
+                  aero: [],
+                  chassis: [],
+                  cooling: [],
+                  other: "",
+                }
+              : {
+                  intake: "",
+                  exhaust: "",
+                  turbo: "",
+                  intercooler: "",
+                  fuel_system: "",
+                  ignition: "",
+                  weight_reduction: [],
+                  aero: [],
+                  chassis: [],
+                  cooling: [],
+                  other: "",
+                },
+          });
+        }
+      } catch (error) {
+        console.error("Error loading car:", error);
+      }
+    };
+    loadCar();
   }, [carId]);
 
   if (!isAuthenticated || !user) {

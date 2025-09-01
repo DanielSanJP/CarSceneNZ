@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Navigation } from "@/components/nav";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,56 +20,55 @@ import {
   Share2,
   Heart,
 } from "lucide-react";
-import {
-  events,
-  eventAttendees,
-  getUserById,
-  getEventDateRange,
-  formatScheduleDisplay,
-  DailySchedule,
-} from "@/data";
+import { getEventById, getEventAttendees, getUserById } from "@/data";
 import Image from "next/image";
 import Link from "next/link";
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  daily_schedule: DailySchedule[];
-  host_id: string;
-  poster_image_url: string;
-  created_at: string;
-}
-
-interface EventAttendee {
-  event_id: string;
-  user_id: string;
-  status:
-    | "going"
-    | "interested"
-    | "maybe"
-    | "not_going"
-    | "approved"
-    | "pending";
-  created_at: string;
-}
+import type { Event, EventAttendee } from "@/types/event";
+import type { User } from "@/types/user";
 
 export default function EventDetailPage() {
   const { user: currentUser } = useAuth();
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
+
+  const [event, setEvent] = useState<Event | null>(null);
+  const [attendees, setAttendees] = useState<EventAttendee[]>([]);
+  const [host, setHost] = useState<User | null>(null);
   const [failedImage, setFailedImage] = useState(false);
   const [userStatus, setUserStatus] = useState<string | null>(null);
 
-  // Find the event
-  const event = (events as Event[]).find((e) => e.id === eventId);
+  useEffect(() => {
+    const fetchEventData = async () => {
+      try {
+        // Get event details
+        const eventData = await getEventById(eventId);
+        if (!eventData) {
+          return;
+        }
+        setEvent(eventData);
 
-  // Get event attendees
-  const attendees = (eventAttendees as EventAttendee[]).filter(
-    (attendee) => attendee.event_id === eventId
-  );
+        // Get event attendees
+        const attendeesData = await getEventAttendees(eventId);
+        setAttendees(attendeesData);
+
+        // Get host details if not already included
+        if (eventData.host_id && !eventData.host) {
+          const hostData = await getUserById(eventData.host_id);
+          setHost(hostData);
+        } else if (eventData.host) {
+          // Convert the partial host object to a full User object or handle it properly
+          setHost(eventData.host as User);
+        }
+      } catch (error) {
+        console.error("Error fetching event data:", error);
+      }
+    };
+
+    if (eventId) {
+      fetchEventData();
+    }
+  }, [eventId]);
 
   // Get attendee counts
   const goingCount = attendees.filter(
@@ -105,11 +104,9 @@ export default function EventDetailPage() {
     const shareUrl = `${window.location.origin}/events/${eventId}`;
     const shareData = {
       title: event.title,
-      text: `Check out this event: ${
-        event.title
-      } - ${event.description.substring(0, 100)}${
-        event.description.length > 100 ? "..." : ""
-      }`,
+      text: `Check out this event: ${event.title} - ${
+        event.description ? event.description.substring(0, 100) : ""
+      }${event.description && event.description.length > 100 ? "..." : ""}`,
       url: shareUrl,
     };
 
@@ -141,8 +138,7 @@ export default function EventDetailPage() {
     }
   };
 
-  // Get host info
-  const host = event ? getUserById(event.host_id) : null;
+  // Get host info is handled in useEffect above
 
   if (!event) {
     return (
@@ -164,10 +160,15 @@ export default function EventDetailPage() {
   }
 
   // Helper function to format date for daily schedule
-  const getEventDateInfo = (schedule: DailySchedule[]) => {
+  const getEventDateInfo = (
+    schedule: Array<{ date: string; start_time?: string; end_time?: string }>
+  ) => {
     if (!schedule || schedule.length === 0) return { full: "", time: "" };
 
-    const { startDate, endDate, isMultiDay } = getEventDateRange(schedule);
+    const dates = schedule.map((s) => new Date(s.date));
+    const startDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const endDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const isMultiDay = startDate.getTime() !== endDate.getTime();
 
     // Format full date display
     let fullDisplay = startDate.toLocaleDateString("en-NZ", {
@@ -187,13 +188,26 @@ export default function EventDetailPage() {
       fullDisplay = `${fullDisplay} - ${endDateFull}`;
     }
 
+    // Format time display
+    const time = schedule
+      .map((s) => {
+        if (s.start_time && s.end_time) {
+          return `${s.start_time} - ${s.end_time}`;
+        } else if (s.start_time) {
+          return `Starts at ${s.start_time}`;
+        } else {
+          return "All day";
+        }
+      })
+      .join(", ");
+
     return {
       full: fullDisplay,
-      time: formatScheduleDisplay(schedule),
+      time: time,
     };
   };
 
-  const dateInfo = getEventDateInfo(event.daily_schedule);
+  const dateInfo = getEventDateInfo(event.daily_schedule || []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -228,7 +242,7 @@ export default function EventDetailPage() {
               <Card className="py-0">
                 <CardContent className="p-0">
                   <div className="relative w-full overflow-hidden rounded-lg flex items-center justify-center">
-                    {failedImage ? (
+                    {failedImage || !event.poster_image_url ? (
                       <div className="w-full min-h-[300px] flex items-center justify-center">
                         <div className="text-center">
                           <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
@@ -271,7 +285,7 @@ export default function EventDetailPage() {
                         <AvatarFallback>
                           {host.display_name
                             .split(" ")
-                            .map((n) => n[0])
+                            .map((n: string) => n[0])
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
@@ -361,7 +375,8 @@ export default function EventDetailPage() {
                                     </div>
                                     <div>
                                       <div className="font-semibold text-sm">
-                                        {event.daily_schedule.length > 1
+                                        {event.daily_schedule &&
+                                        event.daily_schedule.length > 1
                                           ? `Day ${index + 1} - ${dayName}`
                                           : dayName}
                                       </div>
@@ -378,11 +393,6 @@ export default function EventDetailPage() {
                                     {schedule.start_time} - {schedule.end_time}
                                   </Badge>
                                 </div>
-                                {schedule.description && (
-                                  <p className="text-sm text-muted-foreground mt-2 pl-13">
-                                    {schedule.description}
-                                  </p>
-                                )}
                               </div>
                             );
                           })}

@@ -4,27 +4,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Medal, Award, Star } from "lucide-react";
-import { users, cars, clubs, clubMembers } from "@/data";
+import { getTopOwners } from "@/lib/data/leaderboards";
 import Link from "next/link";
 import Image from "next/image";
-
-interface User {
-  id: string;
-  username: string;
-  display_name: string;
-  profile_image_url: string;
-}
-
-interface Car {
-  id: string;
-  owner_id: string;
-  brand: string;
-  model: string;
-  total_likes: number;
-}
+import type { OwnerRanking } from "@/lib/data/leaderboards";
 
 interface LeaderboardEntry {
-  user: User;
+  user: OwnerRanking["owner"];
   totalLikes: number;
   clubName: string | null;
   rank: number;
@@ -35,54 +21,23 @@ export function OwnerRankings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    function loadOwnerLeaderboard() {
+    async function loadOwnerLeaderboard() {
       try {
-        // Use imported data directly
-        const usersData: User[] = users;
-        const carsData: Car[] = cars;
-        const clubsData = clubs;
-        const clubMembersData = clubMembers;
+        const ownerRankings = await getTopOwners(10);
 
-        // Calculate likes per user
-        const userLikes = new Map<string, number>();
-        const userClubs = new Map<string, string>();
-
-        // Initialize all users
-        usersData.forEach((user) => {
-          userLikes.set(user.id, 0);
-        });
-
-        // Map users to their clubs
-        clubMembersData.forEach((membership) => {
-          const club = clubsData.find((c) => c.id === membership.club_id);
-          if (club) {
-            userClubs.set(membership.user_id, club.name);
-          }
-        });
-
-        // Count total likes per user
-        carsData.forEach((car) => {
-          const currentLikes = userLikes.get(car.owner_id) || 0;
-          userLikes.set(car.owner_id, currentLikes + car.total_likes);
-        });
-
-        // Create owner leaderboard entries
-        const ownerEntries: LeaderboardEntry[] = usersData.map((user) => ({
-          user,
-          totalLikes: userLikes.get(user.id) || 0,
-          clubName: userClubs.get(user.id) || null,
-          rank: 0,
-        }));
-
-        // Sort by total likes (descending) and assign ranks
-        ownerEntries.sort((a, b) => b.totalLikes - a.totalLikes);
-        ownerEntries.forEach((entry, index) => {
-          entry.rank = index + 1;
-        });
+        // Transform to our component's format
+        const ownerEntries: LeaderboardEntry[] = ownerRankings.map(
+          (ranking) => ({
+            user: ranking.owner,
+            totalLikes: ranking.totalLikes,
+            clubName: null, // Club info not included in current ranking
+            rank: ranking.rank,
+          })
+        );
 
         setLeaderboard(ownerEntries);
       } catch (error) {
-        console.error("Failed to load owner leaderboard data:", error);
+        console.error("Error loading owner leaderboard:", error);
       } finally {
         setLoading(false);
       }

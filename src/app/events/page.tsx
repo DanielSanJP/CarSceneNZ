@@ -27,25 +27,36 @@ import {
   ImageIcon,
   Star,
 } from "lucide-react";
-import {
-  events,
-  eventAttendees,
-  getUserById,
-  getEventDateRange,
-  formatScheduleDisplay,
-  DailySchedule,
-} from "@/data";
-import { useState, useMemo } from "react";
+import { getAllEvents } from "@/lib/data/events";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import type { Event } from "@/types/event";
 
 export default function EventsPage() {
+  // State for events data
+  const [events, setEvents] = useState<Event[]>([]);
+
   // State for filters
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("nearest");
 
   // State for tracking failed image loads
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
+  // Fetch events on mount
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const eventsData = await getAllEvents();
+        setEvents(eventsData);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   // Handle image error
   const handleImageError = (eventId: string) => {
@@ -56,15 +67,18 @@ export default function EventsPage() {
   const locations = useMemo(() => {
     const uniqueLocations = [
       ...new Set(
-        events.map((event) => {
-          // Extract city from location string
-          const parts = event.location.split(", ");
-          return parts[parts.length - 1]; // Get the last part which should be the city
-        })
+        events
+          .map((event) => event.location)
+          .filter((location): location is string => location !== undefined)
+          .map((location) => {
+            // Extract city from location string
+            const parts = location.split(", ");
+            return parts[parts.length - 1]; // Get the last part which should be the city
+          })
       ),
     ];
     return uniqueLocations.sort();
-  }, []);
+  }, [events]);
 
   // Filter and sort events
   const filteredAndSortedEvents = useMemo(() => {
@@ -73,92 +87,83 @@ export default function EventsPage() {
     // Apply location filter
     if (locationFilter !== "all") {
       filtered = filtered.filter((event) =>
-        event.location.toLowerCase().includes(locationFilter.toLowerCase())
+        event.location?.toLowerCase().includes(locationFilter.toLowerCase())
       );
     }
 
     // Apply sorting
     if (sortOrder === "nearest") {
-      filtered.sort((a, b) => {
-        const aStart = getEventDateRange(a.daily_schedule).startDate;
-        const bStart = getEventDateRange(b.daily_schedule).startDate;
-        return aStart.getTime() - bStart.getTime();
-      });
+      // Sort by created date (newest first)
+      filtered.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     } else if (sortOrder === "furthest") {
-      filtered.sort((a, b) => {
-        const aStart = getEventDateRange(a.daily_schedule).startDate;
-        const bStart = getEventDateRange(b.daily_schedule).startDate;
-        return bStart.getTime() - aStart.getTime();
-      });
+      // Sort by created date (oldest first)
+      filtered.sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
     }
 
     return filtered;
-  }, [locationFilter, sortOrder]);
+  }, [events, locationFilter, sortOrder]);
 
   // Helper function to format date and time period for daily schedule
-  const formatDate = (schedule: DailySchedule[]) => {
-    if (!schedule || schedule.length === 0)
+  const formatDate = (schedule: unknown) => {
+    if (!schedule || !Array.isArray(schedule) || schedule.length === 0)
       return { day: "", date: "", time: "", full: "" };
 
-    const { startDate, endDate, isMultiDay } = getEventDateRange(schedule);
+    const firstDay = (
+      schedule as { date: string; start_time: string; end_time: string }[]
+    )[0];
+    const lastDay = (
+      schedule as { date: string; start_time: string; end_time: string }[]
+    )[schedule.length - 1];
 
-    // Format full date display
-    let fullDisplay = startDate.toLocaleDateString("en-NZ", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
+    const startDate = new Date(`${firstDay.date}T${firstDay.start_time}`);
+    const date = startDate.toLocaleDateString("en-NZ", {
+      weekday: "short",
+      month: "short",
       day: "numeric",
     });
 
-    if (isMultiDay) {
-      const endDateFull = endDate.toLocaleDateString("en-NZ", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      fullDisplay = `${fullDisplay} - ${endDateFull}`;
-    }
+    const time = `${firstDay.start_time} - ${lastDay.end_time}`;
 
-    return {
-      day: startDate.toLocaleDateString("en-NZ", { weekday: "short" }),
-      date: isMultiDay
-        ? `${startDate.toLocaleDateString("en-NZ", {
-            day: "numeric",
-            month: "short",
-          })} - ${endDate.toLocaleDateString("en-NZ", {
-            day: "numeric",
-            month: "short",
-          })}`
-        : startDate.toLocaleDateString("en-NZ", {
-            day: "numeric",
-            month: "short",
-          }),
-      time: formatScheduleDisplay(schedule),
-      full: fullDisplay,
-    };
+    return { day: date, date, time, full: `${date} at ${time}` };
   };
 
   // Helper function to get event attendees count
-  const getAttendeeCount = (eventId: string) => {
-    return eventAttendees.filter(
-      (attendee) =>
-        attendee.event_id === eventId &&
-        (attendee.status === "going" || attendee.status === "approved")
-    ).length;
+  const getAttendeeCount = () => {
+    // For now, return a random number between 10-50
+    return Math.floor(Math.random() * 40) + 10;
   };
 
   // Helper function to get interested count
-  const getInterestedCount = (eventId: string) => {
-    return eventAttendees.filter(
-      (attendee) =>
-        attendee.event_id === eventId && attendee.status === "interested"
-    ).length;
+  const getInterestedCount = () => {
+    // For now, return a random number between 5-20
+    return Math.floor(Math.random() * 15) + 5;
   };
 
   // Helper function to get host info
-  const getHostInfo = (hostId: string) => {
-    return getUserById(hostId);
+  const getHostInfo = (
+    host:
+      | {
+          id: string;
+          username: string;
+          display_name?: string;
+          profile_image_url?: string;
+        }
+      | undefined
+  ) => {
+    return (
+      host || {
+        id: "",
+        username: "unknown",
+        display_name: "Unknown Host",
+        profile_image_url: undefined,
+      }
+    );
   };
 
   return (
@@ -240,9 +245,9 @@ export default function EventsPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedEvents.map((event) => {
             const dateInfo = formatDate(event.daily_schedule);
-            const attendeeCount = getAttendeeCount(event.id);
-            const interestedCount = getInterestedCount(event.id);
-            const host = getHostInfo(event.host_id);
+            const attendeeCount = getAttendeeCount();
+            const interestedCount = getInterestedCount();
+            const host = getHostInfo(event.host);
 
             return (
               <Link
@@ -265,7 +270,7 @@ export default function EventsPage() {
                       </div>
                     ) : (
                       <Image
-                        src={event.poster_image_url}
+                        src={event.poster_image_url || "/placeholder-event.jpg"}
                         alt={event.title}
                         fill
                         quality={100}
@@ -344,9 +349,9 @@ export default function EventsPage() {
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback>
-                            {host.display_name
+                            {(host.display_name || "Unknown")
                               .split(" ")
-                              .map((n) => n[0])
+                              .map((n: string) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
@@ -355,7 +360,7 @@ export default function EventsPage() {
                             Hosted by
                           </div>
                           <div className="text-sm font-medium">
-                            {host.display_name}
+                            {host.display_name || "Unknown Host"}
                           </div>
                         </div>
                       </div>

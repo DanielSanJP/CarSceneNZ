@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Navigation } from "@/components/nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { clubs } from "@/data";
+import { getClubById } from "@/data";
 
 interface ClubFormData {
   name: string;
@@ -78,31 +78,41 @@ export default function EditClubPage() {
 
   // Load club data
   useEffect(() => {
-    if (!clubId) return;
+    const loadClub = async () => {
+      if (!clubId) return;
 
-    const club = clubs.find((c) => c.id === clubId);
-    if (!club) {
-      setClubNotFound(true);
-      setIsLoadingClub(false);
-      return;
-    }
+      try {
+        const club = await getClubById(clubId);
+        if (!club) {
+          setClubNotFound(true);
+          setIsLoadingClub(false);
+          return;
+        }
 
-    // Check if user is the leader
-    if (!user || club.leader_id !== user.id) {
-      router.push(`/clubs/${clubId}`);
-      return;
-    }
+        // Check if user is the leader
+        if (!user || club.leader_id !== user.id) {
+          router.push(`/clubs/${clubId}`);
+          return;
+        }
 
-    // Pre-populate form with existing data
-    setFormData({
-      name: club.name,
-      description: club.description,
-      location: club.location,
-      club_type: club.club_type,
-      banner_image: club.banner_image_url,
-    });
-    setImagePreview(club.banner_image_url);
-    setIsLoadingClub(false);
+        // Pre-populate form with existing data
+        setFormData({
+          name: club.name || "",
+          description: club.description || "",
+          location: club.location || "",
+          club_type: (club.club_type as "open" | "invite" | "closed") || "open",
+          banner_image: club.banner_image_url || "",
+        });
+        setImagePreview(club.banner_image_url || "");
+        setIsLoadingClub(false);
+      } catch (error) {
+        console.error("Error loading club:", error);
+        setClubNotFound(true);
+        setIsLoadingClub(false);
+      }
+    };
+
+    loadClub();
   }, [clubId, user, router]);
 
   if (!isAuthenticated || !user) {

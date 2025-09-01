@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,77 +9,93 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Navigation } from "@/components/nav";
-import { Calendar, Car, Users, Trophy, Star } from "lucide-react";
+import { Calendar, Car as CarIcon, Users, Trophy, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { users, cars, events, clubs, carLikes } from "@/data";
-
-interface Car {
-  id: string;
-  owner_id: string;
-  brand: string;
-  model: string;
-  year: number;
-  suspension_type:
-    | "air suspension"
-    | "lowering springs"
-    | "coilovers"
-    | "stock";
-  wheel_specs: {
-    front: {
-      brand: string;
-      size: string;
-      offset: string;
-    };
-    rear: {
-      brand: string;
-      size: string;
-      offset: string;
-    };
-  };
-  tire_specs: {
-    front: string;
-    rear: string;
-  };
-  images: string[];
-  total_likes: number;
-  created_at: string;
-}
+import { useState, useEffect } from "react";
+import { getAllCars, getAllEvents, getAllClubs, getAllUsers } from "@/lib/data";
+import type { Car, Event, Club } from "@/types";
 
 interface User {
   id: string;
   username: string;
   display_name: string;
   email: string;
-  profile_image_url: string;
+  profile_image_url?: string;
   created_at: string;
   updated_at: string;
 }
 
 export default function Home() {
-  const upcomingEvents = events
-    .filter((event) => new Date(event.daily_schedule[0].date) > new Date())
-    .sort(
-      (a, b) =>
-        new Date(a.daily_schedule[0].date).getTime() -
-        new Date(b.daily_schedule[0].date).getTime()
-    )
-    .slice(0, 3);
-
-  const carLikesCount: { [key: string]: number } = {};
-  carLikes.forEach((like) => {
-    carLikesCount[like.car_id] = (carLikesCount[like.car_id] || 0) + 1;
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [featuredCars, setFeaturedCars] = useState<Car[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, User>>({});
+  const [stats, setStats] = useState({
+    users: 0,
+    cars: 0,
+    events: 0,
+    clubs: 0,
   });
+  const [loading, setLoading] = useState(true);
 
-  const usersMap: { [key: string]: User } = {};
-  users.forEach((user) => {
-    usersMap[user.id] = user;
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [eventsData, carsData, clubsData, usersData] = await Promise.all([
+          getAllEvents(),
+          getAllCars(),
+          getAllClubs(),
+          getAllUsers(),
+        ]);
 
-  const featuredCars = cars
-    .map((car) => ({ ...car, likes: carLikesCount[car.id] || 0 }))
-    .sort((a, b) => b.likes - a.likes)
-    .slice(0, 3);
+        // Create users map for quick lookups
+        const usersMapData: Record<string, User> = {};
+        usersData.forEach((user) => {
+          usersMapData[user.id] = user;
+        });
+        setUsersMap(usersMapData);
+
+        // Process upcoming events
+        const upcoming = eventsData
+          .filter((event) => {
+            if (!event.daily_schedule || event.daily_schedule.length === 0)
+              return false;
+            return new Date(event.daily_schedule[0].date) > new Date();
+          })
+          .sort((a, b) => {
+            if (!a.daily_schedule?.[0] || !b.daily_schedule?.[0]) return 0;
+            return (
+              new Date(a.daily_schedule[0].date).getTime() -
+              new Date(b.daily_schedule[0].date).getTime()
+            );
+          })
+          .slice(0, 3);
+
+        setUpcomingEvents(upcoming);
+
+        // Process featured cars (sort by total_likes)
+        const featured = carsData
+          .sort((a, b) => (b.total_likes || 0) - (a.total_likes || 0))
+          .slice(0, 3);
+
+        setFeaturedCars(featured);
+
+        // Set stats
+        setStats({
+          users: usersData.length,
+          cars: carsData.length,
+          events: eventsData.length,
+          clubs: clubsData.length,
+        });
+      } catch (error) {
+        console.error("Error fetching homepage data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Helper function to format date with ordinal suffix
   const formatEventDate = (dateString: string) => {
@@ -112,6 +130,20 @@ export default function Home() {
     // Add more mappings as needed
     return "/cars/Forester1.jpg"; // Default image
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-16">
+          <div className="text-center">
+            <CarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,12 +190,12 @@ export default function Home() {
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {upcomingEvents.map((event) => (
+          {upcomingEvents.map((event: Event) => (
             <Link key={event.id} href={`/events/${event.id}`}>
               <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
                 <div className="aspect-video w-full overflow-hidden rounded-t-lg">
                   <Image
-                    src={event.poster_image_url}
+                    src={event.poster_image_url || "/events/default-event.jpg"}
                     alt={event.title}
                     width={400}
                     height={225}
@@ -173,11 +205,15 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>{event.title}</CardTitle>
                   <CardDescription>
-                    {formatEventDate(event.daily_schedule[0].date)} -{" "}
-                    {event.location}
+                    {event.daily_schedule && event.daily_schedule.length > 0
+                      ? formatEventDate(event.daily_schedule[0].date)
+                      : "Date TBD"}{" "}
+                    - {event.location}
                   </CardDescription>
                   <p className="text-sm text-muted-foreground mt-2">
-                    {event.description.slice(0, 100)}...
+                    {event.description
+                      ? event.description.slice(0, 100) + "..."
+                      : "No description available"}
                   </p>
                 </CardHeader>
               </Card>
@@ -219,7 +255,7 @@ export default function Home() {
                   <div className="flex items-center justify-center gap-1 mt-2">
                     <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
                     <p className="text-sm text-muted-foreground">
-                      {car.likes} likes
+                      {car.total_likes || 0} likes
                     </p>
                   </div>
                 </CardHeader>
@@ -243,28 +279,28 @@ export default function Home() {
           <Card className="text-center">
             <CardHeader>
               <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{users.length}</CardTitle>
+              <CardTitle>{stats.users}</CardTitle>
               <CardDescription>Members</CardDescription>
             </CardHeader>
           </Card>
           <Card className="text-center">
             <CardHeader>
-              <Car className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{cars.length}</CardTitle>
+              <CarIcon className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CardTitle>{stats.cars}</CardTitle>
               <CardDescription>Cars</CardDescription>
             </CardHeader>
           </Card>
           <Card className="text-center">
             <CardHeader>
               <Calendar className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{events.length}</CardTitle>
+              <CardTitle>{stats.events}</CardTitle>
               <CardDescription>Events</CardDescription>
             </CardHeader>
           </Card>
           <Card className="text-center">
             <CardHeader>
               <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{clubs.length}</CardTitle>
+              <CardTitle>{stats.clubs}</CardTitle>
               <CardDescription>Clubs</CardDescription>
             </CardHeader>
           </Card>
@@ -296,7 +332,7 @@ export default function Home() {
 
           <Card className="text-center">
             <CardHeader>
-              <Car className="h-12 w-12 text-primary mx-auto mb-4" />
+              <CarIcon className="h-12 w-12 text-primary mx-auto mb-4" />
               <CardTitle>Showcase Cars</CardTitle>
               <CardDescription>
                 Build your virtual garage and show off your rides to the
@@ -333,7 +369,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <Car className="h-6 w-6" />
+              <CarIcon className="h-6 w-6" />
               <span className="font-semibold">Car Scene NZ</span>
             </div>
             <p className="text-muted-foreground text-sm">

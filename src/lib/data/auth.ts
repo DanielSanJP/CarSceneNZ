@@ -1,7 +1,12 @@
 import { createClient } from '@/lib/utils/supabase/server'
 import type { User } from '@/types/user'
+import { dataCache } from './cache'
 
 export async function getCurrentUser(): Promise<User | null> {
+  const cacheKey = 'currentUser';
+  const cached = dataCache.get<User>(cacheKey);
+  if (cached) return cached;
+
   try {
     const supabase = await createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
@@ -21,7 +26,7 @@ export async function getCurrentUser(): Promise<User | null> {
       return null
     }
 
-    return {
+    const userData = {
       id: profile.id,
       username: profile.username,
       display_name: profile.display_name || profile.username,
@@ -29,7 +34,10 @@ export async function getCurrentUser(): Promise<User | null> {
       profile_image_url: profile.profile_image_url,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
-    }
+    };
+
+    dataCache.set(cacheKey, userData); // Cache for 5 minutes
+    return userData;
   } catch (error) {
     console.error('Error getting current user:', error)
     return null

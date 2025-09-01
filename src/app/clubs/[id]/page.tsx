@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Navigation } from "@/components/nav";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,13 +32,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { clubs, clubMembers, users, cars } from "@/data";
+import { getClubById } from "@/data";
+import { getAllCars } from "@/data";
 
 // Helper function to calculate total likes for a user's cars
-const getUserTotalLikes = (userId: string): number => {
-  return cars
+const getUserTotalLikes = async (userId: string): Promise<number> => {
+  const allCars = await getAllCars();
+  return allCars
     .filter((car) => car.owner_id === userId)
-    .reduce((total, car) => total + car.total_likes, 0);
+    .reduce((total, car) => total + (car.total_likes || 0), 0);
 };
 
 interface ClubWithMembers {
@@ -79,46 +81,36 @@ function ClubDetailPageContent() {
   const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
-    const loadClubData = () => {
-      const foundClub = clubs.find((c) => c.id === clubId);
-      if (!foundClub) {
-        setIsLoading(false);
-        return;
-      }
+    const loadClubData = async () => {
+      try {
+        setIsLoading(true);
 
-      // Get club members with user data
-      const members = clubMembers
-        .filter((cm) => cm.club_id === clubId)
-        .map((cm) => {
-          const userData = users.find((u) => u.id === cm.user_id);
-          return {
-            ...cm,
-            user: userData || {
-              id: cm.user_id,
-              username: "Unknown",
-              display_name: "Unknown User",
-              profile_image_url: "",
-            },
-          };
-        })
-        .sort((a, b) => {
-          // Sort by total likes (highest to lowest)
-          return getUserTotalLikes(b.user_id) - getUserTotalLikes(a.user_id);
+        // Get club details
+        const foundClub = await getClubById(clubId);
+        if (!foundClub) {
+          setIsLoading(false);
+          return;
+        }
+
+        // For now, we'll set the club without members
+        // TODO: Implement member fetching when the function becomes available
+        setClub({
+          id: foundClub.id,
+          name: foundClub.name,
+          description: foundClub.description || "",
+          location: foundClub.location || "",
+          club_type: foundClub.club_type as "open" | "invite" | "closed",
+          banner_image_url: foundClub.banner_image_url || "",
+          leader_id: foundClub.leader_id,
+          total_likes: foundClub.total_likes || 0,
+          created_at: foundClub.created_at,
+          members: [], // Initialize with empty array for now
         });
-
-      setClub({
-        id: foundClub.id,
-        name: foundClub.name,
-        description: foundClub.description,
-        location: foundClub.location,
-        club_type: foundClub.club_type,
-        banner_image_url: foundClub.banner_image_url,
-        leader_id: foundClub.leader_id,
-        total_likes: foundClub.total_likes,
-        created_at: foundClub.created_at,
-        members,
-      });
-      setIsLoading(false);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error loading club data:", error);
+        setIsLoading(false);
+      }
     };
 
     loadClubData();
@@ -156,7 +148,7 @@ function ClubDetailPageContent() {
           id: user.id,
           username: user.username,
           display_name: user.display_name,
-          profile_image_url: user.profile_image_url,
+          profile_image_url: user.profile_image_url || "",
         },
       };
 

@@ -3,29 +3,14 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Medal, Award, Star } from "lucide-react";
-import { cars, users } from "@/data";
+import { getTopCars } from "@/lib/data/leaderboards";
 import Link from "next/link";
 import Image from "next/image";
-
-interface Car {
-  id: string;
-  owner_id: string;
-  brand: string;
-  model: string;
-  year: number;
-  images: string[];
-  total_likes: number;
-}
-
-interface User {
-  id: string;
-  username: string;
-  display_name: string;
-}
+import type { CarRanking } from "@/lib/data/leaderboards";
 
 interface CarLeaderboardEntry {
-  car: Car;
-  owner: User;
+  car: CarRanking["car"];
+  owner: CarRanking["car"]["owner"];
   totalLikes: number;
   rank: number;
 }
@@ -37,32 +22,27 @@ export function CarRankings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    function loadCarLeaderboard() {
+    async function loadCarLeaderboard() {
       try {
-        // Use imported data directly
-        const carsData: Car[] = cars;
-        const usersData: User[] = users;
+        const carRankings = await getTopCars(10);
 
-        // Create car leaderboard entries with owner info
-        const carEntries: CarLeaderboardEntry[] = carsData.map((car) => {
-          const owner = usersData.find((user) => user.id === car.owner_id);
-          return {
-            car,
-            owner: owner || { id: "", username: "", display_name: "Unknown" },
-            totalLikes: car.total_likes,
-            rank: 0,
-          };
-        });
-
-        // Sort by total likes (descending) and assign ranks
-        carEntries.sort((a, b) => b.totalLikes - a.totalLikes);
-        carEntries.forEach((entry, index) => {
-          entry.rank = index + 1;
-        });
+        // Transform to our component's format
+        const carEntries: CarLeaderboardEntry[] = carRankings.map(
+          (ranking) => ({
+            car: ranking.car,
+            owner: ranking.car.owner || {
+              id: "",
+              username: "",
+              display_name: "Unknown",
+            },
+            totalLikes: ranking.likes,
+            rank: ranking.rank,
+          })
+        );
 
         setCarLeaderboard(carEntries);
       } catch (error) {
-        console.error("Failed to load car leaderboard data:", error);
+        console.error("Error loading car leaderboard:", error);
       } finally {
         setLoading(false);
       }
@@ -138,7 +118,7 @@ export function CarRankings() {
                     </span>
                   </div>
                   <p className="text-xs md:text-sm text-muted-foreground truncate">
-                    Owner: {entry.owner.display_name}
+                    Owner: {entry.owner?.display_name || "Unknown"}
                   </p>
                 </div>
 
