@@ -24,13 +24,13 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (profileError || !profile) {
       console.warn('User profile not found for authenticated user:', user.id)
-      // Return basic user data without profile for now
+      // Return basic user data - this should rarely happen
       const userData = {
         id: user.id,
-        username: user.email?.split('@')[0] || 'user', // Fallback to email prefix
-        display_name: user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        username: 'user', // Temporary fallback
+        display_name: user.user_metadata?.display_name || user.user_metadata?.full_name || 'User',
         email: user.email || '',
-        profile_image_url: undefined,
+        profile_image_url: user.user_metadata?.avatar_url,
         created_at: user.created_at || new Date().toISOString(),
         updated_at: user.updated_at || new Date().toISOString(),
       };

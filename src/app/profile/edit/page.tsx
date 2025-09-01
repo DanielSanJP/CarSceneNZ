@@ -167,7 +167,7 @@ export default function EditProfilePage() {
 
       // Refresh the page after a short delay
       setTimeout(() => {
-        router.push("/profile");
+        router.push(`/profile/${username || "user"}`);
       }, 1500);
     } catch (error) {
       console.error("Error saving profile:", error);
@@ -202,7 +202,7 @@ export default function EditProfilePage() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
-            <Link href="/profile">
+            <Link href={`/profile/${username || "user"}`}>
               <Button variant="outline" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
@@ -360,7 +360,7 @@ export default function EditProfilePage() {
                   </p>
                 )}
 
-                <Link href="/profile">
+                <Link href={`/profile/${username || "user"}`}>
                   <Button variant="outline" disabled={saving}>
                     Cancel
                   </Button>

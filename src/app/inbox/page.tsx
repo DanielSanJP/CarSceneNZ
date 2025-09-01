@@ -67,7 +67,7 @@ export default function InboxPage() {
                 <Card key={msg.id}>
                   <CardContent className="flex p-4 pt-0 min-h-[100px]">
                     <Link
-                      href={`/profile/${msg.sender?.id}`}
+                      href={`/profile/${msg.sender?.username}`}
                       className="flex space-x-4 flex-1 hover:underline"
                     >
                       <Avatar>

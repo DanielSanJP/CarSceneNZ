@@ -542,7 +542,7 @@ function ClubDetailPageContent() {
                       </div>
 
                       {/* Avatar */}
-                      <Link href={`/profile/${member.user_id}`}>
+                      <Link href={`/profile/${member.user.username}`}>
                         <Avatar className="h-12 w-12 cursor-pointer border-2 border-muted">
                           <AvatarImage src={member.user.profile_image_url} />
                           <AvatarFallback className="text-lg font-semibold">
@@ -553,7 +553,7 @@ function ClubDetailPageContent() {
 
                       {/* User Info */}
                       <div className="flex-1 min-w-0">
-                        <Link href={`/profile/${member.user_id}`}>
+                        <Link href={`/profile/${member.user.username}`}>
                           <div className="font-medium hover:underline cursor-pointer">
                             {member.user.display_name}
                           </div>

@@ -14,7 +14,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getUserFollowers, getUserFollowing, getUserById } from "@/lib/data";
+import {
+  getUserFollowers,
+  getUserFollowing,
+  getUserById,
+  getCarsByOwner,
+} from "@/lib/data";
 import {
   Calendar,
   Mail,
@@ -22,10 +27,10 @@ import {
   Car,
   Star,
   Eye,
-  Settings,
   ExternalLink,
   Users,
   UserPlus,
+  Edit,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -49,22 +54,35 @@ export default function UserProfilePage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get user profile
-        const user = await getUserById(userId);
+        // Get user profile - try by ID first, then by username
+        let user = await getUserById(userId);
+
+        // If not found by ID and userId doesn't look like a UUID, try username lookup
+        if (
+          !user &&
+          !userId.match(
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+          )
+        ) {
+          // Import getUserByUsername dynamically since it might not be imported
+          const { getUserByUsername } = await import("@/lib/data/auth");
+          user = await getUserByUsername(userId);
+        }
+
         if (!user) {
           return;
         }
         setProfileUser(user);
 
-        // Get user's cars (leaving empty for now as per the original comment)
-        setUserCars([]);
+        // Fetch data with error handling
+        const [carsResult, followersResult, followingResult] =
+          await Promise.allSettled([
+            getCarsByOwner(user.id),
+            getUserFollowers(user.id),
+            getUserFollowing(user.id),
+          ]);
 
-        // Get followers and following
-        const [followersResult, followingResult] = await Promise.allSettled([
-          getUserFollowers(user.id),
-          getUserFollowing(user.id),
-        ]);
-
+        setUserCars(carsResult.status === "fulfilled" ? carsResult.value : []);
         const followersData =
           followersResult.status === "fulfilled" ? followersResult.value : [];
         const followingData =
@@ -74,6 +92,9 @@ export default function UserProfilePage() {
         setFollowing(followingData);
 
         // Log errors
+        if (carsResult.status === "rejected") {
+          console.error("Error fetching user cars:", carsResult.reason);
+        }
         if (followersResult.status === "rejected") {
           console.error("Error fetching followers:", followersResult.reason);
         }
@@ -137,10 +158,12 @@ export default function UserProfilePage() {
                     Profile Information
                   </CardTitle>
                   {isOwnProfile && (
-                    <Button variant="outline" size="sm">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Edit Profile
-                    </Button>
+                    <Link href="/profile/edit">
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Profile
+                      </Button>
+                    </Link>
                   )}
                 </div>
               </CardHeader>
@@ -214,7 +237,7 @@ export default function UserProfilePage() {
                               followers.map((follower) => (
                                 <Link
                                   key={follower.id}
-                                  href={`/profile/${follower.id}`}
+                                  href={`/profile/${follower.username}`}
                                   onClick={() => setFollowersDialogOpen(false)}
                                   className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                                 >
@@ -275,7 +298,7 @@ export default function UserProfilePage() {
                               following.map((followedUser) => (
                                 <Link
                                   key={followedUser.id}
-                                  href={`/profile/${followedUser.id}`}
+                                  href={`/profile/${followedUser.username}`}
                                   onClick={() => setFollowingDialogOpen(false)}
                                   className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                                 >

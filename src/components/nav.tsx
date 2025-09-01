@@ -76,9 +76,8 @@ function ProfileDropdown() {
     profile?.display_name ||
     user.user_metadata?.display_name ||
     user.user_metadata?.full_name ||
-    user.email?.split("@")[0] ||
     "User";
-  const username = profile?.username || user.email?.split("@")[0] || "user";
+  const username = profile?.username || "user";
   const avatarUrl =
     profile?.profile_image_url || user.user_metadata?.avatar_url;
 
@@ -113,7 +112,7 @@ function ProfileDropdown() {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile" className="cursor-pointer">
+          <Link href={`/profile/${username}`} className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </Link>
