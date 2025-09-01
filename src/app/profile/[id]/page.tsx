@@ -140,10 +140,10 @@ export default function UserProfilePage() {
                   <Avatar className="h-16 w-16">
                     <AvatarImage
                       src={profileUser.profile_image_url}
-                      alt={profileUser.display_name}
+                      alt={profileUser.username}
                     />
                     <AvatarFallback className="text-lg">
-                      {profileUser.display_name
+                      {profileUser.username
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
@@ -212,10 +212,10 @@ export default function UserProfilePage() {
                                   <Avatar className="h-10 w-10">
                                     <AvatarImage
                                       src={follower.profile_image_url}
-                                      alt={follower.display_name}
+                                      alt={follower.username}
                                     />
                                     <AvatarFallback>
-                                      {follower.display_name
+                                      {follower.username
                                         .split(" ")
                                         .map((n: string) => n[0])
                                         .join("")}
@@ -272,10 +272,10 @@ export default function UserProfilePage() {
                                   <Avatar className="h-10 w-10">
                                     <AvatarImage
                                       src={followedUser.profile_image_url}
-                                      alt={followedUser.display_name}
+                                      alt={followedUser.username}
                                     />
                                     <AvatarFallback>
-                                      {followedUser.display_name
+                                      {followedUser.username
                                         .split(" ")
                                         .map((n: string) => n[0])
                                         .join("")}

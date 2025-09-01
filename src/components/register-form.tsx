@@ -42,6 +42,10 @@ export function RegisterForm({
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
     try {
+      // Add profile image to form data if it exists
+      if (profileImage) {
+        formData.append("profileImage", profileImage);
+      }
       await signup(formData);
     } catch (error) {
       console.error("Signup error:", error);
@@ -105,23 +109,23 @@ export function RegisterForm({
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  name="displayName"
-                  type="text"
-                  placeholder="Your display name"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-3">
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   name="username"
                   type="text"
                   placeholder="username"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  placeholder="Your display name"
                   required
                 />
               </div>

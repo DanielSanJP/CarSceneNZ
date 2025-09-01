@@ -280,10 +280,10 @@ export default function EventDetailPage() {
                       <Avatar className="h-10 w-10">
                         <AvatarImage
                           src={host.profile_image_url}
-                          alt={host.display_name}
+                          alt={host.username}
                         />
                         <AvatarFallback>
-                          {host.display_name
+                          {host.username
                             .split(" ")
                             .map((n: string) => n[0])
                             .join("")}

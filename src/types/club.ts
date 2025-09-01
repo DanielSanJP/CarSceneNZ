@@ -26,7 +26,6 @@ export interface ClubMember {
   user?: {
     id: string;
     username: string;
-    display_name?: string;
     profile_image_url?: string;
   };
 }

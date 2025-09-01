@@ -77,10 +77,10 @@ export default async function ProfilePage() {
                     <Avatar className="h-16 w-16">
                       <AvatarImage
                         src={user.profile_image_url}
-                        alt={user.display_name}
+                        alt={user.username}
                       />
                       <AvatarFallback className="text-lg">
-                        {user.display_name
+                        {user.username
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}

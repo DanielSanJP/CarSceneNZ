@@ -12,13 +12,11 @@ export async function getAllMessages(): Promise<Message[]> {
         sender:users!messages_sender_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         ),
         receiver:users!messages_receiver_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -239,13 +237,13 @@ export async function getMessageById(messageId: string): Promise<Message | null>
       sender: {
         id: data.sender.id,
         username: data.sender.username,
-        display_name: data.sender.display_name || data.sender.username,
+        display_name: data.sender.username, // display_name not stored in users table
         profile_image_url: data.sender.profile_image_url,
       },
       receiver: {
         id: data.receiver.id,
         username: data.receiver.username,
-        display_name: data.receiver.display_name || data.receiver.username,
+        display_name: data.receiver.username, // display_name not stored in users table
         profile_image_url: data.receiver.profile_image_url,
       }
     }

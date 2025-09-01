@@ -12,7 +12,6 @@ export async function getAllEvents(): Promise<Event[]> {
         users!events_host_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -36,7 +35,7 @@ export async function getAllEvents(): Promise<Event[]> {
       host: {
         id: event.users.id,
         username: event.users.username,
-        display_name: event.users.display_name || event.users.username,
+        display_name: event.users.username, // display_name not stored in users table
         profile_image_url: event.users.profile_image_url,
       }
     })) || []
@@ -57,7 +56,6 @@ export async function getEventById(eventId: string): Promise<Event | null> {
         users!events_host_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -82,7 +80,6 @@ export async function getEventById(eventId: string): Promise<Event | null> {
       host: {
         id: data.users.id,
         username: data.users.username,
-        display_name: data.users.display_name || data.users.username,
         profile_image_url: data.users.profile_image_url,
       }
     }
@@ -103,7 +100,6 @@ export async function getEventsByHost(hostId: string): Promise<Event[]> {
         users!events_host_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -128,7 +124,6 @@ export async function getEventsByHost(hostId: string): Promise<Event[]> {
       host: {
         id: event.users.id,
         username: event.users.username,
-        display_name: event.users.display_name || event.users.username,
         profile_image_url: event.users.profile_image_url,
       }
     })) || []
@@ -142,13 +137,53 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'created_at' | '
   try {
     const supabase = createClient()
 
+    let posterImageUrl = eventData.poster_image_url;
+
+    // Handle poster image upload if it's a base64 string
+    if (posterImageUrl && posterImageUrl.startsWith('data:image/')) {
+      try {
+        // Extract the base64 data and mime type
+        const [mimeInfo, base64Data] = posterImageUrl.split(',');
+        const mimeType = mimeInfo.split(':')[1].split(';')[0];
+
+        // Convert base64 to buffer
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Generate unique filename
+        const fileName = `event_${eventData.host_id}_${Date.now()}.${mimeType.split('/')[1]}`;
+
+        // Upload to Supabase storage
+        const { error: uploadError } = await supabase.storage
+          .from('events')
+          .upload(fileName, buffer, {
+            contentType: mimeType,
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Poster image upload error:', uploadError);
+          posterImageUrl = undefined; // Continue without poster image if upload fails
+        } else {
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('events')
+            .getPublicUrl(fileName);
+
+          posterImageUrl = urlData.publicUrl;
+        }
+      } catch (error) {
+        console.error('Error processing poster image:', error);
+        posterImageUrl = undefined; // Continue without poster image if processing fails
+      }
+    }
+
     const { data, error } = await supabase
       .from('events')
       .insert({
         host_id: eventData.host_id,
         title: eventData.title,
         description: eventData.description,
-        poster_image_url: eventData.poster_image_url,
+        poster_image_url: posterImageUrl,
         daily_schedule: eventData.daily_schedule,
         location: eventData.location,
       })
@@ -230,7 +265,6 @@ export async function getEventAttendees(eventId: string): Promise<EventAttendee[
         users!event_attendees_user_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -250,7 +284,7 @@ export async function getEventAttendees(eventId: string): Promise<EventAttendee[
       user: {
         id: attendee.users.id,
         username: attendee.users.username,
-        display_name: attendee.users.display_name || attendee.users.username,
+        display_name: attendee.users.username, // display_name not stored in users table
         profile_image_url: attendee.users.profile_image_url,
       }
     })) || []

@@ -12,7 +12,6 @@ export async function getAllClubs(): Promise<Club[]> {
         users!clubs_leader_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -37,7 +36,7 @@ export async function getAllClubs(): Promise<Club[]> {
       leader: {
         id: club.users.id,
         username: club.users.username,
-        display_name: club.users.display_name || club.users.username,
+        display_name: club.users.username, // display_name not stored in users table
         profile_image_url: club.users.profile_image_url,
       }
     })) || []
@@ -58,7 +57,6 @@ export async function getClubById(clubId: string): Promise<Club | null> {
         users!clubs_leader_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -84,7 +82,7 @@ export async function getClubById(clubId: string): Promise<Club | null> {
       leader: {
         id: data.users.id,
         username: data.users.username,
-        display_name: data.users.display_name || data.users.username,
+        display_name: data.users.username, // display_name not stored in users table
         profile_image_url: data.users.profile_image_url,
       }
     }
@@ -105,7 +103,6 @@ export async function getClubsByLeader(leaderId: string): Promise<Club[]> {
         users!clubs_leader_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -131,7 +128,7 @@ export async function getClubsByLeader(leaderId: string): Promise<Club[]> {
       leader: {
         id: club.users.id,
         username: club.users.username,
-        display_name: club.users.display_name || club.users.username,
+        display_name: club.users.username, // display_name not stored in users table
         profile_image_url: club.users.profile_image_url,
       }
     })) || []
@@ -233,7 +230,6 @@ export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
         users!club_members_user_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -253,7 +249,7 @@ export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
       user: {
         id: member.users.id,
         username: member.users.username,
-        display_name: member.users.display_name || member.users.username,
+        display_name: member.users.username, // display_name not stored in users table
         profile_image_url: member.users.profile_image_url,
       }
     })) || []

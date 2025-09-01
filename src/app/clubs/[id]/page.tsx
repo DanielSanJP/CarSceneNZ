@@ -147,7 +147,7 @@ function ClubDetailPageContent() {
         user: {
           id: user.id,
           username: user.username,
-          display_name: user.display_name,
+          display_name: user.username, // display_name not stored in users table
           profile_image_url: user.profile_image_url || "",
         },
       };

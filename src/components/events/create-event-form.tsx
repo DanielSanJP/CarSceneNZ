@@ -12,6 +12,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { createEvent } from "@/lib/data/events";
 
 interface EventFormData {
   title: string;
@@ -26,8 +28,22 @@ interface EventFormData {
   }>;
 }
 
+interface DatabaseEventData {
+  host_id: string;
+  title: string;
+  description?: string;
+  poster_image_url?: string;
+  location?: string;
+  daily_schedule: Array<{
+    date: string;
+    start_time?: string;
+    end_time?: string;
+  }>;
+}
+
 export function CreateEventForm() {
   const router = useRouter();
+  const { user, isAuthenticated, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const locationInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +79,27 @@ export function CreateEventForm() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, loading, router]);
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
@@ -120,16 +157,53 @@ export function CreateEventForm() {
     setIsLoading(true);
 
     try {
-      // In a real app, this would be an API call
-      console.log("Creating event:", formData);
+      // Check if user is authenticated
+      if (!isAuthenticated || !user) {
+        alert("You must be logged in to create an event.");
+        return;
+      }
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Validate required fields
+      if (!formData.title.trim()) {
+        alert("Event title is required.");
+        return;
+      }
 
-      // Redirect to events
-      router.push("/events");
+      // Check if there are any valid schedule items
+      const validScheduleItems = formData.daily_schedule.filter(
+        (item) => item.date
+      );
+      if (validScheduleItems.length === 0) {
+        alert("At least one event date is required.");
+        return;
+      }
+
+      // Transform form data to database format
+      const eventData: DatabaseEventData = {
+        host_id: user.id,
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        poster_image_url: formData.poster_image_url || undefined,
+        location: formData.location.trim() || undefined,
+        daily_schedule: validScheduleItems.map((item) => ({
+          date: item.date!.toISOString().split("T")[0], // Convert to YYYY-MM-DD format
+          start_time: item.start_time || undefined,
+          end_time: item.end_time || undefined,
+        })),
+      };
+
+      // Create the event
+      const createdEvent = await createEvent(eventData);
+
+      if (createdEvent) {
+        alert("Event created successfully!");
+        router.push("/events");
+      } else {
+        alert("Failed to create event. Please try again.");
+      }
     } catch (error) {
       console.error("Error creating event:", error);
+      alert("An error occurred while creating the event. Please try again.");
     } finally {
       setIsLoading(false);
     }

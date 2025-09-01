@@ -87,7 +87,7 @@ export function OwnerRankings() {
                   {entry.user.profile_image_url ? (
                     <Image
                       src={entry.user.profile_image_url}
-                      alt={entry.user.display_name}
+                      alt={entry.user.username}
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 112px, 160px"
@@ -97,7 +97,7 @@ export function OwnerRankings() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-sm md:text-xl font-medium">
-                      {entry.user.display_name.charAt(0).toUpperCase()}
+                      {entry.user.username.charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>

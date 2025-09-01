@@ -77,18 +77,14 @@ export default function InboxPage() {
                       <Avatar>
                         <AvatarImage
                           src={msg.sender?.profile_image_url}
-                          alt={msg.sender?.display_name || msg.sender?.username}
+                          alt={msg.sender?.username}
                         />
                         <AvatarFallback>
-                          {msg.sender?.display_name?.charAt(0) ||
-                            msg.sender?.username?.charAt(0) ||
-                            "?"}
+                          {msg.sender?.username?.charAt(0) || "?"}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold">
-                          {msg.sender?.display_name || msg.sender?.username}
-                        </p>
+                        <p className="font-semibold">{msg.sender?.username}</p>
                       </div>
                     </Link>
                     <div className="flex-1">

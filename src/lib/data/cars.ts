@@ -12,7 +12,6 @@ export async function getAllCars(): Promise<Car[]> {
         users!cars_owner_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -45,7 +44,7 @@ export async function getAllCars(): Promise<Car[]> {
       owner: {
         id: car.users.id,
         username: car.users.username,
-        display_name: car.users.display_name || car.users.username,
+        display_name: car.users.username, // display_name not stored in users table
         profile_image_url: car.users.profile_image_url,
       }
     })) || []
@@ -66,7 +65,6 @@ export async function getCarById(carId: string): Promise<Car | null> {
         users!cars_owner_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -100,7 +98,7 @@ export async function getCarById(carId: string): Promise<Car | null> {
       owner: {
         id: data.users.id,
         username: data.users.username,
-        display_name: data.users.display_name || data.users.username,
+        display_name: data.users.username, // display_name not stored in users table
         profile_image_url: data.users.profile_image_url,
       }
     }
@@ -121,7 +119,6 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
         users!cars_owner_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url
         )
       `)
@@ -155,7 +152,7 @@ export async function getCarsByOwner(ownerId: string): Promise<Car[]> {
       owner: {
         id: car.users.id,
         username: car.users.username,
-        display_name: car.users.display_name || car.users.username,
+        display_name: car.users.username, // display_name not stored in users table
         profile_image_url: car.users.profile_image_url,
       }
     })) || []

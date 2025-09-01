@@ -85,7 +85,6 @@ export async function getUserFollowers(userId: string): Promise<User[]> {
         users!user_follows_follower_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url,
           created_at,
           updated_at
@@ -103,7 +102,7 @@ export async function getUserFollowers(userId: string): Promise<User[]> {
       return {
         id: user.id,
         username: user.username,
-        display_name: user.display_name || user.username,
+        display_name: user.username, // display_name not stored in users table
         email: '',
         profile_image_url: user.profile_image_url,
         created_at: user.created_at,
@@ -127,7 +126,6 @@ export async function getUserFollowing(userId: string): Promise<User[]> {
         users!user_follows_following_id_fkey (
           id,
           username,
-          display_name,
           profile_image_url,
           created_at,
           updated_at
@@ -145,7 +143,7 @@ export async function getUserFollowing(userId: string): Promise<User[]> {
       return {
         id: user.id,
         username: user.username,
-        display_name: user.display_name || user.username,
+        display_name: user.username, // display_name not stored in users table
         email: '',
         profile_image_url: user.profile_image_url,
         created_at: user.created_at,

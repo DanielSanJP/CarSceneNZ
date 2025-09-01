@@ -112,10 +112,8 @@ function SearchContent() {
       );
 
       // Search users
-      const userResults = data.users.filter(
-        (user) =>
-          user.display_name.toLowerCase().includes(searchTerm) ||
-          user.username.toLowerCase().includes(searchTerm)
+      const userResults = data.users.filter((user) =>
+        user.username.toLowerCase().includes(searchTerm)
       );
 
       // Search events
@@ -276,10 +274,10 @@ function SearchContent() {
                                 <Avatar className="h-12 w-12">
                                   <AvatarImage
                                     src={user.profile_image_url}
-                                    alt={user.display_name}
+                                    alt={user.username}
                                   />
                                   <AvatarFallback>
-                                    {user.display_name
+                                    {user.username
                                       .split(" ")
                                       .map((n) => n[0])
                                       .join("")}
@@ -287,7 +285,7 @@ function SearchContent() {
                                 </Avatar>
                                 <div>
                                   <h3 className="font-semibold">
-                                    {user.display_name}
+                                    {user.username}
                                   </h3>
                                   <p className="text-sm text-muted-foreground">
                                     @{user.username}

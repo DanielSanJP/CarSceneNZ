@@ -244,7 +244,7 @@ export default function CarDetailPage() {
                         <div className="relative h-16 w-16 flex-shrink-0 rounded-full overflow-hidden bg-muted">
                           <Image
                             src={owner.profile_image_url || ""}
-                            alt={owner.display_name}
+                            alt={owner.username}
                             fill
                             className="object-cover"
                             sizes="64px"

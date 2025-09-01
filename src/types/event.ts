@@ -4,7 +4,7 @@ export interface Event {
   title: string;
   description?: string;
   poster_image_url?: string;
-  daily_schedule?: Array<{
+  daily_schedule: Array<{
     date: string;
     start_time?: string;
     end_time?: string;
@@ -29,7 +29,6 @@ export interface EventAttendee {
   user?: {
     id: string;
     username: string;
-    display_name?: string;
     profile_image_url?: string;
   };
 }
