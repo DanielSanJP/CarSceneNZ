@@ -1,6 +1,6 @@
 "use client";
 
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,7 @@ import { useState, useEffect, useMemo } from "react";
 import type { Car } from "@/types/car";
 
 export default function GaragePage() {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());

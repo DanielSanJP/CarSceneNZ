@@ -33,7 +33,7 @@ import {
   unattendEvent,
   getUserEventStatus,
 } from "@/lib/data/events";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -41,7 +41,7 @@ import Link from "next/link";
 import type { Event, EventAttendee } from "@/types/event";
 
 export default function EventsPage() {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
   const router = useRouter();
 
   // State for events data
@@ -432,6 +432,7 @@ export default function EventsPage() {
                             <AvatarImage
                               src={host.profile_image_url}
                               alt={host.display_name || host.username}
+                              className="object-cover"
                             />
                           )}
                           <AvatarFallback>

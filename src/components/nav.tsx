@@ -32,7 +32,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchBar, MobileSearchButton } from "@/components/search-bar";
 import { createClient } from "@/lib/utils/supabase/client";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 
 export function ModeToggle() {
   const { setTheme } = useTheme();
@@ -62,7 +62,7 @@ export function ModeToggle() {
 }
 
 function ProfileDropdown() {
-  const { user, refreshUser } = useClientAuth();
+  const user = useCurrentUser();
 
   if (!user) return null;
 
@@ -70,8 +70,6 @@ function ProfileDropdown() {
     const supabase = createClient();
     await supabase.auth.signOut();
     // The auth state change will be picked up by the listener in ClientAuthProvider
-    // but we can also manually refresh to ensure immediate update
-    await refreshUser();
   };
 
   // Use user data from our combined auth context
@@ -144,7 +142,7 @@ function ProfileDropdown() {
 }
 
 export function Navigation() {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
 
   return (
     <div className="border-b">

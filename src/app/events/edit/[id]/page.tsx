@@ -1,13 +1,20 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { redirect } from "next/navigation";
 import { EditEventForm } from "@/components/events/edit-event-form";
+import { getUser } from "@/lib/dal";
+import { getEventById } from "@/lib/data/events";
 
-export default function EditEventPage() {
-  const { user, isLoading: authLoading } = useClientAuth();
-  const params = useParams();
-  const eventId = params?.id as string;
+interface EditEventPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditEventPage({ params }: EditEventPageProps) {
+  // Server-side auth check
+  const user = await getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { id: eventId } = await params;
 
   if (!eventId) {
     return (
@@ -24,14 +31,16 @@ export default function EditEventPage() {
     );
   }
 
-  if (authLoading) {
+  // Server-side permission check
+  const event = await getEventById(eventId);
+  if (!event) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Loading...</h1>
+            <h1 className="text-2xl font-bold">Event Not Found</h1>
             <p className="text-muted-foreground mt-2">
-              Checking authentication...
+              The event you&apos;re looking for doesn&apos;t exist.
             </p>
           </div>
         </div>
@@ -39,14 +48,14 @@ export default function EditEventPage() {
     );
   }
 
-  if (!user) {
+  if (event.host_id !== user.id) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Access Denied</h1>
             <p className="text-muted-foreground mt-2">
-              Please log in to edit events.
+              You don&apos;t have permission to edit this event.
             </p>
           </div>
         </div>

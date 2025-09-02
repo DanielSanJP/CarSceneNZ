@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { getUserById } from "@/lib/data";
+import { createClient } from "@/lib/utils/supabase/client";
 import type { User } from "@/types";
 
 interface Club {
@@ -56,9 +56,38 @@ interface MyClubViewProps {
 }
 
 export function MyClubView({ userClubs }: MyClubViewProps) {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
   const [isLeaving, setIsLeaving] = useState<string | null>(null); // Track which club is being left
   const [leaders, setLeaders] = useState<Record<string, User | null>>({}); // Store leader data by club ID
+
+  // Client-side function to get user by ID
+  const getUserById = async (userId: string): Promise<User | null> => {
+    try {
+      const supabase = createClient();
+      const { data: profile, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (error || !profile) {
+        return null;
+      }
+
+      return {
+        id: profile.id,
+        username: profile.username,
+        display_name: profile.display_name || profile.username,
+        email: "",
+        profile_image_url: profile.profile_image_url,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+      };
+    } catch (error) {
+      console.error("Error getting user by ID:", error);
+      return null;
+    }
+  };
 
   // Fetch leader data for all clubs
   useEffect(() => {

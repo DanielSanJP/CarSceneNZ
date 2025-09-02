@@ -1,6 +1,6 @@
 "use client";
 
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditProfilePage() {
-  const { user, refreshUser } = useClientAuth();
+  const user = useCurrentUser();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -109,9 +109,6 @@ export default function EditProfilePage() {
       }
 
       console.log("Profile updated successfully:", result.data);
-
-      // Refresh user context
-      await refreshUser();
 
       setSuccess("Profile updated successfully!");
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ const NZ_LOCATIONS = [
 ];
 
 export default function EditClubPage() {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();

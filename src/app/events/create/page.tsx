@@ -1,10 +1,10 @@
 "use client";
 
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { CreateEventForm } from "@/components/events/create-event-form";
 
 export default function CreateEventPage() {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
 
   if (!user) {
     return (

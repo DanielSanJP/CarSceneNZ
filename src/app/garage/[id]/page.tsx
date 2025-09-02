@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { getCarById } from "@/lib/data/cars";
 import type { Car } from "@/types/car";
 
@@ -21,7 +21,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function CarDetailPage() {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
   const params = useParams();
   const router = useRouter();
   const carId = params.id as string;
@@ -421,7 +421,7 @@ export default function CarDetailPage() {
                           <h4 className="font-medium capitalize">
                             Exhaust & Intake
                           </h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-3 gap-4 text-sm">
                             {car.exhaust_system.intake && (
                               <div>
                                 <p className="text-muted-foreground">Intake</p>
@@ -492,7 +492,7 @@ export default function CarDetailPage() {
                           <h4 className="font-medium capitalize">
                             Internal Components
                           </h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-3 gap-4 text-sm">
                             {car.internal_components.pistons && (
                               <div>
                                 <p className="text-muted-foreground">Pistons</p>

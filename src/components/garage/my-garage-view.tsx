@@ -1,6 +1,6 @@
 "use client";
 
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useRequireAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCarsByOwner } from "@/lib/data/cars";
@@ -11,14 +11,14 @@ import { useState, useEffect } from "react";
 import type { Car } from "@/types/car";
 
 export default function MyGarageView() {
-  const { user, isLoading: authLoading } = useClientAuth();
+  const user = useRequireAuth();
   const [userCars, setUserCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchUserCars = async () => {
-      if (!user || authLoading) return;
+      if (!user) return;
 
       try {
         setLoading(true);
@@ -32,9 +32,9 @@ export default function MyGarageView() {
     };
 
     fetchUserCars();
-  }, [user, authLoading]);
+  }, [user]);
 
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

@@ -12,8 +12,16 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { createEvent } from "@/lib/data/events";
+
+// Helper function to format date in local timezone (avoids UTC conversion issues)
+function formatDateToLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 interface EventFormData {
   title: string;
@@ -43,7 +51,7 @@ interface DatabaseEventData {
 
 export function CreateEventForm() {
   const router = useRouter();
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
   const [isLoading, setIsLoading] = useState(false);
   const locationInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +131,7 @@ export function CreateEventForm() {
         poster_image_url: formData.poster_image_url || undefined,
         location: formData.location.trim() || undefined,
         daily_schedule: validScheduleItems.map((item) => ({
-          date: item.date!.toISOString().split("T")[0], // Convert to YYYY-MM-DD format
+          date: formatDateToLocal(item.date!), // Use timezone-safe formatting
           start_time: item.start_time || undefined,
           end_time: item.end_time || undefined,
         })),

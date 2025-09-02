@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { createCarWithComponents } from "@/lib/data/cars";
 import { ArrowLeft, Save } from "lucide-react";
@@ -141,7 +141,7 @@ interface CreateCarFormData {
 }
 
 export default function CreateCarPage() {
-  const { user } = useClientAuth();
+  const user = useCurrentUser();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useRequireAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -22,7 +22,7 @@ import { getEventsByHost, getEventAttendees } from "@/lib/data/events";
 import type { Event, EventAttendee } from "@/types/event";
 
 export function MyEventsView() {
-  const { user, isLoading: authLoading } = useClientAuth();
+  const user = useRequireAuth();
   const [userEvents, setUserEvents] = useState<Event[]>([]);
   const [attendeeData, setAttendeeData] = useState<
     Record<string, EventAttendee[]>
@@ -32,7 +32,7 @@ export function MyEventsView() {
 
   useEffect(() => {
     const fetchUserEvents = async () => {
-      if (!user || authLoading) return;
+      if (!user) return;
 
       try {
         setLoading(true);
@@ -59,7 +59,7 @@ export function MyEventsView() {
     };
 
     fetchUserEvents();
-  }, [user, authLoading]);
+  }, [user]);
 
   // Handle image error
   const handleImageError = (eventId: string) => {
@@ -104,7 +104,7 @@ export function MyEventsView() {
     return attendees.filter((a) => a.status === "interested").length;
   };
 
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

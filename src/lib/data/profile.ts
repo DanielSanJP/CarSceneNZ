@@ -1,6 +1,112 @@
 import { createClient } from '@/lib/utils/supabase/client'
-import { getCurrentUser, getUserById } from './auth'
 import type { User } from '@/types/user'
+
+// Client-side user functions for profile operations
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const supabase = createClient()
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (profileError || !profile) {
+      return null
+    }
+
+    return {
+      id: profile.id,
+      username: profile.username,
+      display_name: profile.display_name || profile.username,
+      email: '',
+      profile_image_url: profile.profile_image_url,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    }
+  } catch (error) {
+    console.error('Error getting user by ID:', error)
+    return null
+  }
+}
+
+export async function getUserByUsername(username: string): Promise<User | null> {
+  try {
+    const supabase = createClient()
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .single()
+
+    if (profileError || !profile) {
+      return null
+    }
+
+    return {
+      id: profile.id,
+      username: profile.username,
+      display_name: profile.display_name || profile.username,
+      email: '',
+      profile_image_url: profile.profile_image_url,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    }
+  } catch (error) {
+    console.error('Error getting user by username:', error)
+    return null
+  }
+}
+
+export async function getUserProfileByUsername(username: string): Promise<UserProfile | null> {
+  try {
+    // First get the user by username
+    const user = await getUserByUsername(username)
+    if (!user) return null
+
+    // Then get their full profile using their ID
+    return await getUserProfile(user.id)
+  } catch (error) {
+    console.error('Error getting user profile by username:', error)
+    return null
+  }
+}
+
+async function getCurrentUser(): Promise<User | null> {
+  try {
+    const supabase = createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+
+    if (error || !user) {
+      return null
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile) {
+      return null
+    }
+
+    return {
+      id: profile.id,
+      username: profile.username,
+      display_name: profile.display_name || profile.username,
+      email: user.email || '',
+      profile_image_url: profile.profile_image_url,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    }
+  } catch (error) {
+    console.error('Error getting current user:', error)
+    return null
+  }
+}
 
 export interface UserProfile extends User {
   followersCount: number

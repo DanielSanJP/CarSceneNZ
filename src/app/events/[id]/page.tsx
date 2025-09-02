@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,18 +22,18 @@ import {
 import {
   getEventById,
   getEventAttendees,
-  getUserById,
   attendEvent,
   unattendEvent,
   getUserEventStatus,
 } from "@/lib/data";
+import { getUserById } from "@/lib/data/profile";
 import Image from "next/image";
 import Link from "next/link";
 import type { Event, EventAttendee } from "@/types/event";
 import type { User } from "@/types/user";
 
 export default function EventDetailPage() {
-  const { user: currentUser } = useClientAuth();
+  const currentUser = useCurrentUser();
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;

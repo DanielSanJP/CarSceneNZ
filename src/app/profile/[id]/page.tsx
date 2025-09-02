@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,8 @@ import {
 import {
   getUserFollowers,
   getUserFollowing,
-  getUserById,
+  getUserProfile,
+  getUserProfileByUsername,
   getCarsByOwner,
 } from "@/lib/data";
 import {
@@ -38,7 +40,7 @@ import type { User } from "@/types/user";
 import type { Car as CarType } from "@/types/car";
 
 export default function UserProfilePage() {
-  const { user: currentUser } = useClientAuth();
+  const currentUser = useCurrentUser();
   const params = useParams();
   const router = useRouter();
   const userId = params.id as string;
@@ -47,6 +49,7 @@ export default function UserProfilePage() {
   const [userCars, setUserCars] = useState<CarType[]>([]);
   const [followers, setFollowers] = useState<User[]>([]);
   const [following, setFollowing] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
@@ -54,8 +57,9 @@ export default function UserProfilePage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        setIsLoading(true);
         // Get user profile - try by ID first, then by username
-        let user = await getUserById(userId);
+        let user = await getUserProfile(userId);
 
         // If not found by ID and userId doesn't look like a UUID, try username lookup
         if (
@@ -64,12 +68,12 @@ export default function UserProfilePage() {
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
           )
         ) {
-          // Import getUserByUsername dynamically since it might not be imported
-          const { getUserByUsername } = await import("@/lib/data/auth");
-          user = await getUserByUsername(userId);
+          // Try username lookup
+          user = await getUserProfileByUsername(userId);
         }
 
         if (!user) {
+          setIsLoading(false);
           return;
         }
         setProfileUser(user);
@@ -103,6 +107,8 @@ export default function UserProfilePage() {
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -123,6 +129,74 @@ export default function UserProfilePage() {
     setFailedImages((prev) => new Set(prev).add(carId));
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Profile Header Skeleton */}
+            <Card className="mb-8">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row gap-6">
+                  {/* Avatar Skeleton */}
+                  <div className="flex-shrink-0">
+                    <Skeleton className="w-32 h-32 rounded-full" />
+                  </div>
+
+                  {/* Profile Info Skeleton */}
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <Skeleton className="h-8 w-48 mb-2" />
+                      <Skeleton className="h-5 w-32" />
+                    </div>
+
+                    {/* Stats Skeleton */}
+                    <div className="flex flex-wrap gap-6">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="text-center">
+                          <Skeleton className="h-6 w-8 mb-1" />
+                          <Skeleton className="h-4 w-16" />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Buttons Skeleton */}
+                    <div className="flex gap-2">
+                      <Skeleton className="h-10 w-24" />
+                      <Skeleton className="h-10 w-32" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cars Section Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} className="overflow-hidden">
+                      <Skeleton className="aspect-video w-full" />
+                      <CardContent className="p-4">
+                        <Skeleton className="h-5 w-32 mb-2" />
+                        <Skeleton className="h-4 w-24" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // User not found
   if (!profileUser) {
     return (
       <div className="min-h-screen bg-background">
@@ -369,7 +443,7 @@ export default function UserProfilePage() {
                       : `${profileUser.display_name}'s Garage`}
                   </CardTitle>
                   {isOwnProfile && (
-                    <Link href="/garage">
+                    <Link href="/garage/my-garage">
                       <Button variant="outline" size="sm">
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Go to Garage

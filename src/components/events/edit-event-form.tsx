@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,34 +12,16 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useClientAuth } from "@/components/client-auth-provider";
+import { useRequireAuth } from "@/hooks/use-auth";
 import { getEventById, updateEvent, deleteEvent } from "@/lib/data/events";
 import type { Event } from "@/types/event";
 
-interface EventFormData {
-  title: string;
-  description: string;
-  poster_image_url: string;
-  location: string;
-  daily_schedule: Array<{
-    date: Date | undefined;
-    start_time: string;
-    end_time: string;
-    description: string;
-  }>;
-}
-
-interface DatabaseEventData {
-  host_id: string;
-  title: string;
-  description?: string;
-  poster_image_url?: string;
-  location?: string;
-  daily_schedule: Array<{
-    date: string;
-    start_time?: string;
-    end_time?: string;
-  }>;
+// Helper function to format date in local timezone (avoids UTC conversion issues)
+function formatDateToLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 interface EditEventFormProps {
@@ -48,20 +30,20 @@ interface EditEventFormProps {
 
 export function EditEventForm({ eventId }: EditEventFormProps) {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useClientAuth();
+  const user = useRequireAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [eventLoading, setEventLoading] = useState(true);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
-  const locationInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<EventFormData>({
+  const [formData, setFormData] = useState({
     title: "",
     description: "",
     poster_image_url: "",
     location: "",
     daily_schedule: [
       {
-        date: undefined,
+        date: undefined as Date | undefined,
         start_time: "",
         end_time: "",
         description: "",
@@ -69,145 +51,76 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     ],
   });
 
-  // Fetch event data
+  // Load event data
   useEffect(() => {
-    const fetchEvent = async () => {
-      if (!user || authLoading) return;
+    const loadEvent = async () => {
+      if (!eventId) return;
 
       try {
-        const eventData = await getEventById(eventId);
-        if (eventData) {
-          setEvent(eventData);
+        setIsLoadingEvent(true);
+        setError(null);
 
-          // Convert event data to form format
-          const scheduleWithDates = eventData.daily_schedule.map((item) => ({
+        const eventData = await getEventById(eventId);
+
+        if (!eventData) {
+          setError("Event not found.");
+          setIsLoadingEvent(false);
+          return;
+        }
+
+        setEvent(eventData);
+
+        // Set form data
+        const scheduleWithDates = eventData.daily_schedule.map(
+          (item: { date: string; start_time?: string; end_time?: string }) => ({
             date: new Date(item.date),
             start_time: item.start_time || "",
             end_time: item.end_time || "",
             description: "",
-          }));
+          })
+        );
 
-          setFormData({
-            title: eventData.title,
-            description: eventData.description || "",
-            poster_image_url: eventData.poster_image_url || "",
-            location: eventData.location || "",
-            daily_schedule:
-              scheduleWithDates.length > 0
-                ? scheduleWithDates
-                : [
-                    {
-                      date: undefined,
-                      start_time: "",
-                      end_time: "",
-                      description: "",
-                    },
-                  ],
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching event:", error);
-      } finally {
-        setEventLoading(false);
+        setFormData({
+          title: eventData.title,
+          description: eventData.description || "",
+          poster_image_url: eventData.poster_image_url || "",
+          location: eventData.location || "",
+          daily_schedule:
+            scheduleWithDates.length > 0
+              ? scheduleWithDates
+              : [
+                  {
+                    date: undefined,
+                    start_time: "",
+                    end_time: "",
+                    description: "",
+                  },
+                ],
+        });
+
+        setIsLoadingEvent(false);
+      } catch (err) {
+        console.error("Error loading event:", err);
+        setError("Failed to load event data.");
+        setIsLoadingEvent(false);
       }
     };
 
-    fetchEvent();
-  }, [eventId, user, authLoading]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const isClickInsideInput = locationInputRef.current?.contains(target);
-
-      if (!isClickInsideInput) {
-        // No location suggestions to close anymore
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Check if user is the host
-  useEffect(() => {
-    if (event && user && event.host_id !== user.id) {
-      router.push("/events");
-    }
-  }, [event, user, router]);
-
-  // Show loading while auth is loading
-  if (authLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading while fetching event
-  if (eventLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Loading event...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error if not authenticated
-  if (!user) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">Please log in to edit events.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error if event not found
-  if (!event) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-2">Event Not Found</h2>
-          <p className="text-muted-foreground mb-4">
-            The event you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Button onClick={() => router.push("/events")}>Back to Events</Button>
-        </div>
-      </div>
-    );
-  }
+    loadEvent();
+  }, [eventId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !event) return;
+
     setIsLoading(true);
-
     try {
-      // Check if user is authenticated and is the host
-      if (!user || event.host_id !== user.id) {
-        alert("You are not authorized to edit this event.");
-        return;
-      }
-
-      // Validate required fields
+      // Validate
       if (!formData.title.trim()) {
         alert("Event title is required.");
         return;
       }
 
-      // Check if there are any valid schedule items
       const validScheduleItems = formData.daily_schedule.filter(
         (item) => item.date
       );
@@ -216,65 +129,107 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         return;
       }
 
-      // Transform form data to database format
-      const eventData: Partial<DatabaseEventData> = {
+      // Prepare data
+      const eventData = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         poster_image_url: formData.poster_image_url || undefined,
         location: formData.location.trim() || undefined,
         daily_schedule: validScheduleItems.map((item) => ({
-          date: item.date!.toISOString().split("T")[0], // Convert to YYYY-MM-DD format
+          date: formatDateToLocal(item.date!), // Use timezone-safe formatting
           start_time: item.start_time || undefined,
           end_time: item.end_time || undefined,
         })),
       };
 
-      // Update the event
       const updatedEvent = await updateEvent(eventId, eventData);
 
       if (updatedEvent) {
         alert("Event updated successfully!");
         router.push(`/events/${eventId}`);
       } else {
-        alert("Failed to update event. Please try again.");
+        alert("Failed to update event.");
       }
     } catch (error) {
       console.error("Error updating event:", error);
-      alert("An error occurred while updating the event. Please try again.");
+      alert("An error occurred while updating the event.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async () => {
+    if (!user || !event) return;
+
     if (
-      window.confirm(
+      !window.confirm(
         "Are you sure you want to delete this event? This action cannot be undone."
       )
     ) {
-      setIsLoading(true);
-      try {
-        // Check if user is authenticated and is the host
-        if (!user || event.host_id !== user.id) {
-          alert("You are not authorized to delete this event.");
-          return;
-        }
+      return;
+    }
 
-        const success = await deleteEvent(eventId);
-        if (success) {
-          alert("Event deleted successfully!");
-          router.push("/events");
-        } else {
-          alert("Failed to delete event. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error deleting event:", error);
-        alert("An error occurred while deleting the event. Please try again.");
-      } finally {
-        setIsLoading(false);
+    setIsLoading(true);
+    try {
+      const success = await deleteEvent(eventId);
+      if (success) {
+        alert("Event deleted successfully!");
+        router.push("/events");
+      } else {
+        alert("Failed to delete event.");
       }
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      alert("An error occurred while deleting the event.");
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Loading states
+  if (isLoadingEvent) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center py-8">
+          <h1 className="text-2xl font-bold">Loading...</h1>
+          <p className="text-muted-foreground mt-2">
+            Loading event information...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error states
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center py-8">
+          <h1 className="text-2xl font-bold">Error</h1>
+          <p className="text-muted-foreground mt-2">{error}</p>
+          <Link href="/events" className="mt-4 inline-block">
+            <Button variant="outline">Back to Events</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center py-8">
+          <h1 className="text-2xl font-bold">Event Not Found</h1>
+          <p className="text-muted-foreground mt-2">
+            The event you&apos;re looking for doesn&apos;t exist.
+          </p>
+          <Link href="/events" className="mt-4 inline-block">
+            <Button variant="outline">Back to Events</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -326,10 +281,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                 id="title"
                 value={formData.title}
                 onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                  }))
+                  setFormData((prev) => ({ ...prev, title: e.target.value }))
                 }
                 placeholder="e.g., Auckland JDM Meet, Wellington Stance Day"
                 required
@@ -353,7 +305,6 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
               />
             </div>
 
-            {/* Location with map functionality */}
             <div className="space-y-2">
               <Label htmlFor="location">Location *</Label>
               <MapLocationSelector
@@ -368,9 +319,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         </Card>
 
         <EventDateTime
-          formData={{
-            daily_schedule: formData.daily_schedule,
-          }}
+          formData={{ daily_schedule: formData.daily_schedule }}
           onFormDataChange={(data) =>
             setFormData((prev) => ({ ...prev, ...data }))
           }
@@ -390,7 +339,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
 
           <div className="flex space-x-4">
             <Link href={`/events/${eventId}`}>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={isLoading}>
                 Cancel
               </Button>
             </Link>
