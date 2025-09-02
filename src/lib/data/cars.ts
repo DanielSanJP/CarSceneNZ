@@ -11,7 +11,7 @@ const supabase = createClient();
 /**
  * Get basic car information without components
  */
-async function getBasicCar(carId: string): Promise<Omit<Car, 'engine' | 'wheels' | 'suspension' | 'brakes' | 'paint_finish' | 'lighting_modifications' | 'bodykit_modifications' | 'seats' | 'steering_wheel' | 'audio_system' | 'rollcage' | 'gauges' | 'performance_mods' | 'turbo_system' | 'exhaust_system' | 'engine_management' | 'internal_components' | 'fuel_system'> | null> {
+async function getBasicCar(carId: string): Promise<Omit<Car, 'engine' | 'wheels' | 'suspension' | 'brakes' | 'paint_finish' | 'lighting_modifications' | 'bodykit_modifications' | 'seats' | 'steering_wheel' | 'audio_system' | 'gauges' | 'turbo_system' | 'exhaust_system' | 'engine_management' | 'internal_components' | 'fuel_system'> | null> {
   try {
     const { data, error } = await supabase
       .from('cars')

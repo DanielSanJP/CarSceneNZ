@@ -17,49 +17,40 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import type {
+  CarEngine,
+  CarTurboSystem,
+  CarExhaustSystem,
+  CarEngineManagement,
+  CarInternalComponents,
+  CarFuelSystem,
+} from "@/types/car";
 
-// Direct database structure interfaces
-interface EngineData {
-  engine_code?: string;
-  displacement?: string;
-  aspiration?: string;
-  power_hp?: number;
-  torque_nm?: number;
-}
-
-interface TurboSystemData {
-  turbo_brand?: string;
-  turbo_model?: string;
-  intercooler_brand?: string;
-  intercooler_model?: string;
-}
-
-interface ExhaustSystemData {
-  intake_brand?: string;
-  intake_model?: string;
-  header_brand?: string;
-  catback_brand?: string;
-}
-
-interface EngineManagementData {
-  ecu_brand?: string;
-  ecu_model?: string;
-  tuned_by?: string;
-}
-
-interface InternalComponentsData {
-  pistons?: string;
-  connecting_rods?: string;
-  valves?: string;
-  valve_springs?: string;
-  camshafts?: string;
-}
-
-interface FuelSystemData {
-  fuel_injectors?: string;
-  fuel_pump?: string;
-  fuel_rail?: string;
-}
+// Component-specific data interfaces (without database metadata)
+type EngineData = Omit<
+  CarEngine,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type TurboSystemData = Omit<
+  CarTurboSystem,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type ExhaustSystemData = Omit<
+  CarExhaustSystem,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type EngineManagementData = Omit<
+  CarEngineManagement,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type InternalComponentsData = Omit<
+  CarInternalComponents,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type FuelSystemData = Omit<
+  CarFuelSystem,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
 
 interface EngineDetailsData {
   engine?: EngineData;
@@ -249,62 +240,27 @@ export default function EngineDetails({
                     {/* Turbo/Supercharger */}
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Turbo Brand</Label>
+                        <Label>Turbo</Label>
                         <Input
-                          value={data.turbo_system?.turbo_brand || ""}
+                          value={data.turbo_system?.turbo || ""}
                           onChange={(e) =>
-                            handleTurboSystemChange(
-                              "turbo_brand",
-                              e.target.value
-                            )
+                            handleTurboSystemChange("turbo", e.target.value)
                           }
-                          placeholder="e.g., Garrett"
+                          placeholder="e.g., Garrett GT2860RS"
                           disabled={isLoading}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Turbo Model</Label>
+                        <Label>Intercooler</Label>
                         <Input
-                          value={data.turbo_system?.turbo_model || ""}
+                          value={data.turbo_system?.intercooler || ""}
                           onChange={(e) =>
                             handleTurboSystemChange(
-                              "turbo_model",
+                              "intercooler",
                               e.target.value
                             )
                           }
-                          placeholder="e.g., GT2860RS"
-                          disabled={isLoading}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Intercooler */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Intercooler Brand</Label>
-                        <Input
-                          value={data.turbo_system?.intercooler_brand || ""}
-                          onChange={(e) =>
-                            handleTurboSystemChange(
-                              "intercooler_brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Process West"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Intercooler Model</Label>
-                        <Input
-                          value={data.turbo_system?.intercooler_model || ""}
-                          onChange={(e) =>
-                            handleTurboSystemChange(
-                              "intercooler_model",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Verticooler"
+                          placeholder="e.g., Process West Verticooler"
                           disabled={isLoading}
                         />
                       </div>
@@ -315,30 +271,30 @@ export default function EngineDetails({
                       <h5 className="font-medium mb-2">Exhaust System</h5>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>Header Brand</Label>
+                          <Label>Header</Label>
                           <Input
-                            value={data.exhaust_system?.header_brand || ""}
+                            value={data.exhaust_system?.header || ""}
                             onChange={(e) =>
                               handleExhaustSystemChange(
-                                "header_brand",
+                                "header",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g., XForce"
+                            placeholder="e.g., XForce Performance Headers"
                             disabled={isLoading}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Catback Brand</Label>
+                          <Label>Exhaust</Label>
                           <Input
-                            value={data.exhaust_system?.catback_brand || ""}
+                            value={data.exhaust_system?.exhaust || ""}
                             onChange={(e) =>
                               handleExhaustSystemChange(
-                                "catback_brand",
+                                "exhaust",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g., Tomei"
+                            placeholder="e.g., Tomei Expreme Ti"
                             disabled={isLoading}
                           />
                         </div>
@@ -346,66 +302,33 @@ export default function EngineDetails({
                     </div>
 
                     {/* Intake */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Intake Brand</Label>
-                        <Input
-                          value={data.exhaust_system?.intake_brand || ""}
-                          onChange={(e) =>
-                            handleExhaustSystemChange(
-                              "intake_brand",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., AEM"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Intake Model</Label>
-                        <Input
-                          value={data.exhaust_system?.intake_model || ""}
-                          onChange={(e) =>
-                            handleExhaustSystemChange(
-                              "intake_model",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Cold Air Intake"
-                          disabled={isLoading}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label>Intake</Label>
+                      <Input
+                        value={data.exhaust_system?.intake || ""}
+                        onChange={(e) =>
+                          handleExhaustSystemChange("intake", e.target.value)
+                        }
+                        placeholder="e.g., AEM Cold Air Intake"
+                        disabled={isLoading}
+                      />
                     </div>
 
                     {/* ECU */}
                     <div>
                       <h5 className="font-medium mb-2">Engine Management</h5>
-                      <div className="grid gap-4 md:grid-cols-3">
+                      <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>ECU Brand</Label>
+                          <Label>ECU</Label>
                           <Input
-                            value={data.engine_management?.ecu_brand || ""}
+                            value={data.engine_management?.ecu || ""}
                             onChange={(e) =>
                               handleEngineManagementChange(
-                                "ecu_brand",
+                                "ecu",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g., Cobb"
-                            disabled={isLoading}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>ECU Model</Label>
-                          <Input
-                            value={data.engine_management?.ecu_model || ""}
-                            onChange={(e) =>
-                              handleEngineManagementChange(
-                                "ecu_model",
-                                e.target.value
-                              )
-                            }
-                            placeholder="e.g., Accessport V3"
+                            placeholder="e.g., Cobb Accessport V3"
                             disabled={isLoading}
                           />
                         </div>

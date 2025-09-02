@@ -19,7 +19,6 @@ import {
   SuspensionDetails,
   ExteriorMods,
   InteriorMods,
-  PerformanceMods,
 } from "@/components/garage";
 
 // Complete form data structure - using direct database types
@@ -41,20 +40,16 @@ interface CompleteEditCarFormData {
 
   // Engine modifications (direct database structure)
   turbo_system?: {
-    turbo_brand?: string;
-    turbo_model?: string;
-    intercooler_brand?: string;
-    intercooler_model?: string;
+    turbo?: string;
+    intercooler?: string;
   };
   exhaust_system?: {
-    intake_brand?: string;
-    intake_model?: string;
-    header_brand?: string;
-    catback_brand?: string;
+    intake?: string;
+    header?: string;
+    exhaust?: string;
   };
   engine_management?: {
-    ecu_brand?: string;
-    ecu_model?: string;
+    ecu?: string;
     tuned_by?: string;
   };
   internal_components?: {
@@ -100,8 +95,6 @@ interface CompleteEditCarFormData {
   seats?: {
     front_seats?: string;
     rear_seats?: string;
-    material?: string;
-    color?: string;
   };
   audio_system?: {
     head_unit?: string;
@@ -110,16 +103,7 @@ interface CompleteEditCarFormData {
     subwoofer?: string;
   };
   steering_wheel?: {
-    steering_wheel_brand?: string;
-    steering_wheel_model?: string;
-    material?: string;
-    size?: string;
-  };
-  rollcage?: {
-    rollcage_type?: string;
-    rollcage_brand?: string;
-    material?: string;
-    points?: number;
+    steering_wheel?: string;
   };
 
   // Other component data - arrays for components not yet converted
@@ -128,13 +112,9 @@ interface CompleteEditCarFormData {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   brakes?: any[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  brake_accessories?: any[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   suspension?: any[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   suspension_accessories?: any[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  performance_mods?: any[];
 }
 
 export default function CompleteEditCarPage() {
@@ -143,6 +123,7 @@ export default function CompleteEditCarPage() {
   const params = useParams();
   const carId = params.id as string;
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCar, setIsLoadingCar] = useState(true);
   const [car, setCar] = useState<Car | null>(null);
 
   const [formData, setFormData] = useState<CompleteEditCarFormData>({
@@ -162,18 +143,16 @@ export default function CompleteEditCarPage() {
     seats: undefined,
     audio_system: undefined,
     steering_wheel: undefined,
-    rollcage: undefined,
     wheels: [],
     brakes: [],
-    brake_accessories: [],
     suspension: [],
     suspension_accessories: [],
-    performance_mods: [],
   });
 
   useEffect(() => {
     const loadCar = async () => {
       try {
+        setIsLoadingCar(true);
         const foundCar = await getCarById(carId);
         if (foundCar) {
           setCar(foundCar);
@@ -196,17 +175,16 @@ export default function CompleteEditCarPage() {
             seats: foundCar.seats,
             audio_system: foundCar.audio_system,
             steering_wheel: foundCar.steering_wheel,
-            rollcage: foundCar.rollcage,
             wheels: foundCar.wheels || [],
             brakes: foundCar.brakes || [],
-            brake_accessories: [], // TODO: Convert from new structure
             suspension: foundCar.suspension || [],
             suspension_accessories: [], // TODO: Convert from new structure
-            performance_mods: [], // Not needed since table was deleted
           });
         }
       } catch (error) {
         console.error("Error loading car:", error);
+      } finally {
+        setIsLoadingCar(false);
       }
     };
     loadCar();
@@ -220,6 +198,22 @@ export default function CompleteEditCarPage() {
             <h1 className="text-2xl font-bold">Access Denied</h1>
             <p className="text-muted-foreground mt-2">
               Please log in to edit cars.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while fetching car data
+  if (isLoadingCar) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">Loading Car...</h1>
+            <p className="text-muted-foreground mt-2">
+              Please wait while we load your car details.
             </p>
           </div>
         </div>
@@ -313,7 +307,6 @@ export default function CompleteEditCarPage() {
           seats: formData.seats,
           steering_wheel: formData.steering_wheel,
           audio_system: formData.audio_system,
-          rollcage: formData.rollcage,
           gauges: [], // TODO: Handle gauges if needed
         },
         performance: undefined, // Not needed since table was deleted
@@ -415,7 +408,6 @@ export default function CompleteEditCarPage() {
             <BrakingSystem
               data={{
                 brakes: formData.brakes,
-                brake_accessories: formData.brake_accessories,
               }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
@@ -447,15 +439,7 @@ export default function CompleteEditCarPage() {
                 seats: formData.seats,
                 audio_system: formData.audio_system,
                 steering_wheel: formData.steering_wheel,
-                rollcage: formData.rollcage,
               }}
-              onChange={(updates) => handleFormDataChange(updates)}
-              isLoading={isLoading}
-            />
-
-            {/* Performance Modifications */}
-            <PerformanceMods
-              data={{ performance_mods: formData.performance_mods }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
             />

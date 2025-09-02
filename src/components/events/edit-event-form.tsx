@@ -13,7 +13,8 @@ import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { createEvent } from "@/lib/data/events";
+import { getEventById, updateEvent } from "@/lib/data/events";
+import type { Event } from "@/types/event";
 
 interface EventFormData {
   title: string;
@@ -41,18 +42,19 @@ interface DatabaseEventData {
   }>;
 }
 
-export function CreateEventForm() {
+interface EditEventFormProps {
+  eventId: string;
+}
+
+export function EditEventForm({ eventId }: EditEventFormProps) {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [eventLoading, setEventLoading] = useState(true);
+  const [event, setEvent] = useState<Event | null>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
 
-  // Generate a temporary ID for image uploads during creation
-  const [tempEventId] = useState(
-    () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  );
-
-  const [formData, setFormData] = useState<EventFormData>(() => ({
+  const [formData, setFormData] = useState<EventFormData>({
     title: "",
     description: "",
     poster_image_url: "",
@@ -65,7 +67,53 @@ export function CreateEventForm() {
         description: "",
       },
     ],
-  }));
+  });
+
+  // Fetch event data
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const eventData = await getEventById(eventId);
+        if (eventData) {
+          setEvent(eventData);
+
+          // Convert event data to form format
+          const scheduleWithDates = eventData.daily_schedule.map((item) => ({
+            date: new Date(item.date),
+            start_time: item.start_time || "",
+            end_time: item.end_time || "",
+            description: "",
+          }));
+
+          setFormData({
+            title: eventData.title,
+            description: eventData.description || "",
+            poster_image_url: eventData.poster_image_url || "",
+            location: eventData.location || "",
+            daily_schedule:
+              scheduleWithDates.length > 0
+                ? scheduleWithDates
+                : [
+                    {
+                      date: undefined,
+                      start_time: "",
+                      end_time: "",
+                      description: "",
+                    },
+                  ],
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching event:", error);
+      } finally {
+        setEventLoading(false);
+      }
+    };
+
+    if (eventId) {
+      fetchEvent();
+    }
+  }, [eventId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -91,8 +139,15 @@ export function CreateEventForm() {
     }
   }, [isAuthenticated, loading, router]);
 
-  // Show loading while checking auth
-  if (loading) {
+  // Check if user is the host
+  useEffect(() => {
+    if (event && user && event.host_id !== user.id) {
+      router.push("/events");
+    }
+  }, [event, user, router]);
+
+  // Show loading while checking auth or fetching event
+  if (loading || eventLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         Loading...
@@ -100,8 +155,8 @@ export function CreateEventForm() {
     );
   }
 
-  // Don't render if not authenticated
-  if (!isAuthenticated) {
+  // Don't render if not authenticated or no event found
+  if (!isAuthenticated || !event) {
     return null;
   }
 
@@ -110,9 +165,9 @@ export function CreateEventForm() {
     setIsLoading(true);
 
     try {
-      // Check if user is authenticated
-      if (!isAuthenticated || !user) {
-        alert("You must be logged in to create an event.");
+      // Check if user is authenticated and is the host
+      if (!isAuthenticated || !user || event.host_id !== user.id) {
+        alert("You are not authorized to edit this event.");
         return;
       }
 
@@ -132,8 +187,7 @@ export function CreateEventForm() {
       }
 
       // Transform form data to database format
-      const eventData: DatabaseEventData = {
-        host_id: user.id,
+      const eventData: Partial<DatabaseEventData> = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         poster_image_url: formData.poster_image_url || undefined,
@@ -145,18 +199,18 @@ export function CreateEventForm() {
         })),
       };
 
-      // Create the event
-      const createdEvent = await createEvent(eventData);
+      // Update the event
+      const updatedEvent = await updateEvent(eventId, eventData);
 
-      if (createdEvent) {
-        alert("Event created successfully!");
-        router.push("/events");
+      if (updatedEvent) {
+        alert("Event updated successfully!");
+        router.push(`/events/${eventId}`);
       } else {
-        alert("Failed to create event. Please try again.");
+        alert("Failed to update event. Please try again.");
       }
     } catch (error) {
-      console.error("Error creating event:", error);
-      alert("An error occurred while creating the event. Please try again.");
+      console.error("Error updating event:", error);
+      alert("An error occurred while updating the event. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -166,15 +220,15 @@ export function CreateEventForm() {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Link href="/events">
+        <Link href={`/events/${eventId}`}>
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Create New Event</h1>
+          <h1 className="text-3xl font-bold">Edit Event</h1>
           <p className="text-muted-foreground">
-            Create a new car meet event and bring the community together
+            Update your event details and settings
           </p>
         </div>
       </div>
@@ -195,7 +249,7 @@ export function CreateEventForm() {
                 setFormData((prev) => ({ ...prev, poster_image_url: "" }))
               }
               isLoading={isLoading}
-              tempEventId={tempEventId}
+              tempEventId={eventId}
             />
           </CardContent>
         </Card>
@@ -264,13 +318,13 @@ export function CreateEventForm() {
 
         {/* Submit Buttons */}
         <div className="flex justify-end space-x-4">
-          <Link href="/events">
+          <Link href={`/events/${eventId}`}>
             <Button type="button" variant="outline">
               Cancel
             </Button>
           </Link>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Event"}
+            {isLoading ? "Updating..." : "Update Event"}
           </Button>
         </div>
       </form>

@@ -7,4 +7,3 @@ export { default as BrakingSystem } from './BrakingSystem';
 export { default as SuspensionDetails } from './SuspensionDetails';
 export { default as ExteriorMods } from './ExteriorMods';
 export { default as InteriorMods } from './InteriorMods';
-export { default as PerformanceMods } from './PerformanceMods';

@@ -61,7 +61,6 @@ export async function getTopCars(limit: number = 10): Promise<CarRanking[]> {
         brakes: car.brakes,
         exterior: car.exterior,
         interior: car.interior,
-        performance_mods: car.performance_mods,
         images: car.images || [],
         total_likes: car.total_likes || 0,
         created_at: car.created_at,
@@ -86,41 +85,45 @@ export async function getTopOwners(limit: number = 10): Promise<OwnerRanking[]> 
   try {
     const supabase = createClient()
 
-    // Get owners with their total likes and car count
-    const { data, error } = await supabase
-      .rpc('get_top_owners', { limit_param: limit })
+    // Try RPC function first
+    try {
+      const { data, error } = await supabase
+        .rpc('get_top_owners', { limit_param: limit })
 
-    if (error) {
-      console.error('Error getting top owners:', error)
-      // Fallback: calculate manually
-      return await getTopOwnersManual(limit)
+      if (!error && data && Array.isArray(data)) {
+        return data.map((owner: {
+          id: string;
+          username: string;
+          display_name?: string;
+          profile_image_url?: string;
+          created_at: string;
+          updated_at: string;
+          total_likes?: number;
+          car_count?: number;
+        }, index: number) => ({
+          owner: {
+            id: owner.id,
+            username: owner.username,
+            display_name: owner.display_name || owner.username,
+            email: '',
+            profile_image_url: owner.profile_image_url,
+            created_at: owner.created_at,
+            updated_at: owner.updated_at,
+          },
+          rank: index + 1,
+          totalLikes: owner.total_likes || 0,
+          carCount: owner.car_count || 0,
+        }))
+      }
+    } catch {
+      console.log('RPC function not available, using manual calculation')
     }
 
-    return data?.map((owner: {
-      id: string;
-      username: string;
-      display_name?: string;
-      profile_image_url?: string;
-      created_at: string;
-      updated_at: string;
-      total_likes?: number;
-      car_count?: number;
-    }, index: number) => ({
-      owner: {
-        id: owner.id,
-        username: owner.username,
-        display_name: owner.display_name || owner.username,
-        email: '',
-        profile_image_url: owner.profile_image_url,
-        created_at: owner.created_at,
-        updated_at: owner.updated_at,
-      },
-      rank: index + 1,
-      totalLikes: owner.total_likes || 0,
-      carCount: owner.car_count || 0,
-    })) || []
+    // Fallback: calculate manually
+    return await getTopOwnersManual(limit)
   } catch (error) {
     console.error('Error getting top owners:', error)
+    // Return empty array instead of throwing
     return []
   }
 }

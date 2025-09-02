@@ -2,7 +2,6 @@ import type {
   CarSeats,
   CarSteeringWheel,
   CarAudioSystem,
-  CarRollcage,
   CarGauges,
 } from '@/types/car';
 import {
@@ -18,7 +17,6 @@ export interface InteriorComponentsData {
   seats?: Partial<CarSeats>;
   steering_wheel?: Partial<CarSteeringWheel>;
   audio_system?: Partial<CarAudioSystem>;
-  rollcage?: Partial<CarRollcage>;
   gauges?: CarGauges[];
 }
 
@@ -29,15 +27,13 @@ export async function getInteriorComponents(carId: string): Promise<{
   seats?: CarSeats;
   steering_wheel?: CarSteeringWheel;
   audio_system?: CarAudioSystem;
-  rollcage?: CarRollcage;
   gauges?: CarGauges[];
 }> {
   try {
-    const [seats, steeringWheel, audioSystem, rollcage, gauges] = await Promise.all([
+    const [seats, steeringWheel, audioSystem, gauges] = await Promise.all([
       getRecordByCarId<CarSeats>('car_seats', carId),
       getRecordByCarId<CarSteeringWheel>('car_steering_wheel', carId),
       getRecordByCarId<CarAudioSystem>('car_audio_system', carId),
-      getRecordByCarId<CarRollcage>('car_rollcage', carId),
       getRecordsByCarId<CarGauges>('car_gauges', carId),
     ]);
 
@@ -45,7 +41,6 @@ export async function getInteriorComponents(carId: string): Promise<{
       seats: seats || undefined,
       steering_wheel: steeringWheel || undefined,
       audio_system: audioSystem || undefined,
-      rollcage: rollcage || undefined,
       gauges: gauges.length > 0 ? gauges : undefined,
     };
   } catch (error) {
@@ -97,13 +92,6 @@ export async function updateInteriorComponents(
       );
     }
 
-    // Update rollcage
-    if (data.rollcage && hasValidValues(data.rollcage)) {
-      updatePromises.push(
-        upsertRecord<CarRollcage>('car_rollcage', carId, data.rollcage)
-      );
-    }
-
     // Update gauges (multiple allowed)
     if (data.gauges && data.gauges.length > 0) {
       updatePromises.push(
@@ -128,7 +116,6 @@ export async function deleteInteriorComponents(carId: string): Promise<boolean> 
       deleteRecordsByCarId('car_seats', carId),
       deleteRecordsByCarId('car_steering_wheel', carId),
       deleteRecordsByCarId('car_audio_system', carId),
-      deleteRecordsByCarId('car_rollcage', carId),
       deleteRecordsByCarId('car_gauges', carId),
     ];
 

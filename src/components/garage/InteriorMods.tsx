@@ -10,41 +10,23 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { CarSeats, CarAudioSystem, CarSteeringWheel } from "@/types/car";
 
-// Direct database structure interfaces
-interface SeatsData {
-  front_seats?: string;
-  rear_seats?: string;
-  seat_material?: string;
-  seat_color?: string;
-}
-
-interface AudioSystemData {
-  head_unit?: string;
-  speakers?: string;
-  amplifier?: string;
-  subwoofer?: string;
-}
-
-interface SteeringWheelData {
-  steering_wheel_brand?: string;
-  steering_wheel_model?: string;
-  material?: string;
-  size?: string;
-}
-
-interface RollcageData {
-  rollcage_type?: string;
-  rollcage_brand?: string;
-  material?: string;
-  points?: number;
-}
+// Component-specific data interfaces (without database metadata)
+type SeatsData = Omit<CarSeats, "id" | "car_id" | "created_at" | "updated_at">;
+type AudioSystemData = Omit<
+  CarAudioSystem,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type SteeringWheelData = Omit<
+  CarSteeringWheel,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
 
 interface InteriorModsData {
   seats?: SeatsData;
   audio_system?: AudioSystemData;
   steering_wheel?: SteeringWheelData;
-  rollcage?: RollcageData;
 }
 
 interface InteriorModsProps {
@@ -88,14 +70,6 @@ export default function InteriorMods({
     onChange({ steering_wheel: updatedSteeringWheel });
   };
 
-  const handleRollcageChange = (field: keyof RollcageData, value: string) => {
-    const updatedRollcage = {
-      ...data.rollcage,
-      [field]: value,
-    } as RollcageData;
-    onChange({ rollcage: updatedRollcage });
-  };
-
   return (
     <Card>
       <CardContent>
@@ -130,28 +104,6 @@ export default function InteriorMods({
                         disabled={isLoading}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Seat Material</Label>
-                      <Input
-                        value={data.seats?.seat_material || ""}
-                        onChange={(e) =>
-                          handleSeatsChange("seat_material", e.target.value)
-                        }
-                        placeholder="e.g., Alcantara"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Seat Color</Label>
-                      <Input
-                        value={data.seats?.seat_color || ""}
-                        onChange={(e) =>
-                          handleSeatsChange("seat_color", e.target.value)
-                        }
-                        placeholder="e.g., Black"
-                        disabled={isLoading}
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -160,57 +112,19 @@ export default function InteriorMods({
                 {/* Steering Wheel */}
                 <div>
                   <h4 className="font-medium mb-4">Steering Wheel</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Brand</Label>
-                      <Input
-                        value={data.steering_wheel?.steering_wheel_brand || ""}
-                        onChange={(e) =>
-                          handleSteeringWheelChange(
-                            "steering_wheel_brand",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., MOMO"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Model</Label>
-                      <Input
-                        value={data.steering_wheel?.steering_wheel_model || ""}
-                        onChange={(e) =>
-                          handleSteeringWheelChange(
-                            "steering_wheel_model",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., Prototipo"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Material</Label>
-                      <Input
-                        value={data.steering_wheel?.material || ""}
-                        onChange={(e) =>
-                          handleSteeringWheelChange("material", e.target.value)
-                        }
-                        placeholder="e.g., Leather"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Size</Label>
-                      <Input
-                        value={data.steering_wheel?.size || ""}
-                        onChange={(e) =>
-                          handleSteeringWheelChange("size", e.target.value)
-                        }
-                        placeholder="e.g., 350mm"
-                        disabled={isLoading}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Steering Wheel</Label>
+                    <Input
+                      value={data.steering_wheel?.steering_wheel || ""}
+                      onChange={(e) =>
+                        handleSteeringWheelChange(
+                          "steering_wheel",
+                          e.target.value
+                        )
+                      }
+                      placeholder="e.g., MOMO Prototipo 350mm Leather"
+                      disabled={isLoading}
+                    />
                   </div>
                 </div>
 
@@ -261,59 +175,6 @@ export default function InteriorMods({
                           handleAudioSystemChange("subwoofer", e.target.value)
                         }
                         placeholder="e.g., JL Audio 10W3v3-4"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Roll Cage */}
-                <div>
-                  <h4 className="font-medium mb-4">Roll Cage</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Type</Label>
-                      <Input
-                        value={data.rollcage?.rollcage_type || ""}
-                        onChange={(e) =>
-                          handleRollcageChange("rollcage_type", e.target.value)
-                        }
-                        placeholder="e.g., Half Cage"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Brand</Label>
-                      <Input
-                        value={data.rollcage?.rollcage_brand || ""}
-                        onChange={(e) =>
-                          handleRollcageChange("rollcage_brand", e.target.value)
-                        }
-                        placeholder="e.g., OMP"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Material</Label>
-                      <Input
-                        value={data.rollcage?.material || ""}
-                        onChange={(e) =>
-                          handleRollcageChange("material", e.target.value)
-                        }
-                        placeholder="e.g., Steel"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Points</Label>
-                      <Input
-                        value={data.rollcage?.points || ""}
-                        onChange={(e) =>
-                          handleRollcageChange("points", e.target.value)
-                        }
-                        placeholder="e.g., 6-point"
                         disabled={isLoading}
                       />
                     </div>

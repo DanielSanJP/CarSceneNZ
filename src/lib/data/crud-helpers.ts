@@ -65,22 +65,24 @@ export async function getRecordByCarId<T>(
   carId: string
 ): Promise<T | null> {
   try {
+    // First check if any records exist for this car_id
     const { data, error } = await supabase
       .from(table)
       .select('*')
-      .eq('car_id', carId)
-      .single();
+      .eq('car_id', carId);
 
     if (error) {
-      // If no record found, return null (this is expected for optional components)
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       console.error(`Error fetching record from ${table}:`, error);
       return null;
     }
 
-    return data as T;
+    // If no records found, return null (this is expected for optional components)
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    // Return the first record (there should only be one due to UNIQUE constraint)
+    return data[0] as T;
   } catch (error) {
     console.error(`Error in getRecordByCarId for ${table}:`, error);
     return null;

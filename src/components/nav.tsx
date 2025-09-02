@@ -130,6 +130,12 @@ function ProfileDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
+          <Link href="/events/my-events" className="cursor-pointer">
+            <Calendar className="mr-2 h-4 w-4" />
+            <span>My Events</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link href="/events/create" className="cursor-pointer">
             <Calendar className="mr-2 h-4 w-4" />
             <span>Create Event</span>
@@ -213,6 +219,17 @@ export function Navigation() {
                         >
                           <Car className="h-4 w-4" />
                           <span>My Garage</span>
+                        </Link>
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
+                      <NavigationMenuLink asChild>
+                        <Link
+                          href="/events/my-events"
+                          className="flex flex-row items-center gap-2"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          <span>My Events</span>
                         </Link>
                       </NavigationMenuLink>
                     </NavigationMenuItem>

@@ -14,10 +14,8 @@ export interface CarEngine {
 export interface CarTurboSystem {
   id: string;
   car_id: string;
-  turbo_brand?: string;
-  turbo_model?: string;
-  intercooler_brand?: string;
-  intercooler_model?: string;
+  turbo?: string;
+  intercooler?: string;
   created_at: string;
   updated_at: string;
 }
@@ -25,10 +23,9 @@ export interface CarTurboSystem {
 export interface CarExhaustSystem {
   id: string;
   car_id: string;
-  header_brand?: string;
-  catback_brand?: string;
-  intake_brand?: string;
-  intake_model?: string;
+  header?: string;
+  exhaust?: string;
+  intake?: string;
   created_at: string;
   updated_at: string;
 }
@@ -36,8 +33,7 @@ export interface CarExhaustSystem {
 export interface CarEngineManagement {
   id: string;
   car_id: string;
-  ecu_brand?: string;
-  ecu_model?: string;
+  ecu?: string;
   tuned_by?: string;
   created_at: string;
   updated_at: string;
@@ -70,10 +66,11 @@ export interface CarWheel {
   id: string;
   car_id: string;
   position: 'front' | 'rear';
-  wheel_brand?: string;
+  wheel?: string;
   wheel_size?: string;
   wheel_offset?: string;
-  tire_size?: string;
+  tyre?: string;
+  tyre_size?: string;
   created_at: string;
   updated_at: string;
 }
@@ -83,17 +80,14 @@ export interface CarSuspension {
   car_id: string;
   position?: 'front' | 'rear'; // nullable for general suspension_type
   suspension_type?: string;
-  brand?: string;
-  model?: string;
+  suspension?: string;
   spring_rate?: string;
   camber_degrees?: number;
   toe_degrees?: string;
   caster_degrees?: string;
-  // Suspension accessories
-  front_anti_roll_bar?: string;
-  rear_anti_roll_bar?: string;
-  front_strut_brace?: string;
-  rear_strut_brace?: string;
+  // Position-specific suspension accessories
+  anti_roll_bar?: string;
+  strut_brace?: string;
   created_at: string;
   updated_at: string;
 }
@@ -157,9 +151,6 @@ export interface CarSeats {
   car_id: string;
   front_seats?: string;
   rear_seats?: string;
-  seat_material?: string;
-  seat_color?: string;
-  harnesses?: string;
   created_at: string;
   updated_at: string;
 }
@@ -167,10 +158,7 @@ export interface CarSeats {
 export interface CarSteeringWheel {
   id: string;
   car_id: string;
-  steering_wheel_brand?: string;
-  steering_wheel_model?: string;
-  material?: string;
-  size?: string;
+  steering_wheel?: string;
   created_at: string;
   updated_at: string;
 }
@@ -186,17 +174,6 @@ export interface CarAudioSystem {
   updated_at: string;
 }
 
-export interface CarRollcage {
-  id: string;
-  car_id: string;
-  rollcage_brand?: string;
-  rollcage_type?: string;
-  material?: string;
-  points?: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface CarGauges {
   id: string;
   car_id: string;
@@ -207,18 +184,6 @@ export interface CarGauges {
   position?: string; // 'dash', 'pillar', 'center_console', etc.
   created_at: string;
   updated_at: string;
-}
-
-// Performance Modifications (keeping this for general performance mods)
-export interface CarPerformanceMod {
-  id: string;
-  car_id: string;
-  category: string; // 'weight_reduction', 'aero', 'chassis', 'cooling'
-  modification: string;
-  brand?: string;
-  model?: string;
-  description?: string;
-  created_at: string;
 }
 
 // Main Car interface with all related data
@@ -261,11 +226,7 @@ export interface Car {
   seats?: CarSeats;
   steering_wheel?: CarSteeringWheel;
   audio_system?: CarAudioSystem;
-  rollcage?: CarRollcage;
   gauges?: CarGauges[];
-  
-  // Performance modifications
-  performance_mods?: CarPerformanceMod[];
 }
 
 export interface CarLike {

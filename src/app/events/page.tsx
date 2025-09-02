@@ -255,9 +255,9 @@ export default function EventsPage() {
                 <Card className="overflow-hidden pt-0 cursor-pointer">
                   {/* Event Image/Poster */}
                   <div className="relative aspect-square overflow-hidden">
-                    {failedImages.has(event.id) ? (
+                    {failedImages.has(event.id) || !event.poster_image_url ? (
                       // Fallback placeholder
-                      <div className="aspect-square  flex items-center justify-center">
+                      <div className="aspect-square bg-muted flex items-center justify-center">
                         <div className="text-center">
                           <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
                           <p className="text-sm text-muted-foreground font-medium px-4">
@@ -267,7 +267,7 @@ export default function EventsPage() {
                       </div>
                     ) : (
                       <Image
-                        src={event.poster_image_url || "/placeholder-event.jpg"}
+                        src={event.poster_image_url}
                         alt={event.title}
                         fill
                         quality={100}

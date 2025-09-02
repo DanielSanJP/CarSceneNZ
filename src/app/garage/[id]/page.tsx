@@ -139,28 +139,6 @@ export default function CarDetailPage() {
     return car.suspension?.find((susp) => susp.position === position);
   };
 
-  // Helper function to get suspension accessories
-  const getSuspensionAccessories = () => {
-    if (!car.suspension) return null;
-
-    // Get accessories from front or rear entries (they should be the same)
-    const frontEntry = car.suspension.find((s) => s.position === "front");
-    const rearEntry = car.suspension.find((s) => s.position === "rear");
-    const generalEntry = car.suspension.find((s) => s.position === undefined);
-
-    // Prefer front/rear entries, fallback to general for backward compatibility
-    const accessorySource = frontEntry || rearEntry || generalEntry;
-
-    if (!accessorySource) return null;
-
-    return {
-      front_anti_roll_bar: accessorySource.front_anti_roll_bar,
-      rear_anti_roll_bar: accessorySource.rear_anti_roll_bar,
-      front_strut_brace: accessorySource.front_strut_brace,
-      rear_strut_brace: accessorySource.rear_strut_brace,
-    };
-  };
-
   // Helper function to get brakes by position
   const getBrakesByPosition = (position: "front" | "rear") => {
     return car.brakes?.find((brake) => brake.position === position);
@@ -410,52 +388,28 @@ export default function CarDetailPage() {
                   <CardContent className="space-y-4">
                     {/* Turbo System */}
                     {car.turbo_system &&
-                      (car.turbo_system.turbo_brand ||
-                        car.turbo_system.turbo_model ||
-                        car.turbo_system.intercooler_brand ||
-                        car.turbo_system.intercooler_model) && (
+                      (car.turbo_system.turbo ||
+                        car.turbo_system.intercooler) && (
                         <div className="space-y-2">
                           <h4 className="font-medium capitalize">
                             Turbo System
                           </h4>
                           <div className="grid grid-cols-2 gap-4 text-sm">
-                            {car.turbo_system.turbo_brand && (
+                            {car.turbo_system.turbo && (
                               <div>
-                                <p className="text-muted-foreground">
-                                  Turbo Brand
-                                </p>
+                                <p className="text-muted-foreground">Turbo</p>
                                 <p className="font-medium">
-                                  {car.turbo_system.turbo_brand}
+                                  {car.turbo_system.turbo}
                                 </p>
                               </div>
                             )}
-                            {car.turbo_system.turbo_model && (
+                            {car.turbo_system.intercooler && (
                               <div>
                                 <p className="text-muted-foreground">
-                                  Turbo Model
+                                  Intercooler
                                 </p>
                                 <p className="font-medium">
-                                  {car.turbo_system.turbo_model}
-                                </p>
-                              </div>
-                            )}
-                            {car.turbo_system.intercooler_brand && (
-                              <div>
-                                <p className="text-muted-foreground">
-                                  Intercooler Brand
-                                </p>
-                                <p className="font-medium">
-                                  {car.turbo_system.intercooler_brand}
-                                </p>
-                              </div>
-                            )}
-                            {car.turbo_system.intercooler_model && (
-                              <div>
-                                <p className="text-muted-foreground">
-                                  Intercooler Model
-                                </p>
-                                <p className="font-medium">
-                                  {car.turbo_system.intercooler_model}
+                                  {car.turbo_system.intercooler}
                                 </p>
                               </div>
                             )}
@@ -465,52 +419,35 @@ export default function CarDetailPage() {
 
                     {/* Exhaust System */}
                     {car.exhaust_system &&
-                      (car.exhaust_system.intake_brand ||
-                        car.exhaust_system.intake_model ||
-                        car.exhaust_system.header_brand ||
-                        car.exhaust_system.catback_brand) && (
+                      (car.exhaust_system.intake ||
+                        car.exhaust_system.header ||
+                        car.exhaust_system.exhaust) && (
                         <div className="space-y-2">
                           <h4 className="font-medium capitalize">
                             Exhaust & Intake
                           </h4>
                           <div className="grid grid-cols-2 gap-4 text-sm">
-                            {car.exhaust_system.intake_brand && (
+                            {car.exhaust_system.intake && (
                               <div>
-                                <p className="text-muted-foreground">
-                                  Intake Brand
-                                </p>
+                                <p className="text-muted-foreground">Intake</p>
                                 <p className="font-medium">
-                                  {car.exhaust_system.intake_brand}
+                                  {car.exhaust_system.intake}
                                 </p>
                               </div>
                             )}
-                            {car.exhaust_system.intake_model && (
+                            {car.exhaust_system.header && (
                               <div>
-                                <p className="text-muted-foreground">
-                                  Intake Model
-                                </p>
+                                <p className="text-muted-foreground">Header</p>
                                 <p className="font-medium">
-                                  {car.exhaust_system.intake_model}
+                                  {car.exhaust_system.header}
                                 </p>
                               </div>
                             )}
-                            {car.exhaust_system.header_brand && (
+                            {car.exhaust_system.exhaust && (
                               <div>
-                                <p className="text-muted-foreground">
-                                  Header Brand
-                                </p>
+                                <p className="text-muted-foreground">Exhaust</p>
                                 <p className="font-medium">
-                                  {car.exhaust_system.header_brand}
-                                </p>
-                              </div>
-                            )}
-                            {car.exhaust_system.catback_brand && (
-                              <div>
-                                <p className="text-muted-foreground">
-                                  Catback Brand
-                                </p>
-                                <p className="font-medium">
-                                  {car.exhaust_system.catback_brand}
+                                  {car.exhaust_system.exhaust}
                                 </p>
                               </div>
                             )}
@@ -520,36 +457,23 @@ export default function CarDetailPage() {
 
                     {/* Engine Management */}
                     {car.engine_management &&
-                      (car.engine_management.ecu_brand ||
-                        car.engine_management.ecu_model ||
+                      (car.engine_management.ecu ||
                         car.engine_management.tuned_by) && (
                         <div className="space-y-2">
                           <h4 className="font-medium capitalize">
                             Engine Management
                           </h4>
-                          <div className="grid grid-cols-3 gap-4 text-sm">
-                            {car.engine_management.ecu_brand && (
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            {car.engine_management.ecu && (
                               <div>
-                                <p className="text-muted-foreground">
-                                  ECU Brand
-                                </p>
+                                <p className="text-muted-foreground">ECU</p>
                                 <p className="font-medium">
-                                  {car.engine_management.ecu_brand}
-                                </p>
-                              </div>
-                            )}
-                            {car.engine_management.ecu_model && (
-                              <div>
-                                <p className="text-muted-foreground">
-                                  ECU Model
-                                </p>
-                                <p className="font-medium">
-                                  {car.engine_management.ecu_model}
+                                  {car.engine_management.ecu}
                                 </p>
                               </div>
                             )}
                             {car.engine_management.tuned_by && (
-                              <div className="col-span-2">
+                              <div>
                                 <p className="text-muted-foreground">
                                   Tuned By
                                 </p>
@@ -688,12 +612,10 @@ export default function CarDetailPage() {
                         <div key={position} className="space-y-2">
                           <h4 className="font-medium capitalize">{position}</h4>
                           <div className="grid grid-cols-3 gap-4 text-sm">
-                            {wheel.wheel_brand && (
+                            {wheel.wheel && (
                               <div>
-                                <p className="text-muted-foreground">Brand</p>
-                                <p className="font-medium">
-                                  {wheel.wheel_brand}
-                                </p>
+                                <p className="text-muted-foreground">Wheel</p>
+                                <p className="font-medium">{wheel.wheel}</p>
                               </div>
                             )}
                             {wheel.wheel_size && (
@@ -712,10 +634,18 @@ export default function CarDetailPage() {
                                 </p>
                               </div>
                             )}
-                            {wheel.tire_size && (
+                            {wheel.tyre && (
                               <div>
-                                <p className="text-muted-foreground">Tires</p>
-                                <p className="font-medium">{wheel.tire_size}</p>
+                                <p className="text-muted-foreground">Tyre</p>
+                                <p className="font-medium">{wheel.tyre}</p>
+                              </div>
+                            )}
+                            {wheel.tyre_size && (
+                              <div>
+                                <p className="text-muted-foreground">
+                                  Tyre Size
+                                </p>
+                                <p className="font-medium">{wheel.tyre_size}</p>
                               </div>
                             )}
                           </div>
@@ -768,147 +698,116 @@ export default function CarDetailPage() {
                       if (!susp) return null;
 
                       return (
-                        <div key={position} className="space-y-2">
-                          <h4 className="font-medium capitalize">{position}</h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            {(susp.brand || susp.model) && (
-                              <div>
-                                <p className="text-muted-foreground">Setup</p>
-                                <p className="font-medium">
-                                  {susp.brand} {susp.model}
-                                </p>
+                        <div key={position} className="space-y-4">
+                          <h4 className="font-medium capitalize">
+                            {position} Suspension
+                          </h4>
+
+                          {/* Suspension Components */}
+                          {(susp.suspension || susp.spring_rate) && (
+                            <div className="space-y-2">
+                              <h5 className="font-medium text-sm">
+                                Suspension Components
+                              </h5>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                {susp.suspension && (
+                                  <div>
+                                    <p className="text-muted-foreground">
+                                      Setup
+                                    </p>
+                                    <p className="font-medium">
+                                      {susp.suspension}
+                                    </p>
+                                  </div>
+                                )}
+                                {susp.spring_rate && (
+                                  <div>
+                                    <p className="text-muted-foreground">
+                                      Spring Rate
+                                    </p>
+                                    <p className="font-medium">
+                                      {susp.spring_rate}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                            {susp.spring_rate && (
-                              <div>
-                                <p className="text-muted-foreground">
-                                  Spring Rate
-                                </p>
-                                <p className="font-medium">
-                                  {susp.spring_rate}
-                                </p>
-                              </div>
-                            )}
-                            <div className="col-span-2 grid grid-cols-3 gap-2">
-                              {susp.camber_degrees !== undefined && (
-                                <div>
-                                  <p className="text-muted-foreground">
-                                    Camber
-                                  </p>
-                                  <p className="font-medium">
-                                    {susp.camber_degrees}°
-                                  </p>
-                                </div>
-                              )}
-                              {susp.toe_degrees && (
-                                <div>
-                                  <p className="text-muted-foreground">Toe</p>
-                                  <p className="font-medium">
-                                    {susp.toe_degrees}
-                                  </p>
-                                </div>
-                              )}
-                              {susp.caster_degrees && (
-                                <div>
-                                  <p className="text-muted-foreground">
-                                    Caster
-                                  </p>
-                                  <p className="font-medium">
-                                    {susp.caster_degrees}
-                                  </p>
-                                </div>
-                              )}
                             </div>
-                          </div>
+                          )}
+
+                          {/* Wheel Alignment */}
+                          {(susp.camber_degrees !== undefined ||
+                            susp.toe_degrees ||
+                            susp.caster_degrees) && (
+                            <div className="space-y-2">
+                              <h5 className="font-medium text-sm">
+                                Wheel Alignment
+                              </h5>
+                              <div className="grid grid-cols-3 gap-4 text-sm">
+                                {susp.camber_degrees !== undefined && (
+                                  <div>
+                                    <p className="text-muted-foreground">
+                                      Camber
+                                    </p>
+                                    <p className="font-medium">
+                                      {susp.camber_degrees}°
+                                    </p>
+                                  </div>
+                                )}
+                                {susp.toe_degrees && (
+                                  <div>
+                                    <p className="text-muted-foreground">Toe</p>
+                                    <p className="font-medium">
+                                      {susp.toe_degrees}
+                                    </p>
+                                  </div>
+                                )}
+                                {susp.caster_degrees && (
+                                  <div>
+                                    <p className="text-muted-foreground">
+                                      Caster
+                                    </p>
+                                    <p className="font-medium">
+                                      {susp.caster_degrees}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Anti-Roll System */}
+                          {(susp.anti_roll_bar || susp.strut_brace) && (
+                            <div className="space-y-2">
+                              <h5 className="font-medium text-sm">
+                                Anti-Roll System
+                              </h5>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                {susp.anti_roll_bar && (
+                                  <div>
+                                    <p className="text-muted-foreground">
+                                      Anti-Roll Bar
+                                    </p>
+                                    <p className="font-medium">
+                                      {susp.anti_roll_bar}
+                                    </p>
+                                  </div>
+                                )}
+                                {susp.strut_brace && (
+                                  <div>
+                                    <p className="text-muted-foreground">
+                                      Strut Brace
+                                    </p>
+                                    <p className="font-medium">
+                                      {susp.strut_brace}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
-
-                    {/* Suspension Accessories */}
-                    {(() => {
-                      const accessories = getSuspensionAccessories();
-                      if (!accessories) return null;
-
-                      const hasAccessories =
-                        accessories.front_anti_roll_bar ||
-                        accessories.rear_anti_roll_bar ||
-                        accessories.front_strut_brace ||
-                        accessories.rear_strut_brace;
-
-                      if (!hasAccessories) return null;
-
-                      return (
-                        <div className="space-y-2 pt-4 border-t">
-                          <h4 className="font-medium">
-                            Suspension Accessories
-                          </h4>
-
-                          {/* Anti-Roll Bars */}
-                          {(accessories.front_anti_roll_bar ||
-                            accessories.rear_anti_roll_bar) && (
-                            <div className="space-y-2">
-                              <h5 className="text-sm font-medium text-muted-foreground">
-                                Anti-Roll Bars
-                              </h5>
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                {accessories.front_anti_roll_bar && (
-                                  <div>
-                                    <p className="text-muted-foreground">
-                                      Front
-                                    </p>
-                                    <p className="font-medium">
-                                      {accessories.front_anti_roll_bar}
-                                    </p>
-                                  </div>
-                                )}
-                                {accessories.rear_anti_roll_bar && (
-                                  <div>
-                                    <p className="text-muted-foreground">
-                                      Rear
-                                    </p>
-                                    <p className="font-medium">
-                                      {accessories.rear_anti_roll_bar}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Strut Braces */}
-                          {(accessories.front_strut_brace ||
-                            accessories.rear_strut_brace) && (
-                            <div className="space-y-2">
-                              <h5 className="text-sm font-medium text-muted-foreground">
-                                Strut Braces
-                              </h5>
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                {accessories.front_strut_brace && (
-                                  <div>
-                                    <p className="text-muted-foreground">
-                                      Front
-                                    </p>
-                                    <p className="font-medium">
-                                      {accessories.front_strut_brace}
-                                    </p>
-                                  </div>
-                                )}
-                                {accessories.rear_strut_brace && (
-                                  <div>
-                                    <p className="text-muted-foreground">
-                                      Rear
-                                    </p>
-                                    <p className="font-medium">
-                                      {accessories.rear_strut_brace}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
                   </CardContent>
                 </Card>
               )}
@@ -964,45 +863,6 @@ export default function CarDetailPage() {
                         </div>
                       );
                     })}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Performance Modifications */}
-              {car.performance_mods && car.performance_mods.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Performance Modifications</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {["weight_reduction", "aero", "chassis", "cooling"].map(
-                        (category) => {
-                          const mods = car.performance_mods?.filter(
-                            (mod) => mod.category === category
-                          );
-                          if (!mods || mods.length === 0) return null;
-
-                          return (
-                            <div key={category}>
-                              <h4 className="font-medium capitalize mb-2">
-                                {category.replace("_", " ")}
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {mods.map((mod) => (
-                                  <span
-                                    key={mod.id}
-                                    className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs"
-                                  >
-                                    {mod.modification}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        }
-                      )}
-                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -1147,7 +1007,6 @@ export default function CarDetailPage() {
               {(car.seats ||
                 car.steering_wheel ||
                 car.audio_system ||
-                car.rollcage ||
                 (car.gauges && car.gauges.length > 0)) && (
                 <Card>
                   <CardHeader>
@@ -1179,50 +1038,22 @@ export default function CarDetailPage() {
                               </p>
                             </div>
                           )}
-                          {car.seats.harnesses && (
-                            <div>
-                              <p className="text-muted-foreground">Harnesses</p>
-                              <p className="font-medium">
-                                {car.seats.harnesses}
-                              </p>
-                            </div>
-                          )}
                         </div>
                       </div>
                     )}
 
                     {/* Steering Wheel */}
-                    {car.steering_wheel && (
-                      <div>
-                        <h4 className="font-medium mb-2">Steering Wheel</h4>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          {car.steering_wheel.steering_wheel_brand && (
-                            <div>
-                              <p className="text-muted-foreground">Brand</p>
-                              <p className="font-medium">
-                                {car.steering_wheel.steering_wheel_brand}
-                              </p>
-                            </div>
-                          )}
-                          {car.steering_wheel.steering_wheel_model && (
-                            <div>
-                              <p className="text-muted-foreground">Model</p>
-                              <p className="font-medium">
-                                {car.steering_wheel.steering_wheel_model}
-                              </p>
-                            </div>
-                          )}
-                          {car.steering_wheel.material && (
-                            <div>
-                              <p className="text-muted-foreground">Material</p>
-                              <p className="font-medium">
-                                {car.steering_wheel.material}
-                              </p>
-                            </div>
-                          )}
+                    {car.steering_wheel &&
+                      car.steering_wheel.steering_wheel && (
+                        <div>
+                          <h4 className="font-medium mb-2">Steering Wheel</h4>
+                          <div className="text-sm">
+                            <p className="font-medium">
+                              {car.steering_wheel.steering_wheel}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Audio System */}
                     {car.audio_system && (
@@ -1271,39 +1102,6 @@ export default function CarDetailPage() {
                               {gauge.brand && `- ${gauge.brand}`}
                             </span>
                           ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Roll Cage */}
-                    {car.rollcage && (
-                      <div>
-                        <h4 className="font-medium mb-2">Roll Cage</h4>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          {car.rollcage.rollcage_brand && (
-                            <div>
-                              <p className="text-muted-foreground">Brand</p>
-                              <p className="font-medium">
-                                {car.rollcage.rollcage_brand}
-                              </p>
-                            </div>
-                          )}
-                          {car.rollcage.rollcage_type && (
-                            <div>
-                              <p className="text-muted-foreground">Type</p>
-                              <p className="font-medium">
-                                {car.rollcage.rollcage_type}
-                              </p>
-                            </div>
-                          )}
-                          {car.rollcage.points && (
-                            <div>
-                              <p className="text-muted-foreground">Points</p>
-                              <p className="font-medium">
-                                {car.rollcage.points}-point
-                              </p>
-                            </div>
-                          )}
                         </div>
                       </div>
                     )}

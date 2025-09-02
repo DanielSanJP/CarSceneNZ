@@ -18,22 +18,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useEffect } from "react";
+import { CarSuspension } from "@/types/car";
 
-interface SuspensionData {
-  position?: "front" | "rear"; // nullable for general suspension_type
-  suspension_type?: string; // 'coilovers', 'springs', 'air' etc.
-  brand?: string;
-  model?: string;
-  spring_rate?: string;
-  camber_degrees?: number;
-  toe_degrees?: string;
-  caster_degrees?: string;
-  // Suspension accessories - direct fields
-  front_anti_roll_bar?: string;
-  rear_anti_roll_bar?: string;
-  front_strut_brace?: string;
-  rear_strut_brace?: string;
-}
+// Component-specific data interfaces (without database metadata)
+type SuspensionData = Omit<
+  CarSuspension,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
 
 interface SuspensionDetailsData {
   suspension?: SuspensionData[];
@@ -71,8 +62,7 @@ export default function SuspensionDetails({
       (s) =>
         s.position === undefined &&
         s.suspension_type &&
-        !s.brand &&
-        !s.model &&
+        !s.suspension &&
         !s.spring_rate &&
         !s.camber_degrees &&
         !s.toe_degrees &&
@@ -87,8 +77,7 @@ export default function SuspensionDetails({
         if (
           s.position === undefined &&
           s.suspension_type &&
-          !s.brand &&
-          !s.model &&
+          !s.suspension &&
           !s.spring_rate &&
           !s.camber_degrees &&
           !s.toe_degrees &&
@@ -101,8 +90,7 @@ export default function SuspensionDetails({
               (item) =>
                 item.position === undefined &&
                 item.suspension_type &&
-                !item.brand &&
-                !item.model &&
+                !item.suspension &&
                 !item.spring_rate &&
                 !item.camber_degrees &&
                 !item.toe_degrees &&
@@ -121,70 +109,6 @@ export default function SuspensionDetails({
       cleanedSuspension = cleanedSuspension.filter(
         (s) => s.position !== undefined
       );
-      hasChanges = true;
-    }
-
-    // Migrate accessories from general entries to position-specific entries
-    const generalAccessoryEntry = cleanedSuspension.find(
-      (s) =>
-        s.position === undefined &&
-        (s.front_anti_roll_bar ||
-          s.rear_anti_roll_bar ||
-          s.front_strut_brace ||
-          s.rear_strut_brace)
-    );
-
-    if (generalAccessoryEntry) {
-      // Ensure we have front and rear entries
-      let frontEntry = cleanedSuspension.find((s) => s.position === "front");
-      let rearEntry = cleanedSuspension.find((s) => s.position === "rear");
-
-      if (!frontEntry) {
-        frontEntry = { position: "front" };
-        cleanedSuspension.push(frontEntry);
-      }
-
-      if (!rearEntry) {
-        rearEntry = { position: "rear" };
-        cleanedSuspension.push(rearEntry);
-      }
-
-      // Migrate accessories to both front and rear entries
-      cleanedSuspension = cleanedSuspension.map((item) => {
-        if (item.position === "front" || item.position === "rear") {
-          return {
-            ...item,
-            front_anti_roll_bar:
-              item.front_anti_roll_bar ||
-              generalAccessoryEntry.front_anti_roll_bar,
-            rear_anti_roll_bar:
-              item.rear_anti_roll_bar ||
-              generalAccessoryEntry.rear_anti_roll_bar,
-            front_strut_brace:
-              item.front_strut_brace || generalAccessoryEntry.front_strut_brace,
-            rear_strut_brace:
-              item.rear_strut_brace || generalAccessoryEntry.rear_strut_brace,
-          };
-        }
-        return item;
-      });
-
-      // Remove the general entry with accessories if it has no other data
-      cleanedSuspension = cleanedSuspension.filter((item) => {
-        if (item.position === undefined) {
-          const hasNonAccessoryData =
-            item.suspension_type ||
-            item.brand ||
-            item.model ||
-            item.spring_rate ||
-            item.camber_degrees !== undefined ||
-            item.toe_degrees ||
-            item.caster_degrees;
-          return hasNonAccessoryData;
-        }
-        return true;
-      });
-
       hasChanges = true;
     }
 
@@ -252,11 +176,8 @@ export default function SuspensionDetails({
           case "suspension_type":
             updated.suspension_type = value as string;
             break;
-          case "brand":
-            updated.brand = value as string;
-            break;
-          case "model":
-            updated.model = value as string;
+          case "suspension":
+            updated.suspension = value as string;
             break;
           case "spring_rate":
             updated.spring_rate = value as string;
@@ -267,17 +188,11 @@ export default function SuspensionDetails({
           case "caster_degrees":
             updated.caster_degrees = value as string;
             break;
-          case "front_anti_roll_bar":
-            updated.front_anti_roll_bar = value as string;
+          case "anti_roll_bar":
+            updated.anti_roll_bar = value as string;
             break;
-          case "rear_anti_roll_bar":
-            updated.rear_anti_roll_bar = value as string;
-            break;
-          case "front_strut_brace":
-            updated.front_strut_brace = value as string;
-            break;
-          case "rear_strut_brace":
-            updated.rear_strut_brace = value as string;
+          case "strut_brace":
+            updated.strut_brace = value as string;
             break;
         }
 
@@ -296,11 +211,8 @@ export default function SuspensionDetails({
           case "suspension_type":
             newSuspension.suspension_type = value as string;
             break;
-          case "brand":
-            newSuspension.brand = value as string;
-            break;
-          case "model":
-            newSuspension.model = value as string;
+          case "suspension":
+            newSuspension.suspension = value as string;
             break;
           case "spring_rate":
             newSuspension.spring_rate = value as string;
@@ -311,91 +223,16 @@ export default function SuspensionDetails({
           case "caster_degrees":
             newSuspension.caster_degrees = value as string;
             break;
-          case "front_anti_roll_bar":
-            newSuspension.front_anti_roll_bar = value as string;
+          case "anti_roll_bar":
+            newSuspension.anti_roll_bar = value as string;
             break;
-          case "rear_anti_roll_bar":
-            newSuspension.rear_anti_roll_bar = value as string;
-            break;
-          case "front_strut_brace":
-            newSuspension.front_strut_brace = value as string;
-            break;
-          case "rear_strut_brace":
-            newSuspension.rear_strut_brace = value as string;
+          case "strut_brace":
+            newSuspension.strut_brace = value as string;
             break;
         }
 
         updatedSuspension = [...suspension, newSuspension];
       }
-    }
-
-    onChange({ suspension: updatedSuspension });
-  };
-
-  /**
-   * Handle changes to suspension accessories (anti-roll bars and strut braces).
-   * These accessories are stored with both front and rear suspension entries
-   * to avoid creating separate database rows with position=null.
-   */
-  const handleAccessoryChange = (
-    accessoryField: keyof SuspensionData,
-    value: string
-  ) => {
-    const suspension = data.suspension || [];
-    let updatedSuspension = [...suspension];
-
-    // Determine which suspension entries need the accessory
-    const isGlobalAccessory =
-      accessoryField === "front_anti_roll_bar" ||
-      accessoryField === "rear_anti_roll_bar" ||
-      accessoryField === "front_strut_brace" ||
-      accessoryField === "rear_strut_brace";
-
-    if (isGlobalAccessory) {
-      // These accessories should be stored with the appropriate position entries
-      // If we don't have position entries yet, we need to handle this differently
-      const frontIndex = updatedSuspension.findIndex(
-        (s) => s.position === "front"
-      );
-      const rearIndex = updatedSuspension.findIndex(
-        (s) => s.position === "rear"
-      );
-
-      // Always ensure we have front and rear entries for accessories
-      if (frontIndex === -1) {
-        updatedSuspension.push({ position: "front" });
-      }
-      if (rearIndex === -1) {
-        updatedSuspension.push({ position: "rear" });
-      }
-
-      // Update both front and rear entries with the accessory
-      updatedSuspension = updatedSuspension.map((item) => {
-        if (item.position === "front" || item.position === "rear") {
-          return {
-            ...item,
-            [accessoryField]: value,
-          };
-        }
-        return item;
-      });
-
-      // Remove any general entries that only contain accessories
-      updatedSuspension = updatedSuspension.filter((item) => {
-        if (item.position === undefined) {
-          // Keep general entries if they have suspension data beyond just accessories
-          const hasNonAccessoryData =
-            item.suspension_type ||
-            item.brand ||
-            item.model ||
-            item.spring_rate ||
-            item.camber_degrees !== undefined ||
-            item.toe_degrees ||
-            item.caster_degrees;
-          return hasNonAccessoryData;
-        }
-        return true;
-      });
     }
 
     onChange({ suspension: updatedSuspension });
@@ -433,32 +270,6 @@ export default function SuspensionDetails({
       );
       return suspensionItem?.[field] || "";
     }
-  };
-
-  /**
-   * Get accessory values from front or rear suspension entries.
-   * Accessories are now stored with position-specific entries rather than
-   * in separate general entries with position=null.
-   */
-  const getAccessoryValue = (accessoryField: keyof SuspensionData): string => {
-    const suspension = data.suspension || [];
-
-    // First try to get from front or rear entries
-    const frontEntry = suspension.find((s) => s.position === "front");
-    const rearEntry = suspension.find((s) => s.position === "rear");
-
-    // Return value from either front or rear entry (they should be the same for accessories)
-    if (frontEntry?.[accessoryField]) {
-      return frontEntry[accessoryField] as string;
-    }
-
-    if (rearEntry?.[accessoryField]) {
-      return rearEntry[accessoryField] as string;
-    }
-
-    // Fallback: check general entry for backward compatibility
-    const generalEntry = suspension.find((s) => s.position === undefined);
-    return (generalEntry?.[accessoryField] as string) || "";
   };
 
   return (
@@ -514,116 +325,170 @@ export default function SuspensionDetails({
                 {/* Front Suspension */}
                 <div>
                   <h4 className="font-medium mb-4">Front Suspension</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label>Brand</Label>
-                      <Input
-                        value={getSuspensionValue("front", "brand") as string}
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "front",
-                            "brand",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., BC Racing"
-                        disabled={isLoading}
-                      />
+                  <div className="space-y-4">
+                    {/* Suspension Components */}
+                    <div>
+                      <h5 className="font-medium mb-2">
+                        Suspension Components
+                      </h5>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Suspension</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "front",
+                                "suspension"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "front",
+                                "suspension",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., BC Racing BR Series"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Spring Rate</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "front",
+                                "spring_rate"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "front",
+                                "spring_rate",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., 8K"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Model</Label>
-                      <Input
-                        value={getSuspensionValue("front", "model") as string}
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "front",
-                            "model",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., BR Series"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Spring Rate</Label>
-                      <Input
-                        value={
-                          getSuspensionValue("front", "spring_rate") as string
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "front",
-                            "spring_rate",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., 8K"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
 
-                  {/* Front Alignment */}
-                  <div className="grid gap-4 md:grid-cols-3 mt-4">
-                    <div className="space-y-2">
-                      <Label>Camber (degrees)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={
-                          (getSuspensionValue(
-                            "front",
-                            "camber_degrees"
-                          ) as number) || ""
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "front",
-                            "camber_degrees",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        placeholder="e.g., -3.2"
-                        disabled={isLoading}
-                      />
+                    {/* Wheel Alignment */}
+                    <div>
+                      <h5 className="font-medium mb-2">Wheel Alignment</h5>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label>Camber (degrees)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={
+                              (getSuspensionValue(
+                                "front",
+                                "camber_degrees"
+                              ) as number) || ""
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "front",
+                                "camber_degrees",
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                            placeholder="e.g., -3.2"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Toe</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "front",
+                                "toe_degrees"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "front",
+                                "toe_degrees",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., 0.5°"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Caster</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "front",
+                                "caster_degrees"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "front",
+                                "caster_degrees",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., 6.2°"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Toe</Label>
-                      <Input
-                        value={
-                          getSuspensionValue("front", "toe_degrees") as string
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "front",
-                            "toe_degrees",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., 0.5°"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Caster</Label>
-                      <Input
-                        value={
-                          getSuspensionValue(
-                            "front",
-                            "caster_degrees"
-                          ) as string
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "front",
-                            "caster_degrees",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., 6.2°"
-                        disabled={isLoading}
-                      />
+
+                    {/* Anti-Roll System */}
+                    <div>
+                      <h5 className="font-medium mb-2">Anti-Roll System</h5>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Anti-Roll Bar</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "front",
+                                "anti_roll_bar"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "front",
+                                "anti_roll_bar",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., Whiteline"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Strut Brace</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "front",
+                                "strut_brace"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "front",
+                                "strut_brace",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., STI"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -633,194 +498,172 @@ export default function SuspensionDetails({
                 {/* Rear Suspension */}
                 <div>
                   <h4 className="font-medium mb-4">Rear Suspension</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label>Brand</Label>
-                      <Input
-                        value={getSuspensionValue("rear", "brand") as string}
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "rear",
-                            "brand",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., BC Racing"
-                        disabled={isLoading}
-                      />
+                  <div className="space-y-4">
+                    {/* Suspension Components */}
+                    <div>
+                      <h5 className="font-medium mb-2">
+                        Suspension Components
+                      </h5>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Suspension</Label>
+                          <Input
+                            value={
+                              getSuspensionValue("rear", "suspension") as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "rear",
+                                "suspension",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., BC Racing BR Series"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Spring Rate</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "rear",
+                                "spring_rate"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "rear",
+                                "spring_rate",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., 6K"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Model</Label>
-                      <Input
-                        value={getSuspensionValue("rear", "model") as string}
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "rear",
-                            "model",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., BR Series"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Spring Rate</Label>
-                      <Input
-                        value={
-                          getSuspensionValue("rear", "spring_rate") as string
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "rear",
-                            "spring_rate",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., 6K"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
 
-                  {/* Rear Alignment */}
-                  <div className="grid gap-4 md:grid-cols-3 mt-4">
-                    <div className="space-y-2">
-                      <Label>Camber (degrees)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={
-                          (getSuspensionValue(
-                            "rear",
-                            "camber_degrees"
-                          ) as number) || ""
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "rear",
-                            "camber_degrees",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        placeholder="e.g., -2.8"
-                        disabled={isLoading}
-                      />
+                    {/* Wheel Alignment */}
+                    <div>
+                      <h5 className="font-medium mb-2">Wheel Alignment</h5>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label>Camber (degrees)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={
+                              (getSuspensionValue(
+                                "rear",
+                                "camber_degrees"
+                              ) as number) || ""
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "rear",
+                                "camber_degrees",
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                            placeholder="e.g., -2.8"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Toe</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "rear",
+                                "toe_degrees"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "rear",
+                                "toe_degrees",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., 0.2°"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Caster</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "rear",
+                                "caster_degrees"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "rear",
+                                "caster_degrees",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., N/A"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Toe</Label>
-                      <Input
-                        value={
-                          getSuspensionValue("rear", "toe_degrees") as string
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "rear",
-                            "toe_degrees",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., 0.2°"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Caster</Label>
-                      <Input
-                        value={
-                          getSuspensionValue("rear", "caster_degrees") as string
-                        }
-                        onChange={(e) =>
-                          handleSuspensionChange(
-                            "rear",
-                            "caster_degrees",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., N/A"
-                        disabled={isLoading}
-                      />
+
+                    {/* Anti-Roll System */}
+                    <div>
+                      <h5 className="font-medium mb-2">Anti-Roll System</h5>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Anti-Roll Bar</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "rear",
+                                "anti_roll_bar"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "rear",
+                                "anti_roll_bar",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., Whiteline"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Strut Brace</Label>
+                          <Input
+                            value={
+                              getSuspensionValue(
+                                "rear",
+                                "strut_brace"
+                              ) as string
+                            }
+                            onChange={(e) =>
+                              handleSuspensionChange(
+                                "rear",
+                                "strut_brace",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g., Cusco"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <Separator />
-
-                {/* Suspension Accessories */}
-                <div>
-                  <h4 className="font-medium mb-4">Suspension Accessories</h4>
-                  <div className="space-y-4">
-                    {/* Anti-Roll Bars */}
-                    <div>
-                      <h5 className="font-medium mb-2">Anti-Roll Bars</h5>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Front Anti-Roll Bar</Label>
-                          <Input
-                            value={getAccessoryValue("front_anti_roll_bar")}
-                            onChange={(e) =>
-                              handleAccessoryChange(
-                                "front_anti_roll_bar",
-                                e.target.value
-                              )
-                            }
-                            placeholder="e.g., Whiteline"
-                            disabled={isLoading}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Rear Anti-Roll Bar</Label>
-                          <Input
-                            value={getAccessoryValue("rear_anti_roll_bar")}
-                            onChange={(e) =>
-                              handleAccessoryChange(
-                                "rear_anti_roll_bar",
-                                e.target.value
-                              )
-                            }
-                            placeholder="e.g., Whiteline"
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Strut Braces */}
-                    <div>
-                      <h5 className="font-medium mb-2">Strut Braces</h5>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Front Strut Brace</Label>
-                          <Input
-                            value={getAccessoryValue("front_strut_brace")}
-                            onChange={(e) =>
-                              handleAccessoryChange(
-                                "front_strut_brace",
-                                e.target.value
-                              )
-                            }
-                            placeholder="e.g., Cusco"
-                            disabled={isLoading}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Rear Strut Brace</Label>
-                          <Input
-                            value={getAccessoryValue("rear_strut_brace")}
-                            onChange={(e) =>
-                              handleAccessoryChange(
-                                "rear_strut_brace",
-                                e.target.value
-                              )
-                            }
-                            placeholder="e.g., Cusco"
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </AccordionContent>
           </AccordionItem>

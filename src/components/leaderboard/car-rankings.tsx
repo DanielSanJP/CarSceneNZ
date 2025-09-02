@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Star, Car } from "lucide-react";
 import { getTopCars } from "@/lib/data/leaderboards";
+import { LeaderboardSkeleton } from "./leaderboard-skeleton";
 import Link from "next/link";
 import Image from "next/image";
 import type { CarRanking } from "@/lib/data/leaderboards";
@@ -30,11 +31,16 @@ export function CarRankings() {
   const [carLeaderboard, setCarLeaderboard] = useState<CarLeaderboardEntry[]>(
     []
   );
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     async function loadCarLeaderboard() {
       try {
-        const carRankings = await withTimeout(getTopCars(10), 3000);
+        setIsLoading(true);
+        setHasError(false);
+
+        const carRankings = await withTimeout(getTopCars(10), 5000);
 
         // Transform to our component's format
         const carEntries: CarLeaderboardEntry[] = carRankings.map(
@@ -52,10 +58,10 @@ export function CarRankings() {
 
         setCarLeaderboard(carEntries);
       } catch (error) {
-        if (error instanceof Error && !error.message?.includes("Timeout")) {
-          console.error("Error loading car leaderboard:", error);
-        }
-        // Keep empty array - component will show empty state
+        console.error("Error loading car leaderboard:", error);
+        setHasError(true);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -68,6 +74,27 @@ export function CarRankings() {
     if (rank === 3) return <Award className="h-5 w-5 text-amber-600" />;
     return null;
   };
+
+  // Show loading skeleton while data is loading
+  if (isLoading) {
+    return <LeaderboardSkeleton count={10} />;
+  }
+
+  // Show error state
+  if (hasError) {
+    return (
+      <div className="text-center py-12">
+        <Car className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+        <h4 className="text-lg font-semibold text-muted-foreground mb-2">
+          Failed to load car rankings
+        </h4>
+        <p className="text-muted-foreground mb-4">
+          There was an error loading the car rankings. Please try again later.
+        </p>
+        <Button onClick={() => window.location.reload()}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 md:space-y-3">

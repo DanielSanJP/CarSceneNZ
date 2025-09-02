@@ -19,34 +19,25 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  CarPaintFinish,
+  CarLightingModifications,
+  CarBodykitModifications,
+} from "@/types/car";
 
-// Direct database structure interfaces
-interface PaintFinishData {
-  paint_color?: string;
-  paint_finish?: string;
-  wrap_brand?: string;
-  wrap_color?: string;
-}
-
-interface LightingModificationsData {
-  headlights?: string;
-  taillights?: string;
-  fog_lights?: string;
-  underglow?: string;
-  interior_lighting?: string;
-}
-
-interface BodykitModificationsData {
-  front_bumper?: string;
-  front_lip?: string;
-  rear_bumper?: string;
-  rear_lip?: string;
-  side_skirts?: string;
-  rear_spoiler?: string;
-  diffuser?: string;
-  fender_flares?: string;
-  hood?: string;
-}
+// Component-specific data interfaces (without database metadata)
+type PaintFinishData = Omit<
+  CarPaintFinish,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type LightingModificationsData = Omit<
+  CarLightingModifications,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
+type BodykitModificationsData = Omit<
+  CarBodykitModifications,
+  "id" | "car_id" | "created_at" | "updated_at"
+>;
 
 interface ExteriorModsData {
   paint_finish?: PaintFinishData;

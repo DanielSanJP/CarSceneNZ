@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/utils/supabase/client'
 import type { Event, EventAttendee } from '@/types/event'
+import { updateEventImageFileName } from '@/lib/utils/upload-event-images'
 
 export async function getAllEvents(): Promise<Event[]> {
   try {
@@ -139,7 +140,7 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'created_at' | '
 
     let posterImageUrl = eventData.poster_image_url;
 
-    // Handle poster image upload if it's a base64 string
+    // Handle poster image upload if it's a base64 string (legacy support)
     if (posterImageUrl && posterImageUrl.startsWith('data:image/')) {
       try {
         // Extract the base64 data and mime type
@@ -193,6 +194,25 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'created_at' | '
     if (error) {
       console.error('Error creating event:', error)
       return null
+    }
+
+    // If we have a temp image URL, update the filename to use the actual event ID
+    if (posterImageUrl && posterImageUrl.includes('temp_')) {
+      try {
+        const urlParts = posterImageUrl.split('/')
+        const fileName = urlParts[urlParts.length - 1]
+        const updatedUrl = await updateEventImageFileName(fileName, data.id)
+        if (updatedUrl) {
+          // Update the event record with the new URL
+          await supabase
+            .from('events')
+            .update({ poster_image_url: updatedUrl })
+            .eq('id', data.id)
+        }
+      } catch (error) {
+        console.error('Error updating event image filename:', error)
+        // Continue - the event is created, just with the temp filename
+      }
     }
 
     return await getEventById(data.id)

@@ -18,7 +18,6 @@ import {
   SuspensionDetails,
   ExteriorMods,
   InteriorMods,
-  PerformanceMods,
 } from "@/components/garage";
 
 // Complete form data structure for all components
@@ -40,20 +39,16 @@ interface CreateCarFormData {
 
   // Engine modifications (direct database structure)
   turbo_system?: {
-    turbo_brand?: string;
-    turbo_model?: string;
-    intercooler_brand?: string;
-    intercooler_model?: string;
+    turbo?: string;
+    intercooler?: string;
   };
   exhaust_system?: {
-    intake_brand?: string;
-    intake_model?: string;
-    header_brand?: string;
-    catback_brand?: string;
+    intake?: string;
+    header?: string;
+    exhaust?: string;
   };
   engine_management?: {
-    ecu_brand?: string;
-    ecu_model?: string;
+    ecu?: string;
     tuned_by?: string;
   };
   internal_components?: {
@@ -72,10 +67,11 @@ interface CreateCarFormData {
   // Wheels data
   wheels?: {
     position: "front" | "rear";
-    wheel_brand?: string;
+    wheel?: string;
     wheel_size?: string;
     wheel_offset?: string;
-    tire_size?: string;
+    tyre?: string;
+    tyre_size?: string;
   }[];
 
   // Braking system
@@ -87,27 +83,17 @@ interface CreateCarFormData {
     pads?: string;
   }[];
 
-  brake_accessories?: {
-    component: string;
-    brand?: string;
-    model?: string;
-    description?: string;
-  }[];
-
   // Suspension
   suspension?: {
     position?: "front" | "rear";
     suspension_type?: string;
-    brand?: string;
-    model?: string;
+    suspension?: string;
     spring_rate?: string;
     camber_degrees?: number;
     toe_degrees?: string;
     caster_degrees?: string;
-    front_anti_roll_bar?: string;
-    rear_anti_roll_bar?: string;
-    front_strut_brace?: string;
-    rear_strut_brace?: string;
+    anti_roll_bar?: string;
+    strut_brace?: string;
   }[];
 
   // Exterior modifications (direct database structure)
@@ -150,26 +136,8 @@ interface CreateCarFormData {
     subwoofer?: string;
   };
   steering_wheel?: {
-    steering_wheel_brand?: string;
-    steering_wheel_model?: string;
-    material?: string;
-    size?: string;
+    steering_wheel?: string;
   };
-  rollcage?: {
-    rollcage_type?: string;
-    rollcage_brand?: string;
-    material?: string;
-    points?: number;
-  };
-
-  // Performance modifications
-  performance_mods?: {
-    category: string;
-    modification: string;
-    brand?: string;
-    model?: string;
-    description?: string;
-  }[];
 }
 
 export default function CreateCarPage() {
@@ -190,7 +158,6 @@ export default function CreateCarPage() {
     fuel_system: undefined,
     wheels: [],
     brakes: [],
-    brake_accessories: [],
     suspension: [],
     paint_finish: undefined,
     lighting_modifications: undefined,
@@ -198,8 +165,6 @@ export default function CreateCarPage() {
     seats: undefined,
     audio_system: undefined,
     steering_wheel: undefined,
-    rollcage: undefined,
-    performance_mods: [],
   });
 
   if (!isAuthenticated || !user) {
@@ -277,7 +242,6 @@ export default function CreateCarPage() {
           seats: formData.seats,
           steering_wheel: formData.steering_wheel,
           audio_system: formData.audio_system,
-          rollcage: formData.rollcage,
           gauges: [], // TODO: Handle gauges if needed
         },
         performance: undefined, // Not needed since table was deleted
@@ -369,7 +333,6 @@ export default function CreateCarPage() {
             <BrakingSystem
               data={{
                 brakes: formData.brakes,
-                brake_accessories: formData.brake_accessories,
               }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
@@ -401,15 +364,7 @@ export default function CreateCarPage() {
                 seats: formData.seats,
                 audio_system: formData.audio_system,
                 steering_wheel: formData.steering_wheel,
-                rollcage: formData.rollcage,
               }}
-              onChange={(updates) => handleFormDataChange(updates)}
-              isLoading={isLoading}
-            />
-
-            {/* Performance Modifications */}
-            <PerformanceMods
-              data={{ performance_mods: formData.performance_mods }}
               onChange={(updates) => handleFormDataChange(updates)}
               isLoading={isLoading}
             />

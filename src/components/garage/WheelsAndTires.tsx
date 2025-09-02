@@ -10,14 +10,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { CarWheel } from "@/types/car";
 
-interface WheelData {
-  position: "front" | "rear";
-  wheel_brand?: string;
-  wheel_size?: string;
-  wheel_offset?: string;
-  tire_size?: string;
-}
+// Component-specific data interfaces (without database metadata)
+type WheelData = Omit<CarWheel, "id" | "car_id" | "created_at" | "updated_at">;
 
 interface WheelsAndTiresData {
   wheels?: WheelData[];
@@ -81,20 +77,16 @@ export default function WheelsAndTires({
               <div className="space-y-6">
                 {/* Front Wheels */}
                 <div>
-                  <h4 className="font-medium mb-4">Front Wheels & Tires</h4>
+                  <h4 className="font-medium mb-4">Front Wheels & Tyres</h4>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-2">
-                      <Label>Wheel Brand</Label>
+                      <Label>Wheel</Label>
                       <Input
-                        value={getWheelValue("front", "wheel_brand") as string}
+                        value={getWheelValue("front", "wheel") as string}
                         onChange={(e) =>
-                          handleWheelChange(
-                            "front",
-                            "wheel_brand",
-                            e.target.value
-                          )
+                          handleWheelChange("front", "wheel", e.target.value)
                         }
-                        placeholder="e.g., Work"
+                        placeholder="e.g., Work Emotion CR Ultimate"
                         disabled={isLoading}
                       />
                     </div>
@@ -129,13 +121,24 @@ export default function WheelsAndTires({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Tire Size</Label>
+                      <Label>Tyre</Label>
                       <Input
-                        value={getWheelValue("front", "tire_size") as string}
+                        value={getWheelValue("front", "tyre") as string}
+                        onChange={(e) =>
+                          handleWheelChange("front", "tyre", e.target.value)
+                        }
+                        placeholder="e.g., Toyo Proxes R 888 R"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tyre Size</Label>
+                      <Input
+                        value={getWheelValue("front", "tyre_size") as string}
                         onChange={(e) =>
                           handleWheelChange(
                             "front",
-                            "tire_size",
+                            "tyre_size",
                             e.target.value
                           )
                         }
@@ -150,20 +153,16 @@ export default function WheelsAndTires({
 
                 {/* Rear Wheels */}
                 <div>
-                  <h4 className="font-medium mb-4">Rear Wheels & Tires</h4>
+                  <h4 className="font-medium mb-4">Rear Wheels & Tyres</h4>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-2">
-                      <Label>Wheel Brand</Label>
+                      <Label>Wheel</Label>
                       <Input
-                        value={getWheelValue("rear", "wheel_brand") as string}
+                        value={getWheelValue("rear", "wheel") as string}
                         onChange={(e) =>
-                          handleWheelChange(
-                            "rear",
-                            "wheel_brand",
-                            e.target.value
-                          )
+                          handleWheelChange("rear", "wheel", e.target.value)
                         }
-                        placeholder="e.g., Work"
+                        placeholder="e.g., Work Emotion CR Ultimate"
                         disabled={isLoading}
                       />
                     </div>
@@ -198,11 +197,22 @@ export default function WheelsAndTires({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Tire Size</Label>
+                      <Label>Tyre</Label>
                       <Input
-                        value={getWheelValue("rear", "tire_size") as string}
+                        value={getWheelValue("rear", "tyre") as string}
                         onChange={(e) =>
-                          handleWheelChange("rear", "tire_size", e.target.value)
+                          handleWheelChange("rear", "tyre", e.target.value)
+                        }
+                        placeholder="e.g., Toyo Proxes R 888 R"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tyre Size</Label>
+                      <Input
+                        value={getWheelValue("rear", "tyre_size") as string}
+                        onChange={(e) =>
+                          handleWheelChange("rear", "tyre_size", e.target.value)
                         }
                         placeholder="e.g., 275/40R18"
                         disabled={isLoading}

@@ -10,25 +10,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { CarBrake } from "@/types/car";
 
-interface BrakeData {
-  position: "front" | "rear";
-  caliper?: string;
-  disc_size?: string;
-  disc_type?: string;
-  pads?: string;
-}
-
-interface BrakeAccessoryData {
-  component: string; // 'brake_lines', 'master_cylinder'
-  brand?: string;
-  model?: string;
-  description?: string;
-}
+// Component-specific data interfaces (without database metadata)
+type BrakeData = Omit<CarBrake, "id" | "car_id" | "created_at" | "updated_at">;
 
 interface BrakingSystemData {
   brakes?: BrakeData[];
-  brake_accessories?: BrakeAccessoryData[];
 }
 
 interface BrakingSystemProps {
@@ -71,55 +59,12 @@ export default function BrakingSystem({
     onChange({ brakes: updatedBrakes });
   };
 
-  const handleAccessoryChange = (
-    component: string,
-    field: keyof Omit<BrakeAccessoryData, "component">,
-    value: string
-  ) => {
-    const accessories = data.brake_accessories || [];
-    const existingAccessoryIndex = accessories.findIndex(
-      (a) => a.component === component
-    );
-
-    let updatedAccessories: BrakeAccessoryData[];
-
-    if (existingAccessoryIndex >= 0) {
-      // Update existing accessory
-      updatedAccessories = [...accessories];
-      updatedAccessories[existingAccessoryIndex] = {
-        ...updatedAccessories[existingAccessoryIndex],
-        [field]: value,
-      };
-    } else if (value.trim()) {
-      // Create new accessory entry if value is not empty
-      const newAccessory: BrakeAccessoryData = {
-        component,
-        [field]: value,
-      };
-      updatedAccessories = [...accessories, newAccessory];
-    } else {
-      updatedAccessories = accessories;
-    }
-
-    onChange({ brake_accessories: updatedAccessories });
-  };
-
   const getBrakeValue = (
     position: "front" | "rear",
     field: keyof Omit<BrakeData, "position">
   ): string => {
     const brake = data.brakes?.find((b) => b.position === position);
     return brake?.[field] || "";
-  };
-
-  const getAccessoryValue = (
-    component: string,
-    field: keyof Omit<BrakeAccessoryData, "component">
-  ): string => {
-    const accessory = data.brake_accessories?.find(
-      (a) => a.component === component
-    );
-    return accessory?.[field] || "";
   };
 
   return (
@@ -236,45 +181,6 @@ export default function BrakingSystem({
                           handleBrakeChange("rear", "pads", e.target.value)
                         }
                         placeholder="e.g., Hawk HPS"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Brake Accessories */}
-                <div>
-                  <h4 className="font-medium mb-4">Brake Accessories</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Brake Lines</Label>
-                      <Input
-                        value={getAccessoryValue("brake_lines", "brand")}
-                        onChange={(e) =>
-                          handleAccessoryChange(
-                            "brake_lines",
-                            "brand",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., Goodridge"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Master Cylinder</Label>
-                      <Input
-                        value={getAccessoryValue("master_cylinder", "brand")}
-                        onChange={(e) =>
-                          handleAccessoryChange(
-                            "master_cylinder",
-                            "brand",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., Stock"
                         disabled={isLoading}
                       />
                     </div>

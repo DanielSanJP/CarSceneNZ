@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Star, Users } from "lucide-react";
 import { getTopClubs } from "@/lib/data/leaderboards";
+import { LeaderboardSkeleton } from "./leaderboard-skeleton";
 import Link from "next/link";
 import Image from "next/image";
 import type { ClubRanking } from "@/lib/data/leaderboards";
@@ -30,11 +31,16 @@ export function ClubRankings() {
   const [clubLeaderboard, setClubLeaderboard] = useState<
     ClubLeaderboardEntry[]
   >([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     async function loadClubLeaderboard() {
       try {
-        const clubRankings = await withTimeout(getTopClubs(10), 3000);
+        setIsLoading(true);
+        setHasError(false);
+
+        const clubRankings = await withTimeout(getTopClubs(10), 5000);
 
         // Transform to our component's format
         const clubEntries: ClubLeaderboardEntry[] = clubRankings.map(
@@ -48,10 +54,10 @@ export function ClubRankings() {
 
         setClubLeaderboard(clubEntries);
       } catch (error) {
-        if (error instanceof Error && !error.message?.includes("Timeout")) {
-          console.error("Error loading club leaderboard:", error);
-        }
-        // Keep empty array - component will show empty state
+        console.error("Error loading club leaderboard:", error);
+        setHasError(true);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -64,6 +70,27 @@ export function ClubRankings() {
     if (rank === 3) return <Award className="h-5 w-5 text-amber-600" />;
     return null;
   };
+
+  // Show loading skeleton while data is loading
+  if (isLoading) {
+    return <LeaderboardSkeleton count={10} />;
+  }
+
+  // Show error state
+  if (hasError) {
+    return (
+      <div className="text-center py-12">
+        <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+        <h4 className="text-lg font-semibold text-muted-foreground mb-2">
+          Failed to load club rankings
+        </h4>
+        <p className="text-muted-foreground mb-4">
+          There was an error loading the club rankings. Please try again later.
+        </p>
+        <Button onClick={() => window.location.reload()}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 md:space-y-3">
