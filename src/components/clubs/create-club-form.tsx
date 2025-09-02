@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +61,7 @@ export function CreateClubForm({
   onSuccess,
   embedded = false,
 }: CreateClubFormProps) {
-  const { user, profile, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -439,8 +439,7 @@ export function CreateClubForm({
                       "Club description will appear here..."}
                   </p>
                   <div className="text-xs text-muted-foreground mb-4">
-                    Led by{" "}
-                    {profile?.display_name || profile?.username || user?.email}
+                    Led by {user?.display_name || user?.username || user?.email}
                   </div>
                   <Button className="w-full" size="sm" disabled>
                     Preview Mode

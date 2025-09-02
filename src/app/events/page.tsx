@@ -26,15 +26,34 @@ import {
   ImageIcon,
   Star,
 } from "lucide-react";
-import { getAllEvents } from "@/lib/data/events";
+import {
+  getAllEvents,
+  getEventAttendees,
+  attendEvent,
+  unattendEvent,
+  getUserEventStatus,
+} from "@/lib/data/events";
+import { useAuth } from "@/components/auth-provider";
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { Event } from "@/types/event";
+import type { Event, EventAttendee } from "@/types/event";
 
 export default function EventsPage() {
+  const { user } = useAuth();
+
   // State for events data
   const [events, setEvents] = useState<Event[]>([]);
+
+  // State for attendee data by event ID
+  const [attendeeData, setAttendeeData] = useState<
+    Record<string, EventAttendee[]>
+  >({});
+
+  // State for user's attendance status by event ID
+  const [userStatus, setUserStatus] = useState<Record<string, string | null>>(
+    {}
+  );
 
   // State for filters
   const [locationFilter, setLocationFilter] = useState<string>("all");
@@ -49,13 +68,41 @@ export default function EventsPage() {
       try {
         const eventsData = await getAllEvents();
         setEvents(eventsData);
+
+        // Fetch attendee data for each event
+        const attendeePromises = eventsData.map(async (event) => {
+          const attendees = await getEventAttendees(event.id);
+          return { eventId: event.id, attendees };
+        });
+
+        const attendeeResults = await Promise.all(attendeePromises);
+        const attendeeMap: Record<string, EventAttendee[]> = {};
+        attendeeResults.forEach(({ eventId, attendees }) => {
+          attendeeMap[eventId] = attendees;
+        });
+        setAttendeeData(attendeeMap);
+
+        // Fetch user's status for each event if user is logged in
+        if (user) {
+          const statusPromises = eventsData.map(async (event) => {
+            const status = await getUserEventStatus(event.id, user.id);
+            return { eventId: event.id, status };
+          });
+
+          const statusResults = await Promise.all(statusPromises);
+          const statusMap: Record<string, string | null> = {};
+          statusResults.forEach(({ eventId, status }) => {
+            statusMap[eventId] = status;
+          });
+          setUserStatus(statusMap);
+        }
       } catch (error) {
         console.error("Error fetching events:", error);
       }
     };
 
     fetchEvents();
-  }, []);
+  }, [user]);
 
   // Handle image error
   const handleImageError = (eventId: string) => {
@@ -133,15 +180,49 @@ export default function EventsPage() {
   };
 
   // Helper function to get event attendees count
-  const getAttendeeCount = () => {
-    // For now, return a random number between 10-50
-    return Math.floor(Math.random() * 40) + 10;
+  const getAttendeeCount = (eventId: string) => {
+    const attendees = attendeeData[eventId] || [];
+    return attendees.filter(
+      (a) => a.status === "going" || a.status === "approved"
+    ).length;
   };
 
   // Helper function to get interested count
-  const getInterestedCount = () => {
-    // For now, return a random number between 5-20
-    return Math.floor(Math.random() * 15) + 5;
+  const getInterestedCount = (eventId: string) => {
+    const attendees = attendeeData[eventId] || [];
+    return attendees.filter((a) => a.status === "interested").length;
+  };
+
+  // Handle user attendance actions
+  const handleAttendanceAction = async (
+    eventId: string,
+    status: "interested" | "going"
+  ) => {
+    if (!user) {
+      // Redirect to login or show login modal
+      console.log("User must be logged in to attend events");
+      return;
+    }
+
+    try {
+      const currentStatus = userStatus[eventId];
+
+      if (currentStatus === status) {
+        // User is removing their attendance
+        await unattendEvent(eventId, user.id);
+        setUserStatus((prev) => ({ ...prev, [eventId]: null }));
+      } else {
+        // User is setting/changing their attendance
+        await attendEvent(eventId, user.id, status);
+        setUserStatus((prev) => ({ ...prev, [eventId]: status }));
+      }
+
+      // Refresh attendee data for this event
+      const updatedAttendees = await getEventAttendees(eventId);
+      setAttendeeData((prev) => ({ ...prev, [eventId]: updatedAttendees }));
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+    }
   };
 
   // Helper function to get host info
@@ -242,8 +323,8 @@ export default function EventsPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedEvents.map((event) => {
             const dateInfo = formatDate(event.daily_schedule);
-            const attendeeCount = getAttendeeCount();
-            const interestedCount = getInterestedCount();
+            const attendeeCount = getAttendeeCount(event.id);
+            const interestedCount = getInterestedCount(event.id);
             const host = getHostInfo(event.host);
 
             return (
@@ -369,31 +450,39 @@ export default function EventsPage() {
                     <div className="flex space-x-2">
                       <Button
                         className="w-full flex-1"
-                        variant="outline"
+                        variant={
+                          userStatus[event.id] === "interested"
+                            ? "default"
+                            : "outline"
+                        }
                         size="sm"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          // Handle "Interested" logic here
-                          console.log(
-                            "Marked as interested for event:",
-                            event.id
-                          );
+                          handleAttendanceAction(event.id, "interested");
                         }}
                       >
-                        Interested
+                        {userStatus[event.id] === "interested"
+                          ? "Interested ✓"
+                          : "Interested"}
                       </Button>
                       <Button
                         className="w-full flex-1"
+                        variant={
+                          userStatus[event.id] === "going"
+                            ? "default"
+                            : "outline"
+                        }
                         size="sm"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          // Handle "I'm Going" logic here
-                          console.log("Marked as going to event:", event.id);
+                          handleAttendanceAction(event.id, "going");
                         }}
                       >
-                        I&apos;m Going
+                        {userStatus[event.id] === "going"
+                          ? "Going ✓"
+                          : "I'm Going"}
                       </Button>
                     </div>
                   </CardContent>

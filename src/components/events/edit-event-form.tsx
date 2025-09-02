@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useAuth } from "@/lib/hooks/useAuth";
-import { getEventById, updateEvent } from "@/lib/data/events";
+import { useAuth } from "@/components/auth-provider";
+import { getEventById, updateEvent, deleteEvent } from "@/lib/data/events";
 import type { Event } from "@/types/event";
 
 interface EventFormData {
@@ -216,6 +216,36 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     }
   };
 
+  const handleDelete = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this event? This action cannot be undone."
+      )
+    ) {
+      setIsLoading(true);
+      try {
+        // Check if user is authenticated and is the host
+        if (!isAuthenticated || !user || event.host_id !== user.id) {
+          alert("You are not authorized to delete this event.");
+          return;
+        }
+
+        const success = await deleteEvent(eventId);
+        if (success) {
+          alert("Event deleted successfully!");
+          router.push("/events");
+        } else {
+          alert("Failed to delete event. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error deleting event:", error);
+        alert("An error occurred while deleting the event. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
@@ -317,15 +347,27 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         />
 
         {/* Submit Buttons */}
-        <div className="flex justify-end space-x-4">
-          <Link href={`/events/${eventId}`}>
-            <Button type="button" variant="outline">
-              Cancel
-            </Button>
-          </Link>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update Event"}
+        <div className="flex justify-between">
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isLoading}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Event
           </Button>
+
+          <div className="flex space-x-4">
+            <Link href={`/events/${eventId}`}>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </Link>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Updating..." : "Update Event"}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

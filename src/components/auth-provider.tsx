@@ -2,14 +2,12 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/utils/supabase/client";
-import type { User } from "@supabase/supabase-js";
-import type { User as ProfileUser } from "@/types/user";
+import { getCurrentUser } from "@/lib/data/auth";
+import type { User } from "@/types/user";
 
 interface AuthContextType {
   user: User | null;
-  profile: ProfileUser | null;
   loading: boolean;
-  profileLoading: boolean;
   isAuthenticated: boolean;
 }
 
@@ -17,26 +15,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
 
-  const fetchProfile = async (userId: string) => {
-    setProfileLoading(true);
+  const fetchUser = async () => {
     try {
-      const supabase = createClient();
-      const { data: profileData } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      setProfile(profileData);
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
     } catch (error) {
-      console.error("Error fetching profile:", error);
-      setProfile(null);
+      console.error("Error fetching user:", error);
+      setUser(null);
     } finally {
-      setProfileLoading(false);
+      setLoading(false);
     }
   };
 
@@ -44,32 +33,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     // Get initial user
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
-
-      if (user) {
-        fetchProfile(user.id); // Don't await this
-      }
-    };
-
-    getUser();
+    fetchUser();
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state change:", event, session?.user?.id);
-      setUser(session?.user ?? null);
-      setLoading(false);
 
       if (session?.user) {
-        fetchProfile(session.user.id); // Don't await this
+        // User signed in - fetch full profile
+        await fetchUser();
       } else {
-        setProfile(null);
+        // User signed out
+        setUser(null);
+        setLoading(false);
       }
     });
 
@@ -80,9 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        profile,
         loading,
-        profileLoading,
         isAuthenticated: !!user,
       }}
     >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { CreateEventForm } from "@/components/events/create-event-form";
 
 export default function CreateEventPage() {

@@ -56,42 +56,6 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
-export async function updateUserProfile(userId: string, updates: Partial<User>): Promise<User | null> {
-  try {
-    const supabase = createClient()
-
-    const { data, error } = await supabase
-      .from('users')
-      .update({
-        username: updates.username,
-        display_name: updates.display_name,
-        profile_image_url: updates.profile_image_url,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating user profile:', error)
-      return null
-    }
-
-    return {
-      id: data.id,
-      username: data.username,
-      display_name: data.display_name || data.username,
-      email: data.email || '',
-      profile_image_url: data.profile_image_url,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-    }
-  } catch (error) {
-    console.error('Error updating user profile:', error)
-    return null
-  }
-}
-
 export async function getUserById(userId: string): Promise<User | null> {
   try {
     const supabase = createClient()
@@ -196,7 +160,6 @@ export async function registerAction(formData: FormData) {
       .insert({
         id: data.user.id,
         username,
-        email,
         display_name: displayName || username,
       })
 

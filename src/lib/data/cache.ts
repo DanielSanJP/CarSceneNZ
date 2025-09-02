@@ -20,6 +20,10 @@ class DataCache {
     return entry.data as T;
   }
 
+  delete(key: string): boolean {
+    return this.cache.delete(key);
+  }
+
   clear(): void {
     this.cache.clear();
   }

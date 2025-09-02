@@ -12,7 +12,7 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { createEvent } from "@/lib/data/events";
 
 interface EventFormData {

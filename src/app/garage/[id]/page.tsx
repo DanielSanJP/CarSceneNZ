@@ -16,7 +16,6 @@ import {
   Car as CarIcon,
   ChevronLeft,
   ChevronRight,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -180,9 +179,7 @@ export default function CarDetailPage() {
               >
                 {failedImages.has(`${carId}-${currentImageIndex}`) ||
                 !car.images?.[currentImageIndex] ? (
-                  <div className="aspect-square bg-muted flex items-center justify-center">
-                    <CarIcon className="h-16 w-16 text-muted-foreground" />
-                  </div>
+                  <div className="aspect-square bg-muted flex items-center justify-center"></div>
                 ) : (
                   <Image
                     src={car.images[currentImageIndex]}
@@ -310,7 +307,6 @@ export default function CarDetailPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5" />
                       Engine Details
                     </CardTitle>
                   </CardHeader>
@@ -363,7 +359,6 @@ export default function CarDetailPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5" />
                       Engine Details
                     </CardTitle>
                   </CardHeader>

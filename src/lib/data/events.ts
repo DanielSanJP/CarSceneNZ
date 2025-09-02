@@ -318,17 +318,49 @@ export async function attendEvent(eventId: string, userId: string, status: strin
   try {
     const supabase = createClient()
 
-    const { error } = await supabase
+    // First, check if the user already has an attendance record
+    const { data: existingRecord, error: checkError } = await supabase
       .from('event_attendees')
-      .upsert({
-        event_id: eventId,
-        user_id: userId,
-        status: status,
-      })
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .single()
 
-    if (error) {
-      console.error('Error attending event:', error)
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 is "no rows returned" which is expected for new attendees
+      console.error('Error checking existing attendance:', checkError)
       return false
+    }
+
+    if (existingRecord) {
+      // Update existing record
+      const { error } = await supabase
+        .from('event_attendees')
+        .update({
+          status: status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('Error updating event attendance:', error)
+        return false
+      }
+    } else {
+      // Insert new record
+      const { error } = await supabase
+        .from('event_attendees')
+        .insert({
+          event_id: eventId,
+          user_id: userId,
+          status: status,
+        })
+
+      if (error) {
+        console.error('Error creating event attendance:', error)
+        return false
+      }
     }
 
     return true

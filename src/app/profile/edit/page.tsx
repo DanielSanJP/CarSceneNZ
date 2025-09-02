@@ -1,26 +1,23 @@
 "use client";
 
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getUserById } from "@/lib/data";
+import { updateUserProfile } from "@/lib/data/profile";
 import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
 import { createClient } from "@/lib/utils/supabase/client";
 import { ArrowLeft, Upload, Save, Loader2, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { User } from "@/types/user";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditProfilePage() {
-  const { user: authUser, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -38,56 +35,13 @@ export default function EditProfilePage() {
       return;
     }
 
-    if (!authUser) return;
+    if (!user) return;
 
-    const fetchProfileData = async () => {
-      try {
-        // Get full user profile from database
-        const profileUser = await getUserById(authUser.id);
-        if (profileUser) {
-          // Merge auth data with profile data
-          const fullUser = {
-            ...profileUser,
-            email: authUser.email || profileUser.email,
-            display_name:
-              authUser.user_metadata?.display_name ||
-              authUser.user_metadata?.full_name ||
-              profileUser.username,
-          };
-          setUser(fullUser);
-          setDisplayName(fullUser.display_name);
-          setUsername(fullUser.username);
-          setPreviewUrl(fullUser.profile_image_url || null);
-        } else {
-          // Fallback to auth user data
-          const fallbackUser = {
-            id: authUser.id,
-            username: authUser.email?.split("@")[0] || "user",
-            display_name:
-              authUser.user_metadata?.display_name ||
-              authUser.user_metadata?.full_name ||
-              authUser.email?.split("@")[0] ||
-              "User",
-            email: authUser.email || "",
-            profile_image_url: authUser.user_metadata?.avatar_url,
-            created_at: authUser.created_at || new Date().toISOString(),
-            updated_at: authUser.updated_at || new Date().toISOString(),
-          };
-          setUser(fallbackUser);
-          setDisplayName(fallbackUser.display_name);
-          setUsername(fallbackUser.username);
-          setPreviewUrl(fallbackUser.profile_image_url || null);
-        }
-      } catch (error) {
-        console.error("Error fetching profile data:", error);
-        setError("Failed to load profile data");
-      } finally {
-        setProfileLoading(false);
-      }
-    };
-
-    fetchProfileData();
-  }, [authUser, isAuthenticated, loading]);
+    // Set form data from user
+    setDisplayName(user.display_name || "");
+    setUsername(user.username);
+    setPreviewUrl(user.profile_image_url || null);
+  }, [user, isAuthenticated, loading]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,7 +68,7 @@ export default function EditProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!user || !authUser) return;
+    if (!user) return;
 
     setSaving(true);
     setError("");
@@ -122,6 +76,22 @@ export default function EditProfilePage() {
 
     try {
       const supabase = createClient();
+      let finalImageUrl = user.profile_image_url;
+
+      // Upload new profile image if selected
+      if (profileImageFile) {
+        setUploadingImage(true);
+        const imageUrl = await uploadProfileImage(profileImageFile, user.id);
+        if (imageUrl) {
+          finalImageUrl = imageUrl;
+        } else {
+          setError("Image upload failed");
+          setUploadingImage(false);
+          setSaving(false);
+          return;
+        }
+        setUploadingImage(false);
+      }
 
       // Update display name in auth metadata
       const { error: metadataError } = await supabase.auth.updateUser({
@@ -137,32 +107,30 @@ export default function EditProfilePage() {
         return;
       }
 
-      // Update username and display_name in users table
-      const { error: profileError } = await supabase
-        .from("users")
-        .update({
-          username: username,
-          display_name: displayName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+      // Update username, display_name, and profile_image_url in users table
+      console.log("Attempting to update user profile:", {
+        userId: user.id,
+        username: username,
+        displayName: displayName,
+        finalImageUrl: finalImageUrl,
+      });
 
-      if (profileError) {
-        console.error("Error updating profile:", profileError);
+      const updatedUser = await updateUserProfile(user.id, {
+        username: username,
+        display_name: displayName,
+        profile_image_url: finalImageUrl,
+      });
+
+      if (!updatedUser) {
+        console.error(
+          "Error updating profile: updateUserProfile returned null"
+        );
         setError("Failed to update profile");
         setSaving(false);
         return;
       }
 
-      // Upload new profile image if selected
-      if (profileImageFile) {
-        setUploadingImage(true);
-        const imageUrl = await uploadProfileImage(profileImageFile, user.id);
-        if (!imageUrl) {
-          setError("Profile updated but image upload failed");
-        }
-        setUploadingImage(false);
-      }
+      console.log("Profile updated successfully:", updatedUser);
 
       setSuccess("Profile updated successfully!");
 
@@ -178,7 +146,7 @@ export default function EditProfilePage() {
     }
   };
 
-  if (loading || profileLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

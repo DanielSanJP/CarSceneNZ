@@ -218,6 +218,51 @@ export async function isFollowing(followerId: string, followingId: string): Prom
   }
 }
 
+export async function updateUserProfile(
+  userId: string, 
+  updates: {
+    username?: string
+    display_name?: string
+    profile_image_url?: string
+  }
+): Promise<User | null> {
+  try {
+    const supabase = createClient()
+
+    console.log('Updating user profile:', { userId, updates })
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating user profile:', error)
+      return null
+    }
+
+    console.log('Profile update successful:', data)
+
+    return {
+      id: data.id,
+      username: data.username,
+      display_name: data.display_name || data.username,
+      email: '', // Email not stored in users table
+      profile_image_url: data.profile_image_url,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    }
+  } catch (error) {
+    console.error('Error updating user profile:', error)
+    return null
+  }
+}
+
 export async function getAllUsers(): Promise<User[]> {
   try {
     const supabase = createClient()

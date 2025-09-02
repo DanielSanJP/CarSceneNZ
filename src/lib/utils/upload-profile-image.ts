@@ -13,12 +13,29 @@ export async function uploadProfileImage(file: File, userId: string): Promise<st
     
     console.log('Generated filename:', fileName)
     
+    // Delete old profile image if it exists
+    try {
+      const { data: existingFiles } = await supabase.storage
+        .from('profiles')
+        .list('', { search: userId })
+      
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToDelete = existingFiles.map(file => file.name)
+        await supabase.storage
+          .from('profiles')
+          .remove(filesToDelete)
+        console.log('Deleted old profile images:', filesToDelete)
+      }
+    } catch (deleteError) {
+      console.warn('Could not delete old profile images:', deleteError)
+    }
+    
     // Upload file to Supabase storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('profiles')
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: true
       })
     
     if (uploadError) {
@@ -35,18 +52,6 @@ export async function uploadProfileImage(file: File, userId: string): Promise<st
     
     console.log('Public URL generated:', urlData.publicUrl)
     
-    // Update user profile with image URL
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ profile_image_url: urlData.publicUrl })
-      .eq('id', userId)
-    
-    if (updateError) {
-      console.error('Profile update error:', updateError)
-      return null
-    }
-    
-    console.log('Profile updated successfully with image URL')
     return urlData.publicUrl
   } catch (error) {
     console.error('Error uploading profile image:', error)

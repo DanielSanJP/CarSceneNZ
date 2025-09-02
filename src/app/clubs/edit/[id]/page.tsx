@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ const NZ_LOCATIONS = [
 ];
 
 export default function EditClubPage() {
-  const { user, profile, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -525,9 +525,7 @@ export default function EditClubPage() {
                       </p>
                       <div className="text-xs text-muted-foreground mb-4">
                         Led by{" "}
-                        {profile?.display_name ||
-                          profile?.username ||
-                          user?.email}
+                        {user?.display_name || user?.username || user?.email}
                       </div>
                       <Button className="w-full" size="sm" disabled>
                         Preview Mode

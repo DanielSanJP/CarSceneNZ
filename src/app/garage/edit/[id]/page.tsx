@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { getCarById, updateCarWithComponents } from "@/lib/data/cars";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
@@ -309,7 +309,6 @@ export default function CompleteEditCarPage() {
           audio_system: formData.audio_system,
           gauges: [], // TODO: Handle gauges if needed
         },
-        performance: undefined, // Not needed since table was deleted
       };
 
       const updatedCar = await updateCarWithComponents(carId, updateData);

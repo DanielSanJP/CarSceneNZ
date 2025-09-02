@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { createCarWithComponents } from "@/lib/data/cars";
 import { ArrowLeft, Save } from "lucide-react";
@@ -244,7 +244,6 @@ export default function CreateCarPage() {
           audio_system: formData.audio_system,
           gauges: [], // TODO: Handle gauges if needed
         },
-        performance: undefined, // Not needed since table was deleted
       };
 
       console.log("Creating car with components:", createData);

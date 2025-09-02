@@ -31,8 +31,8 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchBar } from "@/components/search-bar";
-import { useAuth } from "@/lib/hooks/useAuth";
 import { createClient } from "@/lib/utils/supabase/client";
+import { useAuth } from "@/components/auth-provider";
 
 export function ModeToggle() {
   const { setTheme } = useTheme();
@@ -62,7 +62,7 @@ export function ModeToggle() {
 }
 
 function ProfileDropdown() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   if (!user) return null;
 
@@ -71,15 +71,10 @@ function ProfileDropdown() {
     await supabase.auth.signOut();
   };
 
-  // Use profile data from database, fallback to auth metadata
-  const displayName =
-    profile?.display_name ||
-    user.user_metadata?.display_name ||
-    user.user_metadata?.full_name ||
-    "User";
-  const username = profile?.username || "user";
-  const avatarUrl =
-    profile?.profile_image_url || user.user_metadata?.avatar_url;
+  // Use user data from our combined auth context
+  const displayName = user.display_name || user.username || "User";
+  const username = user.username || "user";
+  const avatarUrl = user.profile_image_url;
 
   return (
     <DropdownMenu>
@@ -118,13 +113,7 @@ function ProfileDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/inbox" className="cursor-pointer">
-            <Mail className="mr-2 h-4 w-4" />
-            <span>Inbox</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/garage" className="cursor-pointer">
+          <Link href="/garage/my-garage" className="cursor-pointer">
             <Car className="mr-2 h-4 w-4" />
             <span>My Garage</span>
           </Link>
@@ -136,9 +125,9 @@ function ProfileDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/events/create" className="cursor-pointer">
-            <Calendar className="mr-2 h-4 w-4" />
-            <span>Create Event</span>
+          <Link href="/inbox" className="cursor-pointer">
+            <Mail className="mr-2 h-4 w-4" />
+            <span>Inbox</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -189,6 +178,17 @@ export function Navigation() {
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild>
                     <Link
+                      href="/garage"
+                      className="flex flex-row items-center gap-2"
+                    >
+                      <Car className="h-4 w-4" />
+                      <span>Cars</span>
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild>
+                    <Link
                       href="/leaderboards"
                       className="flex flex-row items-center gap-2"
                     >
@@ -214,7 +214,7 @@ export function Navigation() {
                     <NavigationMenuItem>
                       <NavigationMenuLink asChild>
                         <Link
-                          href="/garage"
+                          href="/garage/my-garage"
                           className="flex flex-row items-center gap-2"
                         >
                           <Car className="h-4 w-4" />

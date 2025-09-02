@@ -4,7 +4,6 @@ import * as CarEngine from './car-engine';
 import * as CarChassis from './car-chassis';
 import * as CarExterior from './car-exterior';
 import * as CarInterior from './car-interior';
-import * as CarPerformance from './car-performance';
 
 const supabase = createClient();
 
@@ -111,12 +110,11 @@ export async function getCarById(carId: string): Promise<Car | null> {
     if (!basicCar) return null;
 
     // Get all component data in parallel
-    const [engineComponents, chassisComponents, exteriorComponents, interiorComponents, performanceComponents] = await Promise.all([
+    const [engineComponents, chassisComponents, exteriorComponents, interiorComponents] = await Promise.all([
       CarEngine.getEngineComponents(carId),
       CarChassis.getChassisComponents(carId),
       CarExterior.getExteriorComponents(carId),
       CarInterior.getInteriorComponents(carId),
-      CarPerformance.getPerformanceComponents(carId),
     ]);
 
     // Combine all data
@@ -126,7 +124,6 @@ export async function getCarById(carId: string): Promise<Car | null> {
       ...chassisComponents,
       ...exteriorComponents,
       ...interiorComponents,
-      ...performanceComponents,
     };
   } catch (error) {
     console.error('Error getting car by ID:', error);
@@ -265,9 +262,6 @@ export interface CompleteCarUpdateData {
   
   // Interior components  
   interior?: CarInterior.InteriorComponentsData;
-  
-  // Performance components
-  performance?: CarPerformance.PerformanceComponentsData;
 }
 
 /**
@@ -283,7 +277,6 @@ export async function createCarWithComponents(carData: {
   chassis?: CarChassis.ChassisComponentsData;
   exterior?: CarExterior.ExteriorComponentsData;
   interior?: CarInterior.InteriorComponentsData;
-  performance?: CarPerformance.PerformanceComponentsData;
 }): Promise<Car | null> {
   try {
     // Create basic car first
@@ -305,7 +298,6 @@ export async function createCarWithComponents(carData: {
       chassis: carData.chassis,
       exterior: carData.exterior,
       interior: carData.interior,
-      performance: carData.performance,
     };
 
     return await updateCarWithComponents(car.id, componentData);
@@ -352,10 +344,6 @@ export async function updateCarWithComponents(
       updatePromises.push(CarInterior.updateInteriorComponents(carId, carData.interior));
     }
     
-    if (carData.performance) {
-      updatePromises.push(CarPerformance.updatePerformanceComponents(carId, carData.performance));
-    }
-    
     await Promise.all(updatePromises);
     
     // Return updated car with all components
@@ -377,7 +365,6 @@ export async function deleteCar(carId: string): Promise<boolean> {
       CarChassis.deleteChassisComponents(carId),
       CarExterior.deleteExteriorComponents(carId),
       CarInterior.deleteInteriorComponents(carId),
-      CarPerformance.deletePerformanceComponents(carId),
     ]);
 
     // Delete main car record

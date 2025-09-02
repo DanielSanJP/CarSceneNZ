@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,22 @@ import { Separator } from "@/components/ui/separator";
 import {
   Calendar,
   MapPin,
-  Users,
   Clock,
   ArrowLeft,
   Star,
   ImageIcon,
   Share2,
   Heart,
+  Check,
 } from "lucide-react";
-import { getEventById, getEventAttendees, getUserById } from "@/lib/data";
+import {
+  getEventById,
+  getEventAttendees,
+  getUserById,
+  attendEvent,
+  unattendEvent,
+  getUserEventStatus,
+} from "@/lib/data";
 import Image from "next/image";
 import Link from "next/link";
 import type { Event, EventAttendee } from "@/types/event";
@@ -51,6 +58,12 @@ export default function EventDetailPage() {
         const attendeesData = await getEventAttendees(eventId);
         setAttendees(attendeesData);
 
+        // Get user's current status if logged in
+        if (currentUser) {
+          const status = await getUserEventStatus(eventId, currentUser.id);
+          setUserStatus(status);
+        }
+
         // Get host details if not already included
         if (eventData.host_id && !eventData.host) {
           const hostData = await getUserById(eventData.host_id);
@@ -67,7 +80,7 @@ export default function EventDetailPage() {
     if (eventId) {
       fetchEventData();
     }
-  }, [eventId]);
+  }, [eventId, currentUser]);
 
   // Get attendee counts
   const goingCount = attendees.filter(
@@ -89,12 +102,29 @@ export default function EventDetailPage() {
     setFailedImage(true);
   };
 
-  const handleStatusChange = (status: string) => {
-    setUserStatus(status);
-    // Here you would typically update the backend
-    console.log(
-      `User ${currentUser?.id} set status to ${status} for event ${eventId}`
-    );
+  const handleStatusChange = async (status: string) => {
+    if (!currentUser) {
+      console.log("User must be logged in to attend events");
+      return;
+    }
+
+    try {
+      if (userStatus === status) {
+        // User is removing their attendance
+        await unattendEvent(eventId, currentUser.id);
+        setUserStatus(null);
+      } else {
+        // User is setting/changing their attendance
+        await attendEvent(eventId, currentUser.id, status);
+        setUserStatus(status);
+      }
+
+      // Refresh attendee data
+      const updatedAttendees = await getEventAttendees(eventId);
+      setAttendees(updatedAttendees);
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+    }
   };
 
   const handleShare = async () => {
@@ -411,7 +441,7 @@ export default function EventDetailPage() {
                     onClick={() => handleStatusChange("going")}
                     variant={userStatus === "going" ? "default" : "outline"}
                   >
-                    <Users className="h-4 w-4 mr-2" />
+                    <Check className="h-4 w-4 mr-2" />
                     I&apos;m Going
                   </Button>
                   <Button

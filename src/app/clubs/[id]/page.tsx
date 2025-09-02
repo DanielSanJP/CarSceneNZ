@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ function ClubDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, profile, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const clubId = params.id as string;
   const fromTab = searchParams.get("from") || "join";
   const leaderboardTab = searchParams.get("tab") || "clubs";
@@ -145,10 +145,10 @@ function ClubDetailPageContent() {
         joined_at: new Date().toISOString(),
         user: {
           id: user.id,
-          username: profile?.username || user.email || "",
+          username: user?.username || user.email || "",
           display_name:
-            profile?.display_name || profile?.username || user.email || "",
-          profile_image_url: profile?.profile_image_url || "",
+            user?.display_name || user?.username || user.email || "",
+          profile_image_url: user?.profile_image_url || "",
         },
       };
 
