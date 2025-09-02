@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,7 @@ import type { User } from "@/types/user";
 import type { Car as CarType } from "@/types/car";
 
 export default function UserProfilePage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useClientAuth();
   const params = useParams();
   const router = useRouter();
   const userId = params.id as string;

@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -33,14 +33,16 @@ import {
   unattendEvent,
   getUserEventStatus,
 } from "@/lib/data/events";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Event, EventAttendee } from "@/types/event";
 
 export default function EventsPage() {
-  const { user } = useAuth();
+  const { user } = useClientAuth();
+  const router = useRouter();
 
   // State for events data
   const [events, setEvents] = useState<Event[]>([]);
@@ -199,8 +201,8 @@ export default function EventsPage() {
     status: "interested" | "going"
   ) => {
     if (!user) {
-      // Redirect to login or show login modal
-      console.log("User must be logged in to attend events");
+      // Redirect to register page when user is not logged in
+      router.push("/register");
       return;
     }
 
@@ -426,8 +428,14 @@ export default function EventsPage() {
                     {host && (
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-8 w-8">
+                          {host.profile_image_url && (
+                            <AvatarImage
+                              src={host.profile_image_url}
+                              alt={host.display_name || host.username}
+                            />
+                          )}
                           <AvatarFallback>
-                            {(host.display_name || "Unknown")
+                            {(host.display_name || host.username || "Unknown")
                               .split(" ")
                               .map((n: string) => n[0])
                               .join("")}
@@ -438,7 +446,9 @@ export default function EventsPage() {
                             Hosted by
                           </div>
                           <div className="text-sm font-medium">
-                            {host.display_name || "Unknown Host"}
+                            {host.display_name ||
+                              host.username ||
+                              "Unknown Host"}
                           </div>
                         </div>
                       </div>

@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/components/auth-provider";
+import { ClientAuthProvider } from "@/components/client-auth-provider";
 import { Navigation } from "@/components/nav";
+import { getUser } from "@/lib/dal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,11 +21,14 @@ export const metadata: Metadata = {
   description: "A social platform for car enthusiasts in New Zealand",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get user on server side
+  const user = await getUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -36,10 +40,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
+          <ClientAuthProvider initialUser={user}>
             <Navigation />
             {children}
-          </AuthProvider>
+          </ClientAuthProvider>
         </ThemeProvider>
       </body>
     </html>

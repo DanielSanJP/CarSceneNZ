@@ -1,22 +1,20 @@
 "use client";
 
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateUserProfile } from "@/lib/data/profile";
 import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
-import { createClient } from "@/lib/utils/supabase/client";
+import { updateProfileAction } from "./actions";
 import { ArrowLeft, Upload, Save, Loader2, UserIcon } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditProfilePage() {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, refreshUser } = useClientAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -30,18 +28,13 @@ export default function EditProfilePage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      redirect("/login");
-      return;
-    }
-
     if (!user) return;
 
     // Set form data from user
     setDisplayName(user.display_name || "");
     setUsername(user.username);
     setPreviewUrl(user.profile_image_url || null);
-  }, [user, isAuthenticated, loading]);
+  }, [user]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,17 +68,23 @@ export default function EditProfilePage() {
     setSuccess("");
 
     try {
-      const supabase = createClient();
+      console.log("Starting profile update process...");
       let finalImageUrl = user.profile_image_url;
 
       // Upload new profile image if selected
       if (profileImageFile) {
         setUploadingImage(true);
+        console.log("Starting profile image upload...");
+
         const imageUrl = await uploadProfileImage(profileImageFile, user.id);
+        console.log("Image upload completed, result:", imageUrl);
+
         if (imageUrl) {
           finalImageUrl = imageUrl;
+          console.log("Final image URL set to:", finalImageUrl);
         } else {
-          setError("Image upload failed");
+          console.error("Image upload failed - no URL returned");
+          setError("Failed to upload image. Please try again.");
           setUploadingImage(false);
           setSaving(false);
           return;
@@ -93,76 +92,64 @@ export default function EditProfilePage() {
         setUploadingImage(false);
       }
 
-      // Update display name in auth metadata
-      const { error: metadataError } = await supabase.auth.updateUser({
-        data: {
-          display_name: displayName,
-        },
-      });
+      // Use server action for database update
+      console.log("Calling server action for profile update...");
+      const formData = new FormData();
+      formData.append("username", username);
+      formData.append("displayName", displayName);
+      formData.append("profileImageUrl", finalImageUrl || "");
 
-      if (metadataError) {
-        console.error("Error updating auth metadata:", metadataError);
-        setError("Failed to update display name");
+      const result = await updateProfileAction(formData);
+
+      if (!result.success) {
+        console.error("Server action failed:", result.error);
+        setError(result.error || "Failed to update profile");
         setSaving(false);
         return;
       }
 
-      // Update username, display_name, and profile_image_url in users table
-      console.log("Attempting to update user profile:", {
-        userId: user.id,
-        username: username,
-        displayName: displayName,
-        finalImageUrl: finalImageUrl,
-      });
+      console.log("Profile updated successfully:", result.data);
 
-      const updatedUser = await updateUserProfile(user.id, {
-        username: username,
-        display_name: displayName,
-        profile_image_url: finalImageUrl,
-      });
-
-      if (!updatedUser) {
-        console.error(
-          "Error updating profile: updateUserProfile returned null"
-        );
-        setError("Failed to update profile");
-        setSaving(false);
-        return;
-      }
-
-      console.log("Profile updated successfully:", updatedUser);
+      // Refresh user context
+      await refreshUser();
 
       setSuccess("Profile updated successfully!");
 
-      // Refresh the page after a short delay
+      // Clean up file objects
+      if (previewUrl && previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl(finalImageUrl || null);
+      setProfileImageFile(null);
+
+      // Navigate after short delay
       setTimeout(() => {
-        router.push(`/profile/${username || "user"}`);
+        router.push(`/profile/${username}`);
       }, 1500);
     } catch (error) {
-      console.error("Error saving profile:", error);
-      setError("Failed to save profile");
+      console.error("Unexpected error during profile update:", error);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setSaving(false);
+      setUploadingImage(false);
     }
   };
 
-  if (loading) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
             <div className="text-center">
-              <p>Loading profile...</p>
+              <h1 className="text-2xl font-bold">Access Denied</h1>
+              <p className="text-muted-foreground mt-2">
+                Please log in to edit your profile.
+              </p>
             </div>
           </div>
         </div>
       </div>
     );
-  }
-
-  if (!isAuthenticated || !user) {
-    redirect("/login");
-    return null;
   }
 
   return (

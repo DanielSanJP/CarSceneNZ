@@ -12,7 +12,7 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { createEvent } from "@/lib/data/events";
 
 interface EventFormData {
@@ -43,7 +43,7 @@ interface DatabaseEventData {
 
 export function CreateEventForm() {
   const router = useRouter();
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user } = useClientAuth();
   const [isLoading, setIsLoading] = useState(false);
   const locationInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,24 +84,8 @@ export function CreateEventForm() {
     };
   }, []);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, loading, router]);
-
-  // Show loading while checking auth
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        Loading...
-      </div>
-    );
-  }
-
   // Don't render if not authenticated
-  if (!isAuthenticated) {
+  if (!user) {
     return null;
   }
 
@@ -111,7 +95,7 @@ export function CreateEventForm() {
 
     try {
       // Check if user is authenticated
-      if (!isAuthenticated || !user) {
+      if (!user) {
         alert("You must be logged in to create an event.");
         return;
       }

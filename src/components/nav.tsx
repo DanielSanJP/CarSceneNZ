@@ -30,9 +30,9 @@ import {
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SearchBar } from "@/components/search-bar";
+import { SearchBar, MobileSearchButton } from "@/components/search-bar";
 import { createClient } from "@/lib/utils/supabase/client";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 
 export function ModeToggle() {
   const { setTheme } = useTheme();
@@ -62,13 +62,16 @@ export function ModeToggle() {
 }
 
 function ProfileDropdown() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useClientAuth();
 
   if (!user) return null;
 
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    // The auth state change will be picked up by the listener in ClientAuthProvider
+    // but we can also manually refresh to ensure immediate update
+    await refreshUser();
   };
 
   // Use user data from our combined auth context
@@ -141,15 +144,15 @@ function ProfileDropdown() {
 }
 
 export function Navigation() {
-  const { isAuthenticated, loading } = useAuth();
+  const { user } = useClientAuth();
 
   return (
     <div className="border-b">
-      <div className=" mx-auto px-6 py-4">
+      <div className=" mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {/* Always visible navigation */}
-            <NavigationMenu className="hidden md:flex">
+            <NavigationMenu className="hidden lg:flex">
               <NavigationMenuList>
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild>
@@ -209,7 +212,7 @@ export function Navigation() {
                   </NavigationMenuLink>
                 </NavigationMenuItem>
                 {/* Authenticated only navigation */}
-                {isAuthenticated && (
+                {user && (
                   <>
                     <NavigationMenuItem>
                       <NavigationMenuLink asChild>
@@ -248,14 +251,18 @@ export function Navigation() {
                 )}
               </NavigationMenuList>
             </NavigationMenu>
+
+            {/* Mobile logo */}
+            <Link href="/" className="flex lg:hidden items-center">
+              <Car className="h-8 w-8 text-primary" />
+            </Link>
           </div>
 
           <div className="flex items-center space-x-2">
             <SearchBar />
+            <MobileSearchButton />
             <ModeToggle />
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
-            ) : isAuthenticated ? (
+            {user ? (
               <ProfileDropdown />
             ) : (
               <>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -22,7 +22,7 @@ import { getEventsByHost, getEventAttendees } from "@/lib/data/events";
 import type { Event, EventAttendee } from "@/types/event";
 
 export function MyEventsView() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isLoading: authLoading } = useClientAuth();
   const [userEvents, setUserEvents] = useState<Event[]>([]);
   const [attendeeData, setAttendeeData] = useState<
     Record<string, EventAttendee[]>
@@ -32,9 +32,10 @@ export function MyEventsView() {
 
   useEffect(() => {
     const fetchUserEvents = async () => {
-      if (!user) return;
+      if (!user || authLoading) return;
 
       try {
+        setLoading(true);
         const events = await getEventsByHost(user.id);
         setUserEvents(events);
 
@@ -58,7 +59,7 @@ export function MyEventsView() {
     };
 
     fetchUserEvents();
-  }, [user]);
+  }, [user, authLoading]);
 
   // Handle image error
   const handleImageError = (eventId: string) => {
@@ -103,7 +104,20 @@ export function MyEventsView() {
     return attendees.filter((a) => a.status === "interested").length;
   };
 
-  if (!isAuthenticated || !user) {
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-2">My Events</h1>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

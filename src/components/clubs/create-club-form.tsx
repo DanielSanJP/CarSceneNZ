@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +61,7 @@ export function CreateClubForm({
   onSuccess,
   embedded = false,
 }: CreateClubFormProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useClientAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -75,7 +75,7 @@ export function CreateClubForm({
     banner_image: "",
   });
 
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return (
       <div className="text-center py-12">
         <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />

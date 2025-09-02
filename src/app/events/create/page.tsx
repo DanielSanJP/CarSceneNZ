@@ -1,12 +1,12 @@
 "use client";
 
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { CreateEventForm } from "@/components/events/create-event-form";
 
 export default function CreateEventPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useClientAuth();
 
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

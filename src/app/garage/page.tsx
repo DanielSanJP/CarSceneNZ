@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,7 @@ import { useState, useEffect, useMemo } from "react";
 import type { Car } from "@/types/car";
 
 export default function GaragePage() {
-  const { user } = useAuth();
+  const { user } = useClientAuth();
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -56,10 +56,10 @@ export default function GaragePage() {
 
   // Get unique models from cars (filtered by selected brand)
   const models = useMemo(() => {
-    const filteredCars =
-      brandFilter === "all"
-        ? cars
-        : cars.filter((car) => car.brand === brandFilter);
+    if (brandFilter === "all") {
+      return []; // Don't show any models if no brand is selected
+    }
+    const filteredCars = cars.filter((car) => car.brand === brandFilter);
     const uniqueModels = [
       ...new Set(filteredCars.map((car) => car.model)),
     ].sort();
@@ -181,9 +181,17 @@ export default function GaragePage() {
               </SelectContent>
             </Select>
 
-            <Select value={modelFilter} onValueChange={setModelFilter}>
+            <Select
+              value={modelFilter}
+              onValueChange={setModelFilter}
+              disabled={brandFilter === "all"}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="All Models" />
+                <SelectValue
+                  placeholder={
+                    brandFilter === "all" ? "Select brand first" : "All Models"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Models</SelectItem>
@@ -262,7 +270,7 @@ export default function GaragePage() {
                           alt={`${car.brand} ${car.model}`}
                           fill
                           quality={100}
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="object-cover"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           onError={() => handleImageError(car.id)}
                         />
@@ -288,28 +296,6 @@ export default function GaragePage() {
                     </CardHeader>
 
                     <CardContent className="space-y-4">
-                      {/* Owner info */}
-                      {car.owner && (
-                        <div className="flex items-center gap-2">
-                          {car.owner.profile_image_url ? (
-                            <Image
-                              src={car.owner.profile_image_url}
-                              alt={car.owner.display_name || car.owner.username}
-                              width={24}
-                              height={24}
-                              className="rounded-full"
-                            />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
-                              <User className="h-3 w-3" />
-                            </div>
-                          )}
-                          <span className="text-sm text-muted-foreground">
-                            {car.owner.display_name || car.owner.username}
-                          </span>
-                        </div>
-                      )}
-
                       {/* Action Buttons */}
                       <div className="flex space-x-2">
                         <Button
@@ -325,19 +311,6 @@ export default function GaragePage() {
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </Button>
-                        {user && user.id === car.owner_id && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              window.location.href = `/garage/edit/${car.id}`;
-                            }}
-                          >
-                            Edit
-                          </Button>
-                        )}
                       </div>
                     </CardContent>
                   </Card>

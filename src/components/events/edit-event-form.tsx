@@ -12,7 +12,7 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { getEventById, updateEvent, deleteEvent } from "@/lib/data/events";
 import type { Event } from "@/types/event";
 
@@ -48,7 +48,7 @@ interface EditEventFormProps {
 
 export function EditEventForm({ eventId }: EditEventFormProps) {
   const router = useRouter();
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isLoading: authLoading } = useClientAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [eventLoading, setEventLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
@@ -72,6 +72,8 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
   // Fetch event data
   useEffect(() => {
     const fetchEvent = async () => {
+      if (!user || authLoading) return;
+
       try {
         const eventData = await getEventById(eventId);
         if (eventData) {
@@ -110,10 +112,8 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       }
     };
 
-    if (eventId) {
-      fetchEvent();
-    }
-  }, [eventId]);
+    fetchEvent();
+  }, [eventId, user, authLoading]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -132,13 +132,6 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     };
   }, []);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, loading, router]);
-
   // Check if user is the host
   useEffect(() => {
     if (event && user && event.host_id !== user.id) {
@@ -146,18 +139,55 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     }
   }, [event, user, router]);
 
-  // Show loading while checking auth or fetching event
-  if (loading || eventLoading) {
+  // Show loading while auth is loading
+  if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        Loading...
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
       </div>
     );
   }
 
-  // Don't render if not authenticated or no event found
-  if (!isAuthenticated || !event) {
-    return null;
+  // Show loading while fetching event
+  if (eventLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if not authenticated
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+          <p className="text-muted-foreground">Please log in to edit events.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if event not found
+  if (!event) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">Event Not Found</h2>
+          <p className="text-muted-foreground mb-4">
+            The event you&apos;re looking for doesn&apos;t exist.
+          </p>
+          <Button onClick={() => router.push("/events")}>Back to Events</Button>
+        </div>
+      </div>
+    );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,7 +196,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
 
     try {
       // Check if user is authenticated and is the host
-      if (!isAuthenticated || !user || event.host_id !== user.id) {
+      if (!user || event.host_id !== user.id) {
         alert("You are not authorized to edit this event.");
         return;
       }
@@ -225,7 +255,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       setIsLoading(true);
       try {
         // Check if user is authenticated and is the host
-        if (!isAuthenticated || !user || event.host_id !== user.id) {
+        if (!user || event.host_id !== user.id) {
           alert("You are not authorized to delete this event.");
           return;
         }

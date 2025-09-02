@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Button } from "@/components/ui/button";
 import { createCarWithComponents } from "@/lib/data/cars";
 import { ArrowLeft, Save } from "lucide-react";
@@ -141,7 +141,7 @@ interface CreateCarFormData {
 }
 
 export default function CreateCarPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useClientAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -167,7 +167,7 @@ export default function CreateCarPage() {
     steering_wheel: undefined,
   });
 
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ function ClubDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useClientAuth();
   const clubId = params.id as string;
   const fromTab = searchParams.get("from") || "join";
   const leaderboardTab = searchParams.get("tab") || "clubs";
@@ -128,7 +128,7 @@ function ClubDetailPageContent() {
   const memberCount = club?.members.length || 0;
 
   const handleJoinClub = async () => {
-    if (!isAuthenticated || !user || !club) return;
+    if (!user || !club) return;
 
     setIsJoining(true);
     try {
@@ -169,7 +169,7 @@ function ClubDetailPageContent() {
   };
 
   const handleLeaveClub = async () => {
-    if (!isAuthenticated || !user || !club) return;
+    if (!user || !club) return;
 
     const confirmLeave = window.confirm(
       isLeader
@@ -304,7 +304,7 @@ function ClubDetailPageContent() {
   }
 
   const typeInfo = getClubTypeInfo(club.club_type);
-  const canJoin = isAuthenticated && !isMember && club.club_type === "open";
+  const canJoin = user && !isMember && club.club_type === "open";
 
   return (
     <div className="min-h-screen bg-background">
@@ -490,7 +490,7 @@ function ClubDetailPageContent() {
                       </>
                     )}
                   </Button>
-                ) : !isAuthenticated ? (
+                ) : !user ? (
                   <Link href="/login">
                     <Button size="lg">
                       <UserPlus className="h-4 w-4 mr-2" />

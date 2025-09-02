@@ -7,54 +7,80 @@ export async function uploadProfileImage(file: File, userId: string): Promise<st
     
     const supabase = createClient()
     
-    // Generate unique filename
+    // Use a consistent filename pattern
     const fileExt = file.name.split('.').pop()
-    const fileName = `${userId}_${Date.now()}.${fileExt}`
+    const fileName = `${userId}_profile.${fileExt}`
     
     console.log('Generated filename:', fileName)
     
-    // Delete old profile image if it exists
-    try {
-      const { data: existingFiles } = await supabase.storage
-        .from('profiles')
-        .list('', { search: userId })
-      
-      if (existingFiles && existingFiles.length > 0) {
-        const filesToDelete = existingFiles.map(file => file.name)
-        await supabase.storage
-          .from('profiles')
-          .remove(filesToDelete)
-        console.log('Deleted old profile images:', filesToDelete)
-      }
-    } catch (deleteError) {
-      console.warn('Could not delete old profile images:', deleteError)
+    // First, try to remove existing file (ignore if it doesn't exist)
+    console.log('Removing existing file if it exists...')
+    const { error: removeError } = await supabase.storage
+      .from('profiles')
+      .remove([fileName])
+    
+    if (removeError) {
+      console.log('Remove operation result (may not exist):', removeError)
+    } else {
+      console.log('Existing file removed or did not exist')
     }
     
-    // Upload file to Supabase storage
+    console.log('Starting fresh file upload...')
+    
+    // Upload the new file
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('profiles')
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: true
+        upsert: false
       })
+    
+    console.log('Upload operation completed')
+    console.log('Upload data:', uploadData)
+    console.log('Upload error:', uploadError)
     
     if (uploadError) {
       console.error('Profile image upload error:', uploadError)
       return null
     }
     
-    console.log('Upload successful:', uploadData)
+    if (!uploadData) {
+      console.error('No upload data returned')
+      return null
+    }
+    
+    console.log('Upload successful, getting public URL...')
     
     // Get public URL
     const { data: urlData } = supabase.storage
       .from('profiles')
       .getPublicUrl(fileName)
     
-    console.log('Public URL generated:', urlData.publicUrl)
+    console.log('Public URL data:', urlData)
     
+    if (!urlData?.publicUrl) {
+      console.error('Failed to get public URL')
+      return null
+    }
+    
+    // Test if the URL is accessible by making a HEAD request
+    try {
+      const response = await fetch(urlData.publicUrl, { method: 'HEAD' })
+      if (!response.ok) {
+        console.warn('Image may not be publicly accessible:', response.status, response.statusText)
+        console.warn('This could be a bucket policy issue, but returning URL anyway')
+      } else {
+        console.log('Image is publicly accessible')
+      }
+    } catch (fetchError) {
+      console.warn('Could not verify image accessibility:', fetchError)
+      console.warn('Returning URL anyway - may be network/CORS issue')
+    }
+    
+    console.log('Public URL generated successfully:', urlData.publicUrl)
     return urlData.publicUrl
   } catch (error) {
-    console.error('Error uploading profile image:', error)
+    console.error('Unexpected error uploading profile image:', error)
     return null
   }
 }

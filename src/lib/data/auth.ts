@@ -1,12 +1,8 @@
 import { createClient } from '@/lib/utils/supabase/client'
 import type { User } from '@/types/user'
-import { dataCache } from './cache'
 
+// Client-side current user function (for client components only)
 export async function getCurrentUser(): Promise<User | null> {
-  const cacheKey = 'currentUser';
-  const cached = dataCache.get<User>(cacheKey);
-  if (cached) return cached;
-
   try {
     const supabase = createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
@@ -23,39 +19,25 @@ export async function getCurrentUser(): Promise<User | null> {
       .single()
 
     if (profileError || !profile) {
-      console.warn('User profile not found for authenticated user:', user.id)
-      // Return basic user data - this should rarely happen
-      const userData = {
-        id: user.id,
-        username: 'user', // Temporary fallback
-        display_name: user.user_metadata?.display_name || user.user_metadata?.full_name || 'User',
-        email: user.email || '',
-        profile_image_url: user.user_metadata?.avatar_url,
-        created_at: user.created_at || new Date().toISOString(),
-        updated_at: user.updated_at || new Date().toISOString(),
-      };
-      dataCache.set(cacheKey, userData, 5 * 60 * 1000); // Cache for 5 minutes
-      return userData;
+      return null
     }
 
-    const userData = {
+    return {
       id: profile.id,
       username: profile.username,
-      display_name: profile.display_name || user.user_metadata?.display_name || user.user_metadata?.full_name || profile.username,
+      display_name: profile.display_name || profile.username,
       email: user.email || '',
       profile_image_url: profile.profile_image_url,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
-    };
-
-    dataCache.set(cacheKey, userData, 5 * 60 * 1000); // Cache for 5 minutes
-    return userData;
+    }
   } catch (error) {
     console.error('Error getting current user:', error)
     return null
   }
 }
 
+// Client-side only functions for public data access
 export async function getUserById(userId: string): Promise<User | null> {
   try {
     const supabase = createClient()
@@ -71,13 +53,11 @@ export async function getUserById(userId: string): Promise<User | null> {
       return null
     }
 
-    // For now, we'll skip fetching email from auth since it's not available in client context
-    // Email will be available when user is authenticated via getCurrentUser
     return {
       id: profile.id,
       username: profile.username,
-      display_name: profile.display_name || profile.username, // Now using display_name from users table
-      email: '', // Email not available in this context
+      display_name: profile.display_name || profile.username,
+      email: '', // Email not available in client context
       profile_image_url: profile.profile_image_url,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
@@ -105,8 +85,8 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     return {
       id: data.id,
       username: data.username,
-      display_name: data.display_name || data.username, // Now using display_name from users table
-      email: '', // Email not available in this context
+      display_name: data.display_name || data.username,
+      email: '', // Email not available in client context
       profile_image_url: data.profile_image_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
@@ -175,26 +155,4 @@ export async function registerAction(formData: FormData) {
 export async function logoutAction() {
   const supabase = createClient()
   await supabase.auth.signOut()
-}
-
-export async function updateUserDisplayName(displayName: string): Promise<boolean> {
-  try {
-    const supabase = createClient()
-    
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        display_name: displayName,
-      }
-    })
-
-    if (error) {
-      console.error('Error updating display name:', error)
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('Error updating display name:', error)
-    return false
-  }
 }

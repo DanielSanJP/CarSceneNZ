@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCarsByOwner } from "@/lib/data/cars";
@@ -11,16 +11,17 @@ import { useState, useEffect } from "react";
 import type { Car } from "@/types/car";
 
 export default function MyGarageView() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isLoading: authLoading } = useClientAuth();
   const [userCars, setUserCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchUserCars = async () => {
-      if (!user) return;
+      if (!user || authLoading) return;
 
       try {
+        setLoading(true);
         const cars = await getCarsByOwner(user.id);
         setUserCars(cars);
       } catch (error) {
@@ -31,9 +32,22 @@ export default function MyGarageView() {
     };
 
     fetchUserCars();
-  }, [user]);
+  }, [user, authLoading]);
 
-  if (!isAuthenticated || !user) {
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-2">My Garage</h1>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

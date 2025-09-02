@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ import type { Event, EventAttendee } from "@/types/event";
 import type { User } from "@/types/user";
 
 export default function EventDetailPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useClientAuth();
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
@@ -104,7 +104,8 @@ export default function EventDetailPage() {
 
   const handleStatusChange = async (status: string) => {
     if (!currentUser) {
-      console.log("User must be logged in to attend events");
+      // Redirect to register page when user is not logged in
+      router.push("/register");
       return;
     }
 
@@ -304,13 +305,14 @@ export default function EventDetailPage() {
                   {/* Host */}
                   {host && (
                     <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10">
+                      <Avatar className="h-10 w-10 ">
                         <AvatarImage
+                          className="object-cover"
                           src={host.profile_image_url}
                           alt={host.username}
                         />
                         <AvatarFallback>
-                          {host.username
+                          {(host.display_name || host.username || "U")
                             .split(" ")
                             .map((n: string) => n[0])
                             .join("")}
@@ -322,7 +324,7 @@ export default function EventDetailPage() {
                         </div>
                         <Link href={`/profile/${host.username}`}>
                           <div className="text-sm font-medium hover:underline">
-                            {host.display_name}
+                            {host.display_name || host.username}
                           </div>
                         </Link>
                       </div>
@@ -456,7 +458,19 @@ export default function EventDetailPage() {
                   </Button>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        if (!currentUser) {
+                          router.push("/register");
+                          return;
+                        }
+                        // TODO: Implement save functionality
+                        console.log("Save functionality to be implemented");
+                      }}
+                    >
                       <Heart className="h-4 w-4 mr-2" />
                       Save
                     </Button>

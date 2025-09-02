@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ interface MyClubViewProps {
 }
 
 export function MyClubView({ userClubs }: MyClubViewProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useClientAuth();
   const [isLeaving, setIsLeaving] = useState<string | null>(null); // Track which club is being left
   const [leaders, setLeaders] = useState<Record<string, User | null>>({}); // Store leader data by club ID
 
@@ -115,7 +115,7 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
     clubName: string,
     isLeader: boolean
   ) => {
-    if (!isAuthenticated || !user) return;
+    if (!user) return;
 
     const confirmLeave = window.confirm(
       isLeader

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { Button } from "@/components/ui/button";
 import { getCarById, updateCarWithComponents } from "@/lib/data/cars";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
@@ -118,7 +118,7 @@ interface CompleteEditCarFormData {
 }
 
 export default function CompleteEditCarPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useClientAuth();
   const router = useRouter();
   const params = useParams();
   const carId = params.id as string;
@@ -190,7 +190,7 @@ export default function CompleteEditCarPage() {
     loadCar();
   }, [carId]);
 
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">

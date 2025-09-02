@@ -231,6 +231,20 @@ export async function updateUserProfile(
 
     console.log('Updating user profile:', { userId, updates })
 
+    // First, let's check if the user exists and get current data
+    const { data: currentUser, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching current user:', fetchError)
+      return null
+    }
+
+    console.log('Current user data:', currentUser)
+
     const { data, error } = await supabase
       .from('users')
       .update({
@@ -243,6 +257,12 @@ export async function updateUserProfile(
 
     if (error) {
       console.error('Error updating user profile:', error)
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
       return null
     }
 

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useAuth } from "@/components/auth-provider";
+import { useClientAuth } from "@/components/client-auth-provider";
 import { getCarById } from "@/lib/data/cars";
 import type { Car } from "@/types/car";
 
@@ -21,7 +21,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function CarDetailPage() {
-  const { user } = useAuth();
+  const { user } = useClientAuth();
   const params = useParams();
   const router = useRouter();
   const carId = params.id as string;
