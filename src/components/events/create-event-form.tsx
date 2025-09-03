@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,14 +12,9 @@ import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
 import { useCurrentUser } from "@/hooks/use-auth";
-import { createEvent } from "@/lib/data/events";
 
-// Helper function to format date in local timezone (avoids UTC conversion issues)
-function formatDateToLocal(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+interface CreateEventFormProps {
+  action: (formData: FormData) => Promise<void>;
 }
 
 interface EventFormData {
@@ -36,23 +30,10 @@ interface EventFormData {
   }>;
 }
 
-interface DatabaseEventData {
-  host_id: string;
-  title: string;
-  description?: string;
-  poster_image_url?: string;
-  location?: string;
-  daily_schedule: Array<{
-    date: string;
-    start_time?: string;
-    end_time?: string;
-  }>;
-}
-
-export function CreateEventForm() {
-  const router = useRouter();
+export function CreateEventForm({ action }: CreateEventFormProps) {
   const user = useCurrentUser();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>("");
   const locationInputRef = useRef<HTMLInputElement>(null);
 
   // Generate a temporary ID for image uploads during creation
@@ -97,20 +78,20 @@ export function CreateEventForm() {
     return null;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+  const handleAction = async (formDataFromForm: FormData) => {
     try {
+      setError("");
+      setIsLoading(true);
+
       // Check if user is authenticated
       if (!user) {
-        alert("You must be logged in to create an event.");
+        setError("You must be logged in to create an event.");
         return;
       }
 
-      // Validate required fields
+      // Validate required fields using formData state
       if (!formData.title.trim()) {
-        alert("Event title is required.");
+        setError("Event title is required.");
         return;
       }
 
@@ -119,36 +100,28 @@ export function CreateEventForm() {
         (item) => item.date
       );
       if (validScheduleItems.length === 0) {
-        alert("At least one event date is required.");
+        setError("At least one event date is required.");
         return;
       }
 
-      // Transform form data to database format
-      const eventData: DatabaseEventData = {
-        host_id: user.id,
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        poster_image_url: formData.poster_image_url || undefined,
-        location: formData.location.trim() || undefined,
-        daily_schedule: validScheduleItems.map((item) => ({
-          date: formatDateToLocal(item.date!), // Use timezone-safe formatting
-          start_time: item.start_time || undefined,
-          end_time: item.end_time || undefined,
-        })),
-      };
+      // Add current form state to FormData for the server action
+      formDataFromForm.set("title", formData.title.trim());
+      formDataFromForm.set("description", formData.description.trim());
+      formDataFromForm.set("location", formData.location.trim());
+      formDataFromForm.set("poster_image_url", formData.poster_image_url);
+      formDataFromForm.set(
+        "daily_schedule",
+        JSON.stringify(validScheduleItems)
+      );
 
-      // Create the event
-      const createdEvent = await createEvent(eventData);
-
-      if (createdEvent) {
-        alert("Event created successfully!");
-        router.push("/events");
-      } else {
-        alert("Failed to create event. Please try again.");
-      }
+      await action(formDataFromForm);
     } catch (error) {
       console.error("Error creating event:", error);
-      alert("An error occurred while creating the event. Please try again.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "An error occurred while creating the event. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +144,7 @@ export function CreateEventForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form action={handleAction} className="space-y-8">
         {/* Event Poster Image */}
         <Card>
           <CardHeader>
@@ -253,6 +226,13 @@ export function CreateEventForm() {
             setFormData((prev) => ({ ...prev, ...data }))
           }
         />
+
+        {/* Error Display */}
+        {error && (
+          <div className="text-center">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
         {/* Submit Buttons */}
         <div className="flex justify-end space-x-4">

@@ -12,50 +12,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/utils/supabase/client";
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+interface LoginFormProps extends React.ComponentProps<"div"> {
+  action: (formData: FormData) => Promise<void>;
+}
+
+export function LoginForm({ className, action, ...props }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleAction = async (formData: FormData) => {
     setIsLoading(true);
     setError("");
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    if (!email || !password) {
-      setError("Email and password are required");
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const supabase = createClient();
-
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) {
-        console.error("Login error:", authError);
-        setError(authError.message || "Login failed. Please try again.");
-        return;
-      }
-
-      // Success - the auth state change will be handled by the AuthProvider
-      // Router push will happen after the auth state updates
-      router.push("/");
-      router.refresh(); // Refresh to ensure server components get the new auth state
+      await action(formData);
     } catch (error) {
       console.error("Login error:", error);
       setError(
@@ -63,7 +34,6 @@ export function LoginForm({
           ? error.message
           : "Login failed. Please try again."
       );
-    } finally {
       setIsLoading(false);
     }
   };
@@ -78,7 +48,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          <form action={handleAction}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>

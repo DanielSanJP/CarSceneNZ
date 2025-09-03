@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
 import { useRequireAuth } from "@/hooks/use-auth";
-import { getEventById, updateEvent, deleteEvent } from "@/lib/data/events";
+import { updateEvent, deleteEvent } from "@/lib/server/events";
 import type { Event } from "@/types/event";
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)
@@ -25,89 +25,43 @@ function formatDateToLocal(date: Date): string {
 }
 
 interface EditEventFormProps {
-  eventId: string;
+  event: Event;
 }
 
-export function EditEventForm({ eventId }: EditEventFormProps) {
-  const router = useRouter();
+export function EditEventForm({ event }: EditEventFormProps) {
   const user = useRequireAuth();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
-  const [event, setEvent] = useState<Event | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    poster_image_url: "",
-    location: "",
-    daily_schedule: [
-      {
-        date: undefined as Date | undefined,
-        start_time: "",
-        end_time: "",
+  const [formData, setFormData] = useState(() => {
+    // Initialize form data from the event prop
+    const scheduleWithDates = event.daily_schedule.map(
+      (item: { date: string; start_time?: string; end_time?: string }) => ({
+        date: new Date(item.date),
+        start_time: item.start_time || "",
+        end_time: item.end_time || "",
         description: "",
-      },
-    ],
-  });
+      })
+    );
 
-  // Load event data
-  useEffect(() => {
-    const loadEvent = async () => {
-      if (!eventId) return;
-
-      try {
-        setIsLoadingEvent(true);
-        setError(null);
-
-        const eventData = await getEventById(eventId);
-
-        if (!eventData) {
-          setError("Event not found.");
-          setIsLoadingEvent(false);
-          return;
-        }
-
-        setEvent(eventData);
-
-        // Set form data
-        const scheduleWithDates = eventData.daily_schedule.map(
-          (item: { date: string; start_time?: string; end_time?: string }) => ({
-            date: new Date(item.date),
-            start_time: item.start_time || "",
-            end_time: item.end_time || "",
-            description: "",
-          })
-        );
-
-        setFormData({
-          title: eventData.title,
-          description: eventData.description || "",
-          poster_image_url: eventData.poster_image_url || "",
-          location: eventData.location || "",
-          daily_schedule:
-            scheduleWithDates.length > 0
-              ? scheduleWithDates
-              : [
-                  {
-                    date: undefined,
-                    start_time: "",
-                    end_time: "",
-                    description: "",
-                  },
-                ],
-        });
-
-        setIsLoadingEvent(false);
-      } catch (err) {
-        console.error("Error loading event:", err);
-        setError("Failed to load event data.");
-        setIsLoadingEvent(false);
-      }
+    return {
+      title: event.title,
+      description: event.description || "",
+      poster_image_url: event.poster_image_url || "",
+      location: event.location || "",
+      daily_schedule:
+        scheduleWithDates.length > 0
+          ? scheduleWithDates
+          : [
+              {
+                date: undefined as Date | undefined,
+                start_time: "",
+                end_time: "",
+                description: "",
+              },
+            ],
     };
-
-    loadEvent();
-  }, [eventId]);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,13 +96,16 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         })),
       };
 
-      const updatedEvent = await updateEvent(eventId, eventData);
+      // Call server function directly
+      const result = await updateEvent(event.id, eventData);
 
-      if (updatedEvent) {
+      if (result) {
         alert("Event updated successfully!");
-        router.push(`/events/${eventId}`);
+        // Navigate to the updated event
+        router.push(`/events/${event.id}`);
+        router.refresh();
       } else {
-        alert("Failed to update event.");
+        alert("Failed to update event. Please try again.");
       }
     } catch (error) {
       console.error("Error updating event:", error);
@@ -171,13 +128,13 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
 
     setIsLoading(true);
     try {
-      const success = await deleteEvent(eventId);
-      if (success) {
-        alert("Event deleted successfully!");
-        router.push("/events");
-      } else {
-        alert("Failed to delete event.");
-      }
+      // Call server function directly
+      await deleteEvent(event.id);
+
+      alert("Event deleted successfully!");
+      // Navigate to my events page
+      router.push("/events/my-events");
+      router.refresh();
     } catch (error) {
       console.error("Error deleting event:", error);
       alert("An error occurred while deleting the event.");
@@ -186,56 +143,11 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     }
   };
 
-  // Loading states
-  if (isLoadingEvent) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center py-8">
-          <h1 className="text-2xl font-bold">Loading...</h1>
-          <p className="text-muted-foreground mt-2">
-            Loading event information...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error states
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center py-8">
-          <h1 className="text-2xl font-bold">Error</h1>
-          <p className="text-muted-foreground mt-2">{error}</p>
-          <Link href="/events" className="mt-4 inline-block">
-            <Button variant="outline">Back to Events</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (!event) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center py-8">
-          <h1 className="text-2xl font-bold">Event Not Found</h1>
-          <p className="text-muted-foreground mt-2">
-            The event you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Link href="/events" className="mt-4 inline-block">
-            <Button variant="outline">Back to Events</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Link href={`/events/${eventId}`}>
+        <Link href={`/events/${event.id}`}>
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -264,7 +176,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                 setFormData((prev) => ({ ...prev, poster_image_url: "" }))
               }
               isLoading={isLoading}
-              tempEventId={eventId}
+              tempEventId={event.id}
             />
           </CardContent>
         </Card>
@@ -338,7 +250,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
           </Button>
 
           <div className="flex space-x-4">
-            <Link href={`/events/${eventId}`}>
+            <Link href={`/events/${event.id}`}>
               <Button type="button" variant="outline" disabled={isLoading}>
                 Cancel
               </Button>

@@ -26,7 +26,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get user on server side
+  // Get user on server side following Next.js 15 DAL pattern
   const user = await getUser();
 
   return (

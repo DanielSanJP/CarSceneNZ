@@ -8,3 +8,11 @@ export { default as SuspensionDetails } from './SuspensionDetails';
 export { default as ExteriorMods } from './ExteriorMods';
 export { default as InteriorMods } from './InteriorMods';
 export { default as MyGarageView } from './my-garage-view';
+
+// Display components
+export { GarageGallery } from './display/garage-gallery';
+export { CarDetailView } from './display/car-detail-view';
+
+// Form components
+export { EditCarForm } from './edit-car-form';
+export { CreateCarForm } from './create-car-form';

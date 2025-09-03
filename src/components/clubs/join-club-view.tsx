@@ -21,36 +21,35 @@ import {
   Star,
   Filter,
 } from "lucide-react";
-import { getAllClubs } from "@/lib/data/clubs";
 import Image from "next/image";
 import Link from "next/link";
 import type { Club } from "@/types/club";
+import type { User } from "@/types/user";
 
 interface JoinClubViewProps {
   currentTab?: string;
+  clubs?: Club[];
+  currentUser?: User | null;
 }
 
-export function JoinClubView({ currentTab = "join" }: JoinClubViewProps) {
+export function JoinClubView({
+  currentTab = "join",
+  clubs: propClubs,
+  currentUser,
+}: JoinClubViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("likes");
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
-  const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubs, setClubs] = useState<Club[]>(propClubs || []);
 
-  // Fetch clubs on mount
+  // Update clubs when propClubs changes
   useEffect(() => {
-    const fetchClubs = async () => {
-      try {
-        const clubsData = await getAllClubs();
-        setClubs(clubsData);
-      } catch (error) {
-        console.error("Error fetching clubs:", error);
-      }
-    };
-
-    fetchClubs();
-  }, []);
+    if (propClubs) {
+      setClubs(propClubs);
+    }
+  }, [propClubs]);
 
   // For now, since we don't have auth, we'll show all clubs
 
@@ -63,9 +62,17 @@ export function JoinClubView({ currentTab = "join" }: JoinClubViewProps) {
 
   // Check if current user is a member of a club
   const isUserMemberOfClub = (clubId: string) => {
-    // For now, since we don't have auth, return false
-    // In future, this would check membership based on clubId
-    console.log("Checking membership for club:", clubId); // Prevent unused parameter warning
+    // Check if current user is provided and has membership
+    if (!currentUser) return false;
+
+    // For now, since we don't have membership data in props, return false
+    // In future, this would check membership based on clubId and currentUser
+    console.log(
+      "Checking membership for club:",
+      clubId,
+      "user:",
+      currentUser.id
+    ); // Prevent unused parameter warning
     return false;
   };
 

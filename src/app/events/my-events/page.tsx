@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { MyEventsView } from "@/components/events/my-events-view";
 import { getUser } from "@/lib/dal";
+import { getEventsByHost } from "@/lib/server/events";
 
 export default async function MyEventsPage() {
   // Server-side auth check
@@ -9,5 +10,8 @@ export default async function MyEventsPage() {
     redirect("/login");
   }
 
-  return <MyEventsView />;
+  // Fetch user's events on server
+  const userEvents = await getEventsByHost(user.id);
+
+  return <MyEventsView events={userEvents} />;
 }

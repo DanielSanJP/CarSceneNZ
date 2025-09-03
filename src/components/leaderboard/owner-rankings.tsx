@@ -1,68 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Star } from "lucide-react";
-import { getTopOwners } from "@/lib/data/leaderboards";
-import { LeaderboardSkeleton } from "./leaderboard-skeleton";
 import Link from "next/link";
 import Image from "next/image";
-import type { OwnerRanking } from "@/lib/data/leaderboards";
+import type { OwnerRanking } from "@/types/leaderboard";
 
-// Helper function to add timeout to any promise
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
-    ),
-  ]);
+interface OwnerRankingsProps {
+  data: OwnerRanking[];
 }
 
-interface LeaderboardEntry {
-  user: OwnerRanking["owner"];
-  totalLikes: number;
-  clubName: string | null;
-  rank: number;
-}
-
-export function OwnerRankings() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    async function loadOwnerLeaderboard() {
-      try {
-        setIsLoading(true);
-        setHasError(false);
-
-        const ownerRankings = await withTimeout(getTopOwners(10), 5000);
-
-        // Transform to our component's format
-        const ownerEntries: LeaderboardEntry[] = ownerRankings.map(
-          (ranking) => ({
-            user: ranking.owner,
-            totalLikes: ranking.totalLikes,
-            clubName: null, // Club info not included in current ranking
-            rank: ranking.rank,
-          })
-        );
-
-        setLeaderboard(ownerEntries);
-      } catch (error) {
-        console.error("Error loading owner leaderboard:", error);
-        setHasError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadOwnerLeaderboard();
-  }, []);
-
+export function OwnerRankings({ data }: OwnerRankingsProps) {
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
     if (rank === 2) return <Medal className="h-5 w-5 text-gray-400" />;
@@ -70,104 +20,113 @@ export function OwnerRankings() {
     return null;
   };
 
-  // Show loading skeleton while data is loading
-  if (isLoading) {
-    return <LeaderboardSkeleton count={10} />;
-  }
-
-  // Show error state
-  if (hasError) {
-    return (
-      <div className="text-center py-12">
-        <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-        <h4 className="text-lg font-semibold text-muted-foreground mb-2">
-          Failed to load rankings
-        </h4>
-        <p className="text-muted-foreground mb-4">
-          There was an error loading the owner rankings. Please try again later.
-        </p>
-        <Button onClick={() => window.location.reload()}>Try Again</Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2 md:space-y-3">
-      {leaderboard.slice(0, 100).map((entry) => (
-        <Link
-          key={entry.user.id}
-          href={`/profile/${entry.user.username}`}
-          className="block"
-        >
-          <Card className="transition-all hover:shadow-lg cursor-pointer">
-            <CardContent className="px-2 md:px-4">
-              <div className="flex items-center gap-2 md:gap-4">
-                {/* Rank Number */}
-                <div className="flex items-center justify-center min-w-[40px] md:min-w-[60px]">
-                  <div className="flex items-center gap-1">
-                    <span className="text-lg md:text-2xl font-bold">
-                      {entry.rank}
-                    </span>
-                    {getRankIcon(entry.rank)}
-                  </div>
-                </div>
+    <div className="space-y-4">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold mb-2">🏆 Top Car Owners</h2>
+        <p className="text-muted-foreground">
+          Ranked by total likes across all their cars
+        </p>
+      </div>
 
-                {/* User Avatar */}
-                <div className="relative h-14 w-14 md:h-20 md:w-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
-                  {entry.user.profile_image_url ? (
-                    <Image
-                      src={entry.user.profile_image_url}
-                      alt={entry.user.username}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 112px, 160px"
-                      quality={100}
-                      priority={entry.rank <= 10}
-                      unoptimized={false}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm md:text-xl font-medium">
-                      {entry.user.username.charAt(0).toUpperCase()}
+      {data.length === 0 ? (
+        <Card className="text-center py-12">
+          <CardContent>
+            <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">No rankings yet</h3>
+            <p className="text-muted-foreground">
+              Be the first to get likes on your cars!
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2 md:space-y-3">
+          {data.slice(0, 100).map((entry, index) => {
+            const rank = index + 1;
+            return (
+              <Link
+                key={entry.owner.id}
+                href={`/profile/${entry.owner.username}`}
+                className="block"
+              >
+                <Card className="transition-all hover:shadow-lg cursor-pointer">
+                  <CardContent className="px-2 md:px-4">
+                    <div className="flex items-center gap-2 md:gap-4">
+                      {/* Rank Number */}
+                      <div className="flex items-center justify-center min-w-[40px] md:min-w-[60px]">
+                        <div className="flex items-center gap-1">
+                          <span className="text-lg md:text-2xl font-bold">
+                            {rank}
+                          </span>
+                          {getRankIcon(rank)}
+                        </div>
+                      </div>
+
+                      {/* User Avatar */}
+                      <div className="relative h-14 w-14 md:h-20 md:w-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+                        {entry.owner.profile_image_url ? (
+                          <Image
+                            src={entry.owner.profile_image_url}
+                            alt={entry.owner.username}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 112px, 160px"
+                            quality={100}
+                            priority={rank <= 10}
+                            unoptimized={false}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm md:text-xl font-medium">
+                            {(entry.owner.display_name || entry.owner.username)
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* User Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1 md:gap-2 mb-0.5 md:mb-1">
+                          <h3 className="font-semibold text-sm md:text-lg truncate">
+                            {entry.owner.display_name || entry.owner.username}
+                          </h3>
+                          {rank <= 10 && (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs hidden sm:inline"
+                            >
+                              Top {rank <= 3 ? "3" : "10"}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">
+                          @{entry.owner.username}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {entry.carCount}{" "}
+                          {entry.carCount === 1 ? "car" : "cars"}
+                        </p>
+                      </div>
+
+                      {/* Likes Score */}
+                      <div className="text-right flex-shrink-0">
+                        <div className="flex items-center gap-1 md:gap-2 justify-end mb-0.5 md:mb-1">
+                          <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
+                          <span className="text-lg md:text-2xl font-bold text-primary">
+                            {entry.totalLikes.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
-                {/* User Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 md:gap-2 mb-0.5 md:mb-1">
-                    <h3 className="font-semibold text-sm md:text-lg truncate">
-                      {entry.user.display_name}
-                    </h3>
-                    {entry.rank <= 10 && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs hidden sm:inline"
-                      >
-                        Top {entry.rank <= 3 ? "3" : "10"}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs md:text-sm text-muted-foreground truncate">
-                    @{entry.user.username}
-                  </p>
-                </div>
-
-                {/* Likes Score */}
-                <div className="text-right flex-shrink-0">
-                  <div className="flex items-center gap-1 md:gap-2 justify-end mb-0.5 md:mb-1">
-                    <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
-                    <span className="text-lg md:text-2xl font-bold text-primary">
-                      {entry.totalLikes.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      ))}
-
-      {leaderboard.length === 0 && (
+      {data.length === 0 && (
         <div className="text-center py-12">
           <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h4 className="text-lg font-semibold text-muted-foreground mb-2">

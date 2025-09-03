@@ -4,3 +4,4 @@ export * from './car';
 export * from './club';
 export * from './message';
 export * from './page';
+export * from './leaderboard';

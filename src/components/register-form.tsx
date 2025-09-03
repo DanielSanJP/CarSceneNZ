@@ -14,21 +14,20 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, Upload } from "lucide-react";
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
-import { createClient } from "@/lib/utils/supabase/client";
 
 export function RegisterForm({
   className,
+  action,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & {
+  action: (formData: FormData) => Promise<void>;
+}) {
   const [profileImage, setProfileImage] = useState<string>("");
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -58,108 +57,31 @@ export function RegisterForm({
     fileInputRef.current?.click();
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setUploadStatus("Creating account...");
-    setError("");
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const username = formData.get("username") as string;
-    const displayName = formData.get("displayName") as string;
-
-    if (!email || !password || !username || !displayName) {
-      setError("All fields are required");
-      setIsLoading(false);
-      setUploadStatus("");
-      return;
-    }
-
+  const handleAction = async (formData: FormData) => {
     try {
-      const supabase = createClient();
+      setError("");
+      setIsLoading(true);
+      setUploadStatus("Creating account...");
 
-      // Sign up the user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: displayName,
-          },
-        },
-      });
-
-      if (authError) {
-        console.error("Signup error:", authError);
-        setError(authError.message || "Registration failed. Please try again.");
-        return;
+      // Add the image file to FormData if one was selected
+      if (profileImageFile) {
+        formData.append("profileImage", profileImageFile);
       }
 
-      if (!authData.user) {
-        setError("Registration failed. Please try again.");
-        return;
-      }
+      await action(formData);
 
-      // Create user profile in our database
-      const { error: profileError } = await supabase.from("users").insert([
-        {
-          id: authData.user.id,
-          username: username,
-          display_name: displayName,
-          profile_image_url: null,
-        },
-      ]);
-
-      if (profileError) {
-        console.error("Profile creation error:", profileError);
-        setError(
-          "Account created but profile setup failed. Please contact support."
-        );
-        return;
-      }
-
-      // If there's a profile image, upload it
-      if (profileImageFile && authData.user) {
-        setUploadStatus("Uploading profile image...");
-
-        const imageUrl = await uploadProfileImage(
-          profileImageFile,
-          authData.user.id
-        );
-        if (imageUrl) {
-          // Update user profile with image URL
-          await supabase
-            .from("users")
-            .update({ profile_image_url: imageUrl })
-            .eq("id", authData.user.id);
-
-          setUploadStatus("Profile image uploaded successfully!");
-        } else {
-          setUploadStatus(
-            "Account created, but image upload failed. You can add it later in your profile."
-          );
-        }
-      }
-
-      // Success
       setUploadStatus("Account created successfully! Redirecting...");
 
-      // Small delay to show success message
-      setTimeout(() => {
-        router.push("/");
-        router.refresh();
-      }, 1500);
+      // Redirect handled by Server Action
     } catch (error) {
-      console.error("Signup error:", error);
+      console.error("Registration error:", error);
       setError(
         error instanceof Error
           ? error.message
           : "Registration failed. Please try again."
       );
+    } finally {
       setIsLoading(false);
-      setUploadStatus("");
     }
   };
   return (
@@ -172,7 +94,7 @@ export function RegisterForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          <form action={handleAction}>
             <div className="flex flex-col gap-6">
               {/* Profile Picture Section */}
               <div className="grid gap-3">
