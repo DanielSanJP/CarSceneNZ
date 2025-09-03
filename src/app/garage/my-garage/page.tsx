@@ -9,5 +9,5 @@ export default async function MyGaragePage() {
   // Fetch data on server
   const userCars = await getCarsByOwner(user.id);
 
-  return <MyGarageView cars={userCars} user={user} />;
+  return <MyGarageView cars={userCars} />;
 }

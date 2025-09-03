@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +11,8 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { updateEvent, deleteEvent } from "@/lib/server/events";
 import type { Event } from "@/types/event";
-import type { User } from "@/types";
+import type { User } from "@/types/user";
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)
 function formatDateToLocal(date: Date): string {
@@ -27,10 +25,16 @@ function formatDateToLocal(date: Date): string {
 interface EditEventFormProps {
   event: Event;
   user: User;
+  updateAction: (formData: FormData) => Promise<void>;
+  deleteAction: () => Promise<void>;
 }
 
-export function EditEventForm({ event, user }: EditEventFormProps) {
-  const router = useRouter();
+export function EditEventForm({
+  event,
+  user,
+  updateAction,
+  deleteAction,
+}: EditEventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState(() => {
@@ -83,34 +87,28 @@ export function EditEventForm({ event, user }: EditEventFormProps) {
         return;
       }
 
-      // Prepare data
-      const eventData = {
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        poster_image_url: formData.poster_image_url || undefined,
-        location: formData.location.trim() || undefined,
-        daily_schedule: validScheduleItems.map((item) => ({
-          date: formatDateToLocal(item.date!), // Use timezone-safe formatting
-          start_time: item.start_time || undefined,
-          end_time: item.end_time || undefined,
-        })),
-      };
+      // Create FormData for server action
+      const formDataObj = new FormData();
+      formDataObj.append("title", formData.title.trim());
+      formDataObj.append("description", formData.description.trim());
+      formDataObj.append("poster_image_url", formData.poster_image_url || "");
+      formDataObj.append("location", formData.location.trim());
+      formDataObj.append(
+        "daily_schedule",
+        JSON.stringify(
+          validScheduleItems.map((item) => ({
+            date: formatDateToLocal(item.date!), // Use timezone-safe formatting
+            start_time: item.start_time || undefined,
+            end_time: item.end_time || undefined,
+          }))
+        )
+      );
 
-      // Call server function directly
-      const result = await updateEvent(event.id, eventData);
-
-      if (result) {
-        alert("Event updated successfully!");
-        // Navigate to the updated event
-        router.push(`/events/${event.id}`);
-        router.refresh();
-      } else {
-        alert("Failed to update event. Please try again.");
-      }
+      // Call the server action
+      await updateAction(formDataObj);
     } catch (error) {
       console.error("Error updating event:", error);
       alert("An error occurred while updating the event.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -128,17 +126,11 @@ export function EditEventForm({ event, user }: EditEventFormProps) {
 
     setIsLoading(true);
     try {
-      // Call server function directly
-      await deleteEvent(event.id);
-
-      alert("Event deleted successfully!");
-      // Navigate to my events page
-      router.push("/events/my-events");
-      router.refresh();
+      // Call the server action
+      await deleteAction();
     } catch (error) {
       console.error("Error deleting event:", error);
       alert("An error occurred while deleting the event.");
-    } finally {
       setIsLoading(false);
     }
   };

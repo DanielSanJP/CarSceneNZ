@@ -1,5 +1,8 @@
 import { getAllMessages } from "@/lib/server/messages";
-import { InboxView } from "@/components/inbox";
+import { InboxView } from "@/components/inbox/inbox-view";
+
+// Force dynamic rendering since we use authentication/cookies
+export const dynamic = "force-dynamic";
 
 export default async function InboxPage() {
   // Fetch data on the server

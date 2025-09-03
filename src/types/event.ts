@@ -24,11 +24,13 @@ export interface EventAttendee {
   id: string;
   event_id: string;
   user_id: string; // References User.id
-  status?: string;
+  status: 'interested' | 'going' | 'approved';
   created_at: string;
+  updated_at: string;
   user?: {
     id: string;
     username: string;
+    display_name?: string;
     profile_image_url?: string;
   };
 }

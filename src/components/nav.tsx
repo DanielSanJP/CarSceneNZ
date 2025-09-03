@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { signOut } from "@/lib/auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +32,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchBar, MobileSearchButton } from "@/components/search-bar";
-import { createClient } from "@/lib/utils/supabase/client";
-import type { User as UserType } from "@/types";
+import type { User as UserType } from "@/types/user";
 
 export function ModeToggle() {
   const { setTheme } = useTheme();
@@ -65,9 +65,11 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
   if (!user) return null;
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    // The auth state change will be picked up by the listener in ClientAuthProvider
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   // Use user data from our combined auth context

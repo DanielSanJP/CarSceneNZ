@@ -1,10 +1,10 @@
 import { getAllCars } from "@/lib/server/cars";
 import { GarageGallery } from "@/components/garage";
-import { getUser } from "@/lib/auth";
+import { getUserOptional } from "@/lib/auth";
 
 export default async function GaragePage() {
-  // Get authenticated user with profile (cached per request)
-  const user = await getUser();
+  // Get authenticated user with profile (cached per request) - null if not logged in
+  const user = await getUserOptional();
 
   // Fetch data on the server
   const cars = await getAllCars();

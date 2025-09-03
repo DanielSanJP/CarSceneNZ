@@ -1,10 +1,79 @@
 import { redirect, notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { EditEventForm } from "@/components/events/edit-event-form";
 import { getUser } from "@/lib/auth";
-import { getEventById } from "@/lib/server/events";
+import { getEventById, updateEvent, deleteEvent } from "@/lib/server/events";
 
 interface EditEventPageProps {
   params: Promise<{ id: string }>;
+}
+
+// Helper function to format date in local timezone (avoids UTC conversion issues)
+function formatDateToLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+async function updateEventAction(eventId: string, formData: FormData) {
+  "use server";
+
+  // Extract form data
+  const title = formData.get("title") as string;
+  const description = formData.get("description") as string;
+  const location = formData.get("location") as string;
+  const poster_image_url = formData.get("poster_image_url") as string;
+  const scheduleJson = formData.get("daily_schedule") as string;
+
+  if (!title?.trim()) {
+    throw new Error("Event title is required");
+  }
+
+  let daily_schedule = [];
+  if (scheduleJson) {
+    try {
+      const parsedSchedule = JSON.parse(scheduleJson);
+      daily_schedule = parsedSchedule
+        .filter((item: { date?: string }) => item.date)
+        .map(
+          (item: { date: string; start_time?: string; end_time?: string }) => ({
+            date: formatDateToLocal(new Date(item.date)),
+            start_time: item.start_time || undefined,
+            end_time: item.end_time || undefined,
+          })
+        );
+    } catch (error) {
+      console.error("Error parsing schedule:", error);
+    }
+  }
+
+  if (daily_schedule.length === 0) {
+    throw new Error("At least one event date is required");
+  }
+
+  const eventData = {
+    title: title.trim(),
+    description: description?.trim() || undefined,
+    poster_image_url: poster_image_url || undefined,
+    location: location?.trim() || undefined,
+    daily_schedule,
+  };
+
+  await updateEvent(eventId, eventData);
+
+  revalidatePath("/events");
+  revalidatePath(`/events/${eventId}`);
+  redirect(`/events/${eventId}`);
+}
+
+async function deleteEventAction(eventId: string) {
+  "use server";
+
+  await deleteEvent(eventId);
+
+  revalidatePath("/events");
+  redirect("/events");
 }
 
 export default async function EditEventPage({ params }: EditEventPageProps) {
@@ -27,10 +96,18 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
     redirect("/events");
   }
 
+  const updateAction = updateEventAction.bind(null, eventId);
+  const deleteAction = deleteEventAction.bind(null, eventId);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <EditEventForm event={event} user={user} />
+        <EditEventForm
+          event={event}
+          user={user}
+          updateAction={updateAction}
+          deleteAction={deleteAction}
+        />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-// 'use server';
+'use server';
 
 import { createClient } from '@/lib/utils/supabase/server';
 import type { Car } from '@/types/car';

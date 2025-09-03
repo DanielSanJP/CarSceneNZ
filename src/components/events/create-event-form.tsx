@@ -11,10 +11,11 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useCurrentUser } from "@/hooks/use-auth";
+import type { User } from "@/types/user";
 
 interface CreateEventFormProps {
   action: (formData: FormData) => Promise<void>;
+  user: User;
 }
 
 interface EventFormData {
@@ -30,8 +31,7 @@ interface EventFormData {
   }>;
 }
 
-export function CreateEventForm({ action }: CreateEventFormProps) {
-  const user = useCurrentUser();
+export function CreateEventForm({ action, user }: CreateEventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const locationInputRef = useRef<HTMLInputElement>(null);

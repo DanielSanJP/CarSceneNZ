@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCurrentUser } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,6 +29,7 @@ import type { Car as CarType } from "@/types/car";
 
 interface UserProfileClientProps {
   profileUser: User | null;
+  currentUser: User | null;
   userCars: CarType[];
   followers: User[];
   following: User[];
@@ -37,11 +37,11 @@ interface UserProfileClientProps {
 
 export function UserProfileClient({
   profileUser,
+  currentUser,
   userCars,
   followers,
   following,
 }: UserProfileClientProps) {
-  const currentUser = useCurrentUser();
   const router = useRouter();
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);

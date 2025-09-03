@@ -1,13 +1,38 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
-import { ArrowLeft, Calendar, MapPin, Users, Clock } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  ArrowLeft,
+  Star,
+  ImageIcon,
+  Share2,
+  Heart,
+  Check,
+} from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import type { Event } from "@/types/event";
+
+// Match the AttendeeData interface from the server component
+interface AttendeeData {
+  id: string;
+  status: "interested" | "going" | "approved";
+  user: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  };
+}
 
 interface EventDetailViewProps {
   event: Event;
@@ -16,228 +41,497 @@ interface EventDetailViewProps {
     username: string;
     display_name?: string;
   } | null;
+  initialAttendees: AttendeeData[];
+  initialUserStatus: string | null;
+  attendEventAction: (
+    eventId: string,
+    userId: string,
+    status: "interested" | "going" | "approved"
+  ) => Promise<unknown>;
+  unattendEventAction: (eventId: string, userId: string) => Promise<void>;
+  getEventAttendeesAction: (eventId: string) => Promise<AttendeeData[]>;
+  getUserEventStatusAction: (
+    eventId: string,
+    userId: string
+  ) => Promise<string | null>;
 }
 
-export function EventDetailView({ event, user }: EventDetailViewProps) {
+export function EventDetailView({
+  event,
+  user,
+  initialAttendees,
+  initialUserStatus,
+  attendEventAction,
+  unattendEventAction,
+  getEventAttendeesAction,
+  getUserEventStatusAction,
+}: EventDetailViewProps) {
   const router = useRouter();
+  const [attendees, setAttendees] = useState<AttendeeData[]>(initialAttendees);
   const [failedImage, setFailedImage] = useState(false);
+  const [userStatus, setUserStatus] = useState<string | null>(
+    initialUserStatus
+  );
 
-  // Mock attendance counts for display
-  const attendeeCount = 15;
-  const interestedCount = 8;
+  useEffect(() => {
+    const fetchEventData = async () => {
+      try {
+        // Get event attendees
+        const attendeesData = await getEventAttendeesAction(event.id);
+        setAttendees(attendeesData);
 
-  const getHostInfo = () => {
-    if (event.host) {
-      return {
-        name: event.host.display_name || event.host.username || "Unknown Host",
-        username: event.host.username || "unknown",
-      };
-    }
-    return {
-      name: "Unknown Host",
-      username: "unknown",
+        // Get user's current status if logged in
+        if (user) {
+          const status = await getUserEventStatusAction(event.id, user.id);
+          setUserStatus(status);
+        }
+      } catch (error) {
+        console.error("Error fetching event data:", error);
+      }
     };
+
+    fetchEventData();
+  }, [event.id, user, getEventAttendeesAction, getUserEventStatusAction]);
+
+  // Get attendee counts
+  const goingCount = attendees.filter(
+    (a) => a.status === "going" || a.status === "approved"
+  ).length;
+  const interestedCount = attendees.filter(
+    (a) => a.status === "interested"
+  ).length;
+
+  const handleBackClick = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/events");
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-NZ", {
+  const handleImageError = () => {
+    setFailedImage(true);
+  };
+
+  const handleStatusChange = async (
+    status: "interested" | "going" | "approved"
+  ) => {
+    if (!user) {
+      // Redirect to register page when user is not logged in
+      router.push("/register");
+      return;
+    }
+
+    try {
+      if (userStatus === status) {
+        // User is removing their attendance
+        await unattendEventAction(event.id, user.id);
+        setUserStatus(null);
+      } else {
+        // User is setting/changing their attendance
+        await attendEventAction(event.id, user.id, status);
+        setUserStatus(status);
+      }
+
+      // Refresh attendee data
+      const updatedAttendees = await getEventAttendeesAction(event.id);
+      setAttendees(updatedAttendees);
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!event) return;
+
+    const shareUrl = `${window.location.origin}/events/${event.id}`;
+    const shareData = {
+      title: event.title,
+      text: `Check out this event: ${event.title} - ${
+        event.description ? event.description.substring(0, 100) : ""
+      }${event.description && event.description.length > 100 ? "..." : ""}`,
+      url: shareUrl,
+    };
+
+    try {
+      // Check if Web Share API is supported (mainly mobile devices)
+      if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare(shareData)
+      ) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback to clipboard copy
+        await navigator.clipboard.writeText(shareUrl);
+        // You could add a toast notification here to inform the user
+        alert("Event link copied to clipboard!");
+      }
+    } catch (error) {
+      console.error("Error sharing:", error);
+      // Final fallback - just copy URL
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Event link copied to clipboard!");
+      } catch (clipboardError) {
+        console.error("Clipboard access failed:", clipboardError);
+        // Last resort - show the URL
+        prompt("Copy this link to share the event:", shareUrl);
+      }
+    }
+  };
+
+  // Helper function to format date for daily schedule
+  const getEventDateInfo = (
+    schedule: Array<{ date: string; start_time?: string; end_time?: string }>
+  ) => {
+    if (!schedule || schedule.length === 0) return { full: "", time: "" };
+
+    const dates = schedule.map((s) => new Date(s.date));
+    const startDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const endDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const isMultiDay = startDate.getTime() !== endDate.getTime();
+
+    // Format full date display
+    let fullDisplay = startDate.toLocaleDateString("en-NZ", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     });
-  };
 
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return "";
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString("en-NZ", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const handleAttendanceAction = (status: string) => {
-    if (!user) {
-      router.push("/register");
-      return;
+    if (isMultiDay) {
+      const endDateFull = endDate.toLocaleDateString("en-NZ", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      fullDisplay = `${fullDisplay} - ${endDateFull}`;
     }
-    // Placeholder for attendance functionality
-    console.log(`Attendance action: ${status}`);
+
+    // Format time display
+    const time = schedule
+      .map((s) => {
+        if (s.start_time && s.end_time) {
+          return `${s.start_time} - ${s.end_time}`;
+        } else if (s.start_time) {
+          return `Starts at ${s.start_time}`;
+        } else {
+          return "All day";
+        }
+      })
+      .join(", ");
+
+    return {
+      full: fullDisplay,
+      time: time,
+    };
   };
 
-  const hostInfo = getHostInfo();
+  const dateInfo = getEventDateInfo(event.daily_schedule || []);
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Button variant="outline" size="icon" onClick={() => router.back()}>
+        <Button variant="outline" size="icon" onClick={handleBackClick}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div>
+
+        <div className="flex-1">
           <h1 className="text-3xl font-bold">{event.title}</h1>
-          <p className="text-muted-foreground">Event Details</p>
+          <div className="flex items-center gap-4 mt-2">
+            {event.location && (
+              <span className="text-muted-foreground text-sm">
+                {event.location}
+              </span>
+            )}
+          </div>
         </div>
+        <Button variant="outline" size="icon" onClick={handleShare}>
+          <Share2 className="h-4 w-4" />
+        </Button>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-8">
           {/* Event Image */}
-          {event.poster_image_url && !failedImage && (
-            <Card>
-              <CardContent className="p-0">
-                <div className="relative aspect-video w-full overflow-hidden rounded-t-lg">
+          <Card className="py-0">
+            <CardContent className="p-0">
+              <div className="relative w-full overflow-hidden rounded-lg flex items-center justify-center">
+                {failedImage || !event.poster_image_url ? (
+                  <div className="w-full min-h-[300px] flex items-center justify-center">
+                    <div className="text-center">
+                      <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground font-medium">
+                        {event.title}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
                   <Image
                     src={event.poster_image_url}
                     alt={event.title}
-                    fill
-                    className="object-cover"
-                    onError={() => setFailedImage(true)}
+                    width={800}
+                    height={600}
+                    className="object-contain w-full h-auto max-h-[600px]"
+                    sizes="(max-width: 1024px) 100vw, 66vw"
+                    quality={100}
+                    priority
+                    onError={handleImageError}
                   />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Event Description */}
-          {event.description && (
-            <Card>
-              <CardHeader>
-                <CardTitle>About This Event</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground whitespace-pre-wrap">
-                  {event.description}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Event Schedule */}
+          {/* Description */}
           <Card>
             <CardHeader>
-              <CardTitle>Schedule</CardTitle>
+              <CardTitle>Event Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {event.daily_schedule.map((schedule, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <Calendar className="h-5 w-5 text-primary mt-0.5" />
+            <CardContent className="space-y-6">
+              {/* Host */}
+              {event.host && (
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-10 w-10 ">
+                    <AvatarImage
+                      className="object-cover"
+                      src={event.host.profile_image_url}
+                      alt={event.host.username}
+                    />
+                    <AvatarFallback>
+                      {(event.host.display_name || event.host.username || "U")
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <div className="font-medium">
-                      {formatDate(schedule.date)}
+                    <div className="text-xs text-muted-foreground">
+                      Event by
                     </div>
-                    {(schedule.start_time || schedule.end_time) && (
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {schedule.start_time && formatTime(schedule.start_time)}
-                        {schedule.start_time && schedule.end_time && " - "}
-                        {schedule.end_time && formatTime(schedule.end_time)}
+                    <Link href={`/profile/${event.host.username}`}>
+                      <div className="text-sm font-medium hover:underline">
+                        {event.host.display_name || event.host.username}
                       </div>
-                    )}
+                    </Link>
                   </div>
                 </div>
-              ))}
+              )}
+
+              <Separator />
+
+              {/* Location */}
+              {event.location && (
+                <>
+                  <div className="flex items-start space-x-3">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">Location</div>
+                      <div className="text-muted-foreground text-sm">
+                        {event.location}
+                      </div>
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
+
+              {/* Date and Time */}
+              <div className="flex items-start space-x-3">
+                <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <div className="font-medium text-sm">{dateInfo.full}</div>
+                  <div className="text-muted-foreground text-sm flex items-center">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {dateInfo.time}
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Description */}
+              {event.description && (
+                <>
+                  <div>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {event.description}
+                    </p>
+                  </div>
+                  <Separator />
+                </>
+              )}
+
+              {/* Daily Schedule */}
+              {event.daily_schedule && event.daily_schedule.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm mb-4 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Event Schedule
+                  </h4>
+                  <div className="space-y-4">
+                    {event.daily_schedule.map((schedule, index) => {
+                      const date = new Date(schedule.date);
+                      const dayName = date.toLocaleDateString("en-NZ", {
+                        weekday: "long",
+                      });
+                      const dateFormatted = date.toLocaleDateString("en-NZ", {
+                        day: "numeric",
+                        month: "long",
+                      });
+
+                      return (
+                        <div
+                          key={index}
+                          className="border rounded-lg p-4 bg-muted/30"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                                <Calendar className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-sm">
+                                  {event.daily_schedule &&
+                                  event.daily_schedule.length > 1
+                                    ? `Day ${index + 1} - ${dayName}`
+                                    : dayName}
+                                </div>
+                                <div className="text-muted-foreground text-sm">
+                                  {dateFormatted}
+                                </div>
+                              </div>
+                            </div>
+                            {schedule.start_time && schedule.end_time && (
+                              <Badge
+                                variant="secondary"
+                                className="flex items-center gap-1"
+                              >
+                                <Clock className="h-3 w-3" />
+                                {schedule.start_time} - {schedule.end_time}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Host Information */}
+          {/* Action Buttons */}
           <Card>
-            <CardHeader>
-              <CardTitle>Hosted by</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  {hostInfo.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="font-medium">{hostInfo.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    @{hostInfo.username}
-                  </div>
-                </div>
+            <CardContent className="space-y-3">
+              <Button
+                className="w-full"
+                onClick={() => handleStatusChange("going")}
+                variant={userStatus === "going" ? "default" : "outline"}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                I&apos;m Going
+              </Button>
+              <Button
+                className="w-full"
+                onClick={() => handleStatusChange("interested")}
+                variant={userStatus === "interested" ? "default" : "outline"}
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Interested
+              </Button>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    if (!user) {
+                      router.push("/register");
+                      return;
+                    }
+                    // TODO: Implement save functionality
+                    console.log("Save functionality to be implemented");
+                  }}
+                >
+                  <Heart className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Event Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Event Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {event.location && (
-                <div className="flex items-start space-x-3">
-                  <MapPin className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <div className="font-medium">Location</div>
-                    <div className="text-sm text-muted-foreground">
+          {/* Event Location Map */}
+          {event.location && (
+            <Card className="py-0">
+              <CardContent className="p-0">
+                <div className="aspect-square w-full">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src={`https://maps.google.com/maps?width=100%25&height=400&hl=en&q=${encodeURIComponent(
+                      event.location + ", New Zealand"
+                    )}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                    title={`Map showing ${event.location}`}
+                  />
+                </div>
+                <div className="p-4 rounded-b-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-foreground">
                       {event.location}
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const query = encodeURIComponent(
+                          event.location + ", New Zealand"
+                        );
+                        window.open(
+                          `https://maps.google.com/maps?q=${query}`,
+                          "_blank"
+                        );
+                      }}
+                    >
+                      Open in Maps
+                    </Button>
                   </div>
                 </div>
-              )}
+              </CardContent>
+            </Card>
+          )}
 
-              <div className="flex items-start space-x-3">
-                <Users className="h-5 w-5 text-primary mt-0.5" />
-                <div>
-                  <div className="font-medium">Attendance</div>
-                  <div className="text-sm text-muted-foreground">
-                    {attendeeCount} going • {interestedCount} interested
-                  </div>
-                </div>
+          {/* Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Stats</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Going</span>
+                <Badge variant="secondary">{goingCount}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">
+                  Interested
+                </span>
+                <Badge variant="secondary">{interestedCount}</Badge>
               </div>
             </CardContent>
           </Card>
-
-          {/* Attendance Actions */}
-          {user && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Are you going?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => handleAttendanceAction("interested")}
-                >
-                  Interested
-                </Button>
-                <Button
-                  className="w-full"
-                  onClick={() => handleAttendanceAction("going")}
-                >
-                  I&apos;m Going
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {!user && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Join the event</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Sign up to RSVP and connect with other attendees.
-                </p>
-                <Button
-                  className="w-full"
-                  onClick={() => router.push("/register")}
-                >
-                  Sign Up
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>

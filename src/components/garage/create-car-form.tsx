@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createCarWithComponents } from "@/lib/server/car-actions";
 import { ArrowLeft, Save } from "lucide-react";
 
 // Import all garage components
@@ -106,15 +104,10 @@ interface CreateCarFormData {
 }
 
 interface CreateCarFormProps {
-  user: {
-    id: string;
-    username: string;
-    display_name?: string;
-  };
+  action: (formData: FormData) => Promise<void>;
 }
 
-export function CreateCarForm({ user }: CreateCarFormProps) {
-  const router = useRouter();
+export function CreateCarForm({ action }: CreateCarFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<CreateCarFormData>({
@@ -141,9 +134,9 @@ export function CreateCarForm({ user }: CreateCarFormProps) {
 
   const handleBackClick = () => {
     if (window.history.length > 1) {
-      router.back();
+      window.history.back();
     } else {
-      router.push("/garage");
+      window.location.href = "/garage";
     }
   };
 
@@ -155,51 +148,76 @@ export function CreateCarForm({ user }: CreateCarFormProps) {
 
     setIsLoading(true);
     try {
-      // Transform form data to match expected structure
-      const submitData = {
-        owner_id: user.id,
-        brand: formData.brand,
-        model: formData.model,
-        year:
-          typeof formData.year === "string"
-            ? parseInt(formData.year)
-            : formData.year,
-        images: formData.images,
-        engine: {
-          engine: formData.engine,
-          turbo_system: formData.turbo_system,
-          exhaust_system: formData.exhaust_system,
-          engine_management: formData.engine_management,
-          internal_components: formData.internal_components,
-          fuel_system: formData.fuel_system,
-        },
-        chassis: {
-          wheels: formData.wheels,
-          brakes: formData.brakes,
-          suspension: formData.suspension,
-        },
-        exterior: {
-          paint_finish: formData.paint_finish,
-          lighting_modifications: formData.lighting_modifications,
-          bodykit_modifications: formData.bodykit_modifications,
-        },
-        interior: {
-          seats: formData.seats,
-          audio_system: formData.audio_system,
-          steering_wheel: formData.steering_wheel,
-        },
-      };
+      // Create FormData object for server action
+      const formDataObj = new FormData();
 
-      // Call server function directly
-      const result = await createCarWithComponents(submitData);
+      // Add basic car info
+      formDataObj.append("brand", formData.brand);
+      formDataObj.append("model", formData.model);
+      formDataObj.append("year", formData.year.toString());
+      formDataObj.append("images", JSON.stringify(formData.images));
 
-      if (result) {
-        // Success - navigate to the new car page
-        router.push(`/garage/${result.id}`);
-        router.refresh();
-      } else {
-        throw new Error("Failed to create car");
+      // Add component data as JSON strings
+      if (
+        formData.engine ||
+        formData.turbo_system ||
+        formData.exhaust_system ||
+        formData.engine_management ||
+        formData.internal_components ||
+        formData.fuel_system
+      ) {
+        formDataObj.append(
+          "engine",
+          JSON.stringify({
+            engine: formData.engine,
+            turbo_system: formData.turbo_system,
+            exhaust_system: formData.exhaust_system,
+            engine_management: formData.engine_management,
+            internal_components: formData.internal_components,
+            fuel_system: formData.fuel_system,
+          })
+        );
       }
+
+      if (formData.wheels || formData.brakes || formData.suspension) {
+        formDataObj.append(
+          "chassis",
+          JSON.stringify({
+            wheels: formData.wheels,
+            brakes: formData.brakes,
+            suspension: formData.suspension,
+          })
+        );
+      }
+
+      if (
+        formData.paint_finish ||
+        formData.lighting_modifications ||
+        formData.bodykit_modifications
+      ) {
+        formDataObj.append(
+          "exterior",
+          JSON.stringify({
+            paint_finish: formData.paint_finish,
+            lighting_modifications: formData.lighting_modifications,
+            bodykit_modifications: formData.bodykit_modifications,
+          })
+        );
+      }
+
+      if (formData.seats || formData.audio_system || formData.steering_wheel) {
+        formDataObj.append(
+          "interior",
+          JSON.stringify({
+            seats: formData.seats,
+            audio_system: formData.audio_system,
+            steering_wheel: formData.steering_wheel,
+          })
+        );
+      }
+
+      // Call the server action
+      await action(formDataObj);
     } catch (error) {
       console.error("Error creating car:", error);
       alert("Failed to create car. Please try again.");

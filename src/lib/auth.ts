@@ -1,6 +1,9 @@
+"use server"
+
 import { cache } from 'react'
 import { createClient } from '@/lib/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import type { User } from '@/types/user'
 
 /**
@@ -91,3 +94,23 @@ export const requireAuth = cache(async () => {
   
   return user
 })
+
+/**
+ * Sign out the current user and redirect to home page
+ */
+export async function signOut() {
+  const supabase = await createClient();
+  
+  const { error } = await supabase.auth.signOut();
+  
+  if (error) {
+    console.error("Error signing out:", error);
+    return { error: error.message };
+  }
+
+  // Revalidate the cache for the entire app
+  revalidatePath("/", "layout");
+  
+  // Redirect to home page
+  redirect("/");
+}

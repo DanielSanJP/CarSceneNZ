@@ -75,16 +75,13 @@ export const getEventAttendees = cache(async (eventId: string) => {
     .from('event_attendees')
     .select(`
       id,
-      profile:profiles (
+      status,
+      user:users!event_attendees_user_id_fkey (
         id,
         username,
-        first_name,
-        last_name,
-        avatar_url
-      ),
-      going,
-      maybe,
-      not_going
+        display_name,
+        profile_image_url
+      )
     `)
     .eq('event_id', eventId);
 
@@ -103,22 +100,15 @@ export const getEventsByHost = cache(async (hostId: string) => {
     .from('events')
     .select(`
       *,
-      host:profiles!events_host_id_fkey (
+      host:users!events_host_id_fkey (
         id,
         username,
-        first_name,
-        last_name,
-        avatar_url
-      ),
-      club:clubs (
-        id,
-        name,
-        logo_url
-      ),
-      _count:event_attendees(count)
+        display_name,
+        profile_image_url
+      )
     `)
     .eq('host_id', hostId)
-    .order('date', { ascending: true });
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching events by host:', error);
@@ -128,17 +118,15 @@ export const getEventsByHost = cache(async (hostId: string) => {
   return data;
 });
 
-export async function attendEvent(eventId: string, userId: string, status: 'going' | 'maybe' | 'not_going') {
+export async function attendEvent(eventId: string, userId: string, status: 'interested' | 'going' | 'approved') {
   const supabase = await createClient();
   
   const { data, error } = await supabase
     .from('event_attendees')
     .upsert({
       event_id: eventId,
-      profile_id: userId,
-      going: status === 'going',
-      maybe: status === 'maybe',
-      not_going: status === 'not_going',
+      user_id: userId,
+      status: status,
     })
     .select();
 
@@ -157,7 +145,7 @@ export async function unattendEvent(eventId: string, userId: string) {
     .from('event_attendees')
     .delete()
     .eq('event_id', eventId)
-    .eq('profile_id', userId);
+    .eq('user_id', userId);
 
   if (error) {
     console.error('Error removing event attendance:', error);
@@ -170,9 +158,9 @@ export const getUserEventStatus = cache(async (eventId: string, userId: string) 
   
   const { data, error } = await supabase
     .from('event_attendees')
-    .select('going, maybe, not_going')
+    .select('status')
     .eq('event_id', eventId)
-    .eq('profile_id', userId)
+    .eq('user_id', userId)
     .single();
 
   if (error) {
@@ -184,10 +172,7 @@ export const getUserEventStatus = cache(async (eventId: string, userId: string) 
     return null;
   }
 
-  if (data.going) return 'going';
-  if (data.maybe) return 'maybe';
-  if (data.not_going) return 'not_going';
-  return null;
+  return data.status;
 });
 
 export async function createEvent(eventData: Partial<Event>) {

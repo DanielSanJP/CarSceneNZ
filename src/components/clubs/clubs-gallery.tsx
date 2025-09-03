@@ -79,9 +79,15 @@ function ClubsGalleryContent({ clubs, currentUser }: ClubsGalleryProps) {
               clubs={clubs}
               currentUser={currentUser}
             />
+          ) : /* Create Club Section */
+          currentUser ? (
+            <CreateClubForm user={currentUser} embedded={true} />
           ) : (
-            /* Create Club Section */
-            <CreateClubForm embedded={true} />
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Please log in to create a club.
+              </p>
+            </div>
           )}
         </div>
       </div>

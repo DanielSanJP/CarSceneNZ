@@ -70,12 +70,12 @@ async function createEventAction(formData: FormData) {
 
 export default async function CreateEventPage() {
   // Ensure user is authenticated (getUser will redirect if not)
-  await getUser();
+  const user = await getUser();
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <CreateEventForm action={createEventAction} />
+        <CreateEventForm action={createEventAction} user={user} />
       </div>
     </div>
   );

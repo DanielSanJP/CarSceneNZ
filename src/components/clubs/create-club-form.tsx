@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCurrentUser } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { User } from "@/types/user";
 import {
   Select,
   SelectContent,
@@ -53,15 +53,16 @@ const NZ_LOCATIONS = [
 ];
 
 interface CreateClubFormProps {
+  user: User;
   onSuccess?: () => void;
   embedded?: boolean;
 }
 
 export function CreateClubForm({
+  user,
   onSuccess,
   embedded = false,
 }: CreateClubFormProps) {
-  const user = useCurrentUser();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>("");

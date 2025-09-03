@@ -5,6 +5,7 @@ import {
   getUserProfileByUsername,
 } from "@/lib/server/profile";
 import { getCarsByOwner } from "@/lib/server/cars";
+import { getUser } from "@/lib/auth";
 import { UserProfileClient } from "@/components/profile/user-profile-client";
 
 interface UserProfilePageProps {
@@ -15,6 +16,9 @@ export default async function UserProfilePage({
   params,
 }: UserProfilePageProps) {
   const { id: userId } = await params;
+
+  // Get current user for authentication/following status
+  const currentUser = await getUser();
 
   // Try to get user profile - first by ID, then by username
   let profileUser = await getUserProfile(userId);
@@ -34,6 +38,7 @@ export default async function UserProfilePage({
     return (
       <UserProfileClient
         profileUser={null}
+        currentUser={currentUser}
         userCars={[]}
         followers={[]}
         following={[]}
@@ -56,6 +61,7 @@ export default async function UserProfilePage({
   return (
     <UserProfileClient
       profileUser={profileUser}
+      currentUser={currentUser}
       userCars={carsData}
       followers={followersData}
       following={followingData}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useCurrentUser } from "@/hooks/use-auth";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,10 +52,10 @@ interface ClubMembership {
 interface MyClubViewProps {
   // Updated to expect array of club memberships instead of single club
   userClubs: ClubMembership[];
+  user: User;
 }
 
-export function MyClubView({ userClubs }: MyClubViewProps) {
-  const user = useCurrentUser();
+export function MyClubView({ userClubs, user }: MyClubViewProps) {
   const [isLeaving, setIsLeaving] = useState<string | null>(null); // Track which club is being left
   const [leaders, setLeaders] = useState<Record<string, User | null>>({}); // Store leader data by club ID
 

@@ -7,14 +7,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import type { Car } from "@/types/car";
-import type { User } from "@/types/user";
 
 interface MyGarageViewProps {
   cars: Car[];
-  user: User;
 }
 
-export default function MyGarageView({ cars, user }: MyGarageViewProps) {
+export default function MyGarageView({ cars }: MyGarageViewProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handleImageError = (carId: string) => {

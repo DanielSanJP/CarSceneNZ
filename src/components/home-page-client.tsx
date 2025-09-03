@@ -12,7 +12,10 @@ import { Calendar, Car as CarIcon, Users, Trophy, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo } from "react";
-import type { Car, Event, User, Club } from "@/types";
+import type { Car } from "@/types/car";
+import type { Event } from "@/types/event";
+import type { User } from "@/types/user";
+import type { Club } from "@/types/club";
 
 interface HomePageClientProps {
   events: Event[];

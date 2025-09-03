@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,15 +9,14 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, UserIcon, Upload, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
-import { updateUserProfile } from "@/lib/server/profile";
 import type { User } from "@/types/user";
 
 interface EditProfileClientProps {
   user: User;
+  action: (formData: FormData) => Promise<void>;
 }
 
-export function EditProfileClient({ user }: EditProfileClientProps) {
-  const router = useRouter();
+export function EditProfileClient({ user, action }: EditProfileClientProps) {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -91,40 +89,20 @@ export function EditProfileClient({ user }: EditProfileClientProps) {
         setUploadingImage(false);
       }
 
-      // Update profile using server function
-      console.log("Updating profile in database...");
-      const updatedUser = await updateUserProfile(user.id, {
-        username: username.trim(),
-        display_name: displayName.trim(),
-        profile_image_url: finalImageUrl || undefined,
-      });
-
-      if (!updatedUser) {
-        setError("Failed to update profile. Please try again.");
-        setSaving(false);
-        return;
+      // Create FormData for server action
+      console.log("Creating FormData for server action...");
+      const formData = new FormData();
+      formData.append("username", username.trim());
+      formData.append("display_name", displayName.trim());
+      if (finalImageUrl) {
+        formData.append("profile_image_url", finalImageUrl);
       }
 
-      console.log("Profile updated successfully:", updatedUser);
-
-      setSuccess("Profile updated successfully!");
-
-      // Clean up file objects
-      if (previewUrl && previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      setPreviewUrl(finalImageUrl || null);
-      setProfileImageFile(null);
-
-      // Navigate after short delay
-      setTimeout(() => {
-        router.push(`/profile/${username}`);
-        router.refresh();
-      }, 1500);
+      // Call the server action
+      await action(formData);
     } catch (error) {
       console.error("Unexpected error during profile update:", error);
       setError("An unexpected error occurred. Please try again.");
-    } finally {
       setSaving(false);
       setUploadingImage(false);
     }

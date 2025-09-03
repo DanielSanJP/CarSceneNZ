@@ -3,6 +3,9 @@ import { getUserOptional } from "@/lib/auth";
 import { getAllClubs } from "@/lib/server/clubs";
 import { ClubsGallery } from "@/components/clubs/clubs-gallery";
 
+// Force dynamic rendering since we use authentication/cookies
+export const dynamic = "force-dynamic";
+
 export default async function ClubsPage() {
   const [currentUser, clubs] = await Promise.all([
     getUserOptional(),

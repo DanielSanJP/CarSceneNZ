@@ -27,13 +27,23 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
 
     try {
       await action(formData);
+      // If we reach here, the action completed successfully
+      // The redirect will happen automatically
     } catch (error) {
       console.error("Login error:", error);
+
+      // Check if this is a redirect error (which is expected for successful login)
+      if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+        // This is a successful redirect, don't show as error
+        return;
+      }
+
       setError(
         error instanceof Error
           ? error.message
           : "Login failed. Please try again."
       );
+    } finally {
       setIsLoading(false);
     }
   };
