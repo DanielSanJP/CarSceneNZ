@@ -12,9 +12,9 @@ import Link from "next/link";
 import { MapLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
-import { useRequireAuth } from "@/hooks/use-auth";
 import { updateEvent, deleteEvent } from "@/lib/server/events";
 import type { Event } from "@/types/event";
+import type { User } from "@/types";
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)
 function formatDateToLocal(date: Date): string {
@@ -26,10 +26,10 @@ function formatDateToLocal(date: Date): string {
 
 interface EditEventFormProps {
   event: Event;
+  user: User;
 }
 
-export function EditEventForm({ event }: EditEventFormProps) {
-  const user = useRequireAuth();
+export function EditEventForm({ event, user }: EditEventFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 

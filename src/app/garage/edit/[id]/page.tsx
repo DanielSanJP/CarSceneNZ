@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/server/auth";
+import { getUser } from "@/lib/auth";
 import { getCarById } from "@/lib/server/cars";
 import { notFound, redirect } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
@@ -8,14 +8,7 @@ interface EditCarPageProps {
 }
 
 export default async function EditCarPage({ params }: EditCarPageProps) {
-  const [user, car] = await Promise.all([
-    getCurrentUser(),
-    getCarById(params.id),
-  ]);
-
-  if (!user) {
-    redirect("/login");
-  }
+  const [user, car] = await Promise.all([getUser(), getCarById(params.id)]);
 
   if (!car) {
     notFound();

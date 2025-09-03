@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/server/auth";
+import { getUser } from "@/lib/auth";
 import { getClubById } from "@/lib/server/clubs";
 import { EditClubForm } from "@/components/clubs/edit-club-form";
 
@@ -16,14 +16,7 @@ export default async function EditClubPage({
   const { id } = await params;
   const { from = "join" } = await searchParams;
 
-  const [currentUser, club] = await Promise.all([
-    getCurrentUser(),
-    getClubById(id),
-  ]);
-
-  if (!currentUser) {
-    redirect("/login");
-  }
+  const [currentUser, club] = await Promise.all([getUser(), getClubById(id)]);
 
   if (!club) {
     notFound();

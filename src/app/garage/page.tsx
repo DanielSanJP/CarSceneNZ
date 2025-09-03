@@ -1,10 +1,13 @@
 import { getAllCars } from "@/lib/server/cars";
 import { GarageGallery } from "@/components/garage";
-import { getCurrentUser } from "@/lib/server/auth";
+import { getUser } from "@/lib/auth";
 
 export default async function GaragePage() {
+  // Get authenticated user with profile (cached per request)
+  const user = await getUser();
+
   // Fetch data on the server
-  const [cars, user] = await Promise.all([getAllCars(), getCurrentUser()]);
+  const cars = await getAllCars();
 
   return (
     <div className="min-h-screen bg-background">

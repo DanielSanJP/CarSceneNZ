@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { EditEventForm } from "@/components/events/edit-event-form";
-import { getCurrentUser } from "@/lib/server/auth";
+import { getUser } from "@/lib/auth";
 import { getEventById } from "@/lib/server/events";
 
 interface EditEventPageProps {
@@ -9,10 +9,7 @@ interface EditEventPageProps {
 
 export default async function EditEventPage({ params }: EditEventPageProps) {
   // Server-side auth check
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const user = await getUser();
 
   const { id: eventId } = await params;
 
@@ -33,7 +30,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <EditEventForm event={event} />
+        <EditEventForm event={event} user={user} />
       </div>
     </div>
   );

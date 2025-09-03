@@ -1,13 +1,8 @@
-import { getCurrentUser } from "@/lib/server/auth";
-import { redirect } from "next/navigation";
+import { getUser } from "@/lib/auth";
 import { CreateCarForm } from "@/components/garage";
 
 export default async function CreateCarPage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const user = await getUser();
 
   return (
     <div className="min-h-screen bg-background">

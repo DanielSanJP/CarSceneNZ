@@ -14,7 +14,12 @@ import { getAllCars } from "@/lib/server/cars";
 import { getAllUsers } from "@/lib/server/profile";
 import { getAllEvents } from "@/lib/server/events";
 import { getAllClubs } from "@/lib/server/clubs";
-import { type Car as CarType, type User, type Event, type Club } from "@/types";
+import {
+  type Car as CarType,
+  type User,
+  type Event,
+  type Club,
+} from "@/types/ddd";
 
 function SearchFallback() {
   return (

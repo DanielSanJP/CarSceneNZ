@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getCurrentUser } from "@/lib/server/auth";
+import { getUserOptional } from "@/lib/auth";
 import { getClubById, getClubMembers, isClubMember } from "@/lib/server/clubs";
 import { ClubDetailView } from "@/components/clubs/display/club-detail-view";
 
@@ -17,7 +17,7 @@ export default async function ClubDetailPage({
   const { from = "join", tab = "clubs" } = await searchParams;
 
   const [currentUser, club] = await Promise.all([
-    getCurrentUser(),
+    getUserOptional(),
     getClubById(id),
   ]);
 

@@ -32,7 +32,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchBar, MobileSearchButton } from "@/components/search-bar";
 import { createClient } from "@/lib/utils/supabase/client";
-import { useCurrentUser } from "@/hooks/use-auth";
+import type { User as UserType } from "@/types";
 
 export function ModeToggle() {
   const { setTheme } = useTheme();
@@ -61,9 +61,7 @@ export function ModeToggle() {
   );
 }
 
-function ProfileDropdown() {
-  const user = useCurrentUser();
-
+function ProfileDropdown({ user }: { user: UserType | null }) {
   if (!user) return null;
 
   const handleLogout = async () => {
@@ -141,9 +139,7 @@ function ProfileDropdown() {
   );
 }
 
-export function Navigation() {
-  const user = useCurrentUser();
-
+export function Navigation({ user }: { user: UserType | null }) {
   return (
     <div className="border-b">
       <div className=" mx-auto px-4 sm:px-6 py-4">
@@ -261,7 +257,7 @@ export function Navigation() {
             <MobileSearchButton />
             <ModeToggle />
             {user ? (
-              <ProfileDropdown />
+              <ProfileDropdown user={user} />
             ) : (
               <>
                 <Link href="/login">

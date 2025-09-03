@@ -29,7 +29,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/utils/supabase/client";
-import type { User } from "@/types";
+import type { User } from "@/types/ddd";
 
 interface Club {
   id: string;

@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/server/auth";
+import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CreateEventForm } from "@/components/events/create-event-form";
@@ -15,11 +15,7 @@ function formatDateToLocal(date: Date): string {
 async function createEventAction(formData: FormData) {
   "use server";
 
-  const user = await getCurrentUser();
-
-  if (!user) {
-    throw new Error("You must be logged in to create an event");
-  }
+  const user = await getUser();
 
   // Extract form data
   const title = formData.get("title") as string;
@@ -73,11 +69,8 @@ async function createEventAction(formData: FormData) {
 }
 
 export default async function CreateEventPage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  // Ensure user is authenticated (getUser will redirect if not)
+  await getUser();
 
   return (
     <div className="min-h-screen bg-background">

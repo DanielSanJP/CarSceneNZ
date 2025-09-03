@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import { getCurrentUser } from "@/lib/server/auth";
+import { getUserOptional } from "@/lib/auth";
 import { getAllClubs } from "@/lib/server/clubs";
 import { ClubsGallery } from "@/components/clubs/clubs-gallery";
 
 export default async function ClubsPage() {
   const [currentUser, clubs] = await Promise.all([
-    getCurrentUser(),
+    getUserOptional(),
     getAllClubs(),
   ]);
 
