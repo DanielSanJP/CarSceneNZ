@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarPaintFinish } from "@/types/car";
 
 interface PaintFinishProps {
-  paintFinish: Car["paint_finish"];
+  paintFinish: CarPaintFinish | undefined;
 }
 
 export function PaintFinish({ paintFinish }: PaintFinishProps) {

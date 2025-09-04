@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarTurboSystem } from "@/types/car";
 
 interface TurboSystemProps {
-  turboSystem: Car["turbo_system"];
+  turboSystem: CarTurboSystem | undefined;
 }
 
 export function TurboSystem({ turboSystem }: TurboSystemProps) {

@@ -4,9 +4,27 @@ import {
   getUserProfile,
   getUserProfileByUsername,
 } from "@/lib/server/profile";
-import { getCarsByOwner } from "@/lib/server/cars";
 import { getUser } from "@/lib/auth";
 import { UserProfileClient } from "@/components/profile/user-profile-client";
+import { createClient } from "@/lib/utils/supabase/server";
+import type { Car } from "@/types/car";
+import { cache } from "react";
+
+const getCarsByOwner = cache(async (ownerId: string): Promise<Car[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cars")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching cars by owner:", error);
+    return [];
+  }
+
+  return data as Car[];
+});
 
 interface UserProfilePageProps {
   params: Promise<{ id: string }>;

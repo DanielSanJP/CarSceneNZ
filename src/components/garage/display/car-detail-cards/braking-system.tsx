@@ -8,10 +8,10 @@ interface BrakingSystemProps {
 export function BrakingSystem({ car }: BrakingSystemProps) {
   // Helper function to get brakes by position
   const getBrakesByPosition = (position: "front" | "rear") => {
-    return car.brakes?.find((brake) => brake.position === position);
+    return car.brakes?.[position];
   };
 
-  if (!car.brakes || car.brakes.length === 0) {
+  if (!car.brakes || (!car.brakes.front && !car.brakes.rear)) {
     return null;
   }
 

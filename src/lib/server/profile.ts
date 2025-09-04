@@ -232,38 +232,6 @@ export const isFollowing = cache(async (followerId: string, followingId: string)
 });
 
 /**
- * Get all users with caching - server-only version
- */
-export const getAllUsers = cache(async (): Promise<User[]> => {
-  try {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error getting all users:', error);
-      return [];
-    }
-
-    return data?.map(profile => ({
-      id: profile.id,
-      username: profile.username,
-      display_name: profile.display_name || profile.username,
-      email: '',
-      profile_image_url: profile.profile_image_url,
-      created_at: profile.created_at,
-      updated_at: profile.updated_at,
-    })) || [];
-  } catch (error) {
-    console.error('Error getting all users:', error);
-    return [];
-  }
-});
-
-/**
  * Server actions for profile mutations
  */
 

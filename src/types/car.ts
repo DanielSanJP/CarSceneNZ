@@ -1,193 +1,6 @@
-// Engine and Engine-related Components
-export interface CarEngine {
-  id: string;
-  car_id: string;
-  engine_code?: string;
-  displacement?: string;
-  aspiration?: string;
-  power_hp?: number;
-  torque_nm?: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarTurboSystem {
-  id: string;
-  car_id: string;
-  turbo?: string;
-  intercooler?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarExhaustSystem {
-  id: string;
-  car_id: string;
-  header?: string;
-  exhaust?: string;
-  intake?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarEngineManagement {
-  id: string;
-  car_id: string;
-  ecu?: string;
-  tuned_by?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarInternalComponents {
-  id: string;
-  car_id: string;
-  pistons?: string;
-  connecting_rods?: string;
-  valves?: string;
-  valve_springs?: string;
-  camshafts?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarFuelSystem {
-  id: string;
-  car_id: string;
-  fuel_injectors?: string;
-  fuel_pump?: string;
-  fuel_rail?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// Chassis Components
-export interface CarWheel {
-  id: string;
-  car_id: string;
-  position: 'front' | 'rear';
-  wheel?: string;
-  wheel_size?: string;
-  wheel_offset?: string;
-  tyre?: string;
-  tyre_size?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarSuspension {
-  id: string;
-  car_id: string;
-  position?: 'front' | 'rear'; // nullable for general suspension_type
-  suspension_type?: string;
-  suspension?: string;
-  spring_rate?: string;
-  camber_degrees?: number;
-  toe_degrees?: string;
-  caster_degrees?: string;
-  // Position-specific suspension accessories
-  anti_roll_bar?: string;
-  strut_brace?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarBrake {
-  id: string;
-  car_id: string;
-  position: 'front' | 'rear';
-  caliper?: string;
-  disc_size?: string;
-  disc_type?: string;
-  pads?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// Exterior Components
-export interface CarPaintFinish {
-  id: string;
-  car_id: string;
-  paint_color?: string;
-  paint_type?: string;
-  paint_finish?: string;
-  wrap_brand?: string;
-  wrap_color?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarLightingModifications {
-  id: string;
-  car_id: string;
-  headlights?: string;
-  taillights?: string;
-  fog_lights?: string;
-  underglow?: string;
-  interior_lighting?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarBodykitModifications {
-  id: string;
-  car_id: string;
-  front_bumper?: string;
-  front_lip?: string;
-  rear_bumper?: string;
-  rear_lip?: string;
-  side_skirts?: string;
-  rear_spoiler?: string;
-  diffuser?: string;
-  fender_flares?: string;
-  hood?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// Interior Components
-export interface CarSeats {
-  id: string;
-  car_id: string;
-  front_seats?: string;
-  rear_seats?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarSteeringWheel {
-  id: string;
-  car_id: string;
-  steering_wheel?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarAudioSystem {
-  id: string;
-  car_id: string;
-  head_unit?: string;
-  speakers?: string;
-  subwoofer?: string;
-  amplifier?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CarGauges {
-  id: string;
-  car_id: string;
-  gauge_type: string; // 'boost', 'oil_pressure', 'oil_temp', 'water_temp', 'egt', 'afr', etc.
-  brand?: string;
-  model?: string;
-  size?: string; // '52mm', '60mm', etc.
-  position?: string; // 'dash', 'pillar', 'center_console', etc.
-  created_at: string;
-  updated_at: string;
-}
-
-// Main Car interface with all related data
+// Main Car interface with flattened database structure
 export interface Car {
+  // Basic car information
   id: string;
   owner_id: string;
   brand: string;
@@ -197,36 +10,271 @@ export interface Car {
   total_likes: number;
   created_at: string;
   updated_at: string;
+
+  // Engine specifications
+  engine_code?: string;
+  displacement?: string;
+  aspiration?: string;
+  power_hp?: number;
+  torque_nm?: number;
+
+  // Engine management
+  ecu?: string;
+  tuned_by?: string;
+
+  // Internal engine components
+  pistons?: string;
+  connecting_rods?: string;
+  valves?: string;
+  valve_springs?: string;
+  camshafts?: string;
+
+  // Exhaust & intake
+  header?: string;
+  exhaust?: string;
+  intake?: string;
+
+  // Turbo system
+  turbo?: string;
+  intercooler?: string;
+
+  // Fuel system
+  fuel_injectors?: string;
+  fuel_pump?: string;
+  fuel_rail?: string;
+
+  // Audio system
+  head_unit?: string;
+  speakers?: string;
+  subwoofer?: string;
+  amplifier?: string;
+
+  // Exterior modifications
+  front_bumper?: string;
+  front_lip?: string;
+  rear_bumper?: string;
+  rear_lip?: string;
+  side_skirts?: string;
+  rear_spoiler?: string;
+  diffuser?: string;
+  fender_flares?: string;
+  hood?: string;
+
+  // Paint & finish
+  paint_color?: string;
+  paint_finish?: string;
+  wrap_brand?: string;
+  wrap_color?: string;
+
+  // Interior
+  front_seats?: string;
+  rear_seats?: string;
+  steering_wheel?: string;
+
+  // Lighting
+  headlights?: string;
+  taillights?: string;
+  fog_lights?: string;
+  underglow?: string;
+  interior_lighting?: string;
+
+  // JSON structured fields
+  brakes?: {
+    front?: {
+      caliper?: string;
+      pads?: string;
+      disc_size?: string;
+      disc_type?: string;
+    };
+    rear?: {
+      caliper?: string;
+      pads?: string;
+      disc_size?: string;
+      disc_type?: string;
+    };
+  };
+
+  suspension?: {
+    front?: {
+      suspension?: string;
+      spring_rate?: string;
+      strut_brace?: string;
+      anti_roll_bar?: string;
+      camber_degrees?: number;
+      caster_degrees?: string;
+      toe_degrees?: string;
+    };
+    rear?: {
+      suspension?: string;
+      spring_rate?: string;
+      strut_brace?: string;
+      anti_roll_bar?: string;
+      camber_degrees?: number;
+      caster_degrees?: string;
+      toe_degrees?: string;
+    };
+  };
+
+  wheels?: {
+    front?: {
+      wheel?: string;
+      wheel_size?: string;
+      wheel_offset?: string;
+      tyre?: string;
+      tyre_size?: string;
+    };
+    rear?: {
+      wheel?: string;
+      wheel_size?: string;
+      wheel_offset?: string;
+      tyre?: string;
+      tyre_size?: string;
+    };
+  };
+
+  gauges?: Array<{
+    id?: string;
+    gauge_type?: string;
+    brand?: string;
+  }>;
+
+  // Owner information (populated via join)
   owner?: {
     id: string;
     username: string;
     display_name?: string;
     profile_image_url?: string;
   };
-  
-  // Engine-related components
-  engine?: CarEngine;
-  turbo_system?: CarTurboSystem;
-  exhaust_system?: CarExhaustSystem;
-  engine_management?: CarEngineManagement;
-  internal_components?: CarInternalComponents;
-  fuel_system?: CarFuelSystem;
-  
-  // Chassis components
-  wheels?: CarWheel[];
-  suspension?: CarSuspension[];
-  brakes?: CarBrake[];
-  
-  // Exterior components
-  paint_finish?: CarPaintFinish;
-  lighting_modifications?: CarLightingModifications;
-  bodykit_modifications?: CarBodykitModifications;
-  
-  // Interior components
-  seats?: CarSeats;
-  steering_wheel?: CarSteeringWheel;
-  audio_system?: CarAudioSystem;
-  gauges?: CarGauges[];
+}
+
+// Legacy compatibility interfaces - these provide backwards compatibility for display components
+export interface CarEngine {
+  engine_code?: string;
+  displacement?: string;
+  aspiration?: string;
+  power_hp?: number;
+  torque_nm?: number;
+}
+
+export interface CarTurboSystem {
+  turbo?: string;
+  intercooler?: string;
+}
+
+export interface CarExhaustSystem {
+  intake?: string;
+  header?: string;
+  exhaust?: string;
+}
+
+export interface CarEngineManagement {
+  ecu?: string;
+  tuned_by?: string;
+}
+
+export interface CarInternalComponents {
+  pistons?: string;
+  connecting_rods?: string;
+  valves?: string;
+  camshafts?: string;
+  valve_springs?: string;
+}
+
+export interface CarFuelSystem {
+  fuel_injectors?: string;
+  fuel_pump?: string;
+  fuel_rail?: string;
+}
+
+export interface CarPaintFinish {
+  paint_color?: string;
+  paint_finish?: string;
+  wrap_brand?: string;
+  wrap_color?: string;
+}
+
+export interface CarLightingModifications {
+  headlights?: string;
+  taillights?: string;
+  fog_lights?: string;
+  underglow?: string;
+  interior_lighting?: string;
+}
+
+export interface CarBodykitModifications {
+  front_bumper?: string;
+  front_lip?: string;
+  rear_bumper?: string;
+  rear_lip?: string;
+  side_skirts?: string;
+  rear_spoiler?: string;
+  diffuser?: string;
+  fender_flares?: string;
+  hood?: string;
+}
+
+export interface CarSeats {
+  front_seats?: string;
+  rear_seats?: string;
+}
+
+export interface CarSteeringWheel {
+  steering_wheel?: string;
+}
+
+export interface CarAudioSystem {
+  head_unit?: string;
+  speakers?: string;
+  subwoofer?: string;
+  amplifier?: string;
+}
+
+// For backwards compatibility with display components
+export interface CarWheel {
+  id?: string;
+  position: 'front' | 'rear';
+  wheel?: string;
+  wheel_size?: string;
+  wheel_offset?: string;
+  tyre?: string;
+  tyre_size?: string;
+}
+
+export interface CarSuspension {
+  id?: string;
+  position?: 'front' | 'rear';
+  suspension_type?: string;
+  suspension?: string;
+  spring_rate?: string;
+  strut_brace?: string;
+  anti_roll_bar?: string;
+  camber_degrees?: number;
+  caster_degrees?: string;
+  toe_degrees?: string;
+}
+
+export interface CarBrake {
+  id?: string;
+  position: 'front' | 'rear';
+  caliper?: string;
+  pads?: string;
+  disc_size?: string;
+  disc_type?: string;
+}
+
+export interface CarGauge {
+  id?: string;
+  gauge_type?: string;
+  brand?: string;
+}
+
+// Backwards compatibility type alias
+export type CarGauges = CarGauge;
+
+export interface CarLike {
+  car_id: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface CarLike {

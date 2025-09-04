@@ -102,10 +102,6 @@ export function OwnerRankings({ data }: OwnerRankingsProps) {
                         <p className="text-xs md:text-sm text-muted-foreground truncate">
                           @{entry.owner.username}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {entry.carCount}{" "}
-                          {entry.carCount === 1 ? "car" : "cars"}
-                        </p>
                       </div>
 
                       {/* Likes Score */}

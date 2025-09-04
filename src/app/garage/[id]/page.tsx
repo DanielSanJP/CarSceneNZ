@@ -1,5 +1,5 @@
 import { getUserOptional } from "@/lib/auth";
-import { getCarById } from "@/lib/server/cars";
+import { createClient } from "@/lib/utils/supabase/server";
 import { notFound } from "next/navigation";
 import { CarDetailView } from "@/components/garage/display/car-detail-view";
 
@@ -10,11 +10,28 @@ interface CarDetailPageProps {
 export default async function CarDetailPage({ params }: CarDetailPageProps) {
   // Get user (optional - not required to view cars)
   const user = await getUserOptional();
+  const { id } = await params;
 
-  // Fetch car data
-  const car = await getCarById(params.id);
+  // Fetch car data directly from database
+  const supabase = await createClient();
+  const { data: car, error } = await supabase
+    .from("cars")
+    .select(
+      `
+      *,
+      owner:users!owner_id (
+        id,
+        username,
+        display_name,
+        profile_image_url
+      )
+    `
+    )
+    .eq("id", id)
+    .single();
 
-  if (!car) {
+  if (error || !car) {
+    console.error("Error fetching car:", error);
     notFound();
   }
 

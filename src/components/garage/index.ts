@@ -16,3 +16,4 @@ export { CarDetailView } from './display/car-detail-view';
 // Form components
 export { EditCarForm } from './edit-car-form';
 export { CreateCarForm } from './create-car-form';
+export { InformationModal } from './information-modal';

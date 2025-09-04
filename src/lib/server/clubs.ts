@@ -4,52 +4,6 @@ import { cache } from 'react'
 import { createClient } from '@/lib/utils/supabase/server'
 import type { Club, ClubMember } from '@/types/club'
 
-export const getAllClubs = cache(async (): Promise<Club[]> => {
-  try {
-    const supabase = await createClient()
-
-    const { data, error } = await supabase
-      .from('clubs')
-      .select(`
-        *,
-        users!clubs_leader_id_fkey (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        )
-      `)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error getting all clubs:', error)
-      return []
-    }
-
-    return data?.map(club => ({
-      id: club.id,
-      name: club.name,
-      description: club.description,
-      banner_image_url: club.banner_image_url,
-      club_type: club.club_type,
-      location: club.location,
-      leader_id: club.leader_id,
-      total_likes: club.total_likes || 0,
-      created_at: club.created_at,
-      updated_at: club.updated_at,
-      leader: {
-        id: club.users.id,
-        username: club.users.username,
-        display_name: club.users.display_name || club.users.username,
-        profile_image_url: club.users.profile_image_url,
-      }
-    })) || []
-  } catch (error) {
-    console.error('Error getting all clubs:', error)
-    return []
-  }
-})
-
 export const getClubById = cache(async (clubId: string): Promise<Club | null> => {
   try {
     const supabase = await createClient()
@@ -200,6 +154,58 @@ export const isClubMember = cache(async (clubId: string, userId: string): Promis
     return false
   }
 })
+
+export async function createClub(clubData: {
+  name: string;
+  description: string;
+  location: string;
+  club_type: string;
+  banner_image: string;
+  leader_id: string;
+}): Promise<Club | null> {
+  try {
+    const supabase = await createClient()
+
+    // Insert the club
+    const { data: clubInsertData, error: clubError } = await supabase
+      .from('clubs')
+      .insert({
+        name: clubData.name.trim(),
+        description: clubData.description.trim(),
+        location: clubData.location,
+        club_type: clubData.club_type,
+        banner_image_url: clubData.banner_image || null,
+        leader_id: clubData.leader_id,
+      })
+      .select()
+      .single()
+
+    if (clubError || !clubInsertData) {
+      console.error('Error creating club:', clubError)
+      return null
+    }
+
+    // Add the leader as a member with 'leader' role
+    const { error: memberError } = await supabase
+      .from('club_members')
+      .insert({
+        club_id: clubInsertData.id,
+        user_id: clubData.leader_id,
+        role: 'leader',
+      })
+
+    if (memberError) {
+      console.error('Error adding leader as member:', memberError)
+      // Don't fail the whole operation, but log the error
+    }
+
+    // Return the created club with leader info
+    return await getClubById(clubInsertData.id)
+  } catch (error) {
+    console.error('Error creating club:', error)
+    return null
+  }
+}
 
 export const getClubMemberCount = cache(async (clubId: string): Promise<number> => {
   try {

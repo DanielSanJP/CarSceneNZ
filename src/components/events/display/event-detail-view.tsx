@@ -17,6 +17,7 @@ import {
   Share2,
   Heart,
   Check,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -122,22 +123,26 @@ export function EventDetailView({
       return;
     }
 
+    const originalStatus = userStatus;
+
     try {
       if (userStatus === status) {
-        // User is removing their attendance
-        await unattendEventAction(event.id, user.id);
+        // User is removing their attendance - optimistic update
         setUserStatus(null);
+        await unattendEventAction(event.id, user.id);
       } else {
-        // User is setting/changing their attendance
-        await attendEventAction(event.id, user.id, status);
+        // User is setting/changing their attendance - optimistic update
         setUserStatus(status);
+        await attendEventAction(event.id, user.id, status);
       }
 
-      // Refresh attendee data
+      // Refresh attendee data only on success
       const updatedAttendees = await getEventAttendeesAction(event.id);
       setAttendees(updatedAttendees);
     } catch (error) {
       console.error("Error updating attendance:", error);
+      // Revert optimistic update on error
+      setUserStatus(originalStatus);
     }
   };
 
@@ -438,7 +443,11 @@ export function EventDetailView({
                 onClick={() => handleStatusChange("going")}
                 variant={userStatus === "going" ? "default" : "outline"}
               >
-                <Check className="h-4 w-4 mr-2" />
+                {userStatus === "going" ? (
+                  <Check className="h-4 w-4 mr-2" />
+                ) : (
+                  <Users className="h-4 w-4 mr-2" />
+                )}
                 I&apos;m Going
               </Button>
               <Button
@@ -446,7 +455,11 @@ export function EventDetailView({
                 onClick={() => handleStatusChange("interested")}
                 variant={userStatus === "interested" ? "default" : "outline"}
               >
-                <Star className="h-4 w-4 mr-2" />
+                {userStatus === "interested" ? (
+                  <Check className="h-4 w-4 mr-2" />
+                ) : (
+                  <Star className="h-4 w-4 mr-2" />
+                )}
                 Interested
               </Button>
 

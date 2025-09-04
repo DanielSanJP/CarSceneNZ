@@ -1,6 +1,5 @@
 import { getUser } from "@/lib/auth";
-import { getCarById } from "@/lib/server/cars";
-import { updateCarWithComponents } from "@/lib/server/car-actions";
+import { updateCarWithComponents, getCarById } from "@/lib/server/cars";
 import { revalidatePath } from "next/cache";
 import { redirect, notFound } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
@@ -18,40 +17,98 @@ async function updateCarAction(carId: string, formData: FormData) {
   const year = parseInt(formData.get("year") as string);
   const imagesJson = formData.get("images") as string;
 
-  // Extract component data (these will be JSON stringified from the form)
-  const engineJson = formData.get("engine") as string;
-  const chassisJson = formData.get("chassis") as string;
-  const exteriorJson = formData.get("exterior") as string;
-  const interiorJson = formData.get("interior") as string;
-
   if (!brand?.trim() || !model?.trim() || !year) {
     throw new Error("Brand, model, and year are required");
   }
 
-  // Parse JSON data
+  // Parse images
   let images = [];
-  let engine, chassis, exterior, interior;
-
   try {
     if (imagesJson) images = JSON.parse(imagesJson);
-    if (engineJson) engine = JSON.parse(engineJson);
-    if (chassisJson) chassis = JSON.parse(chassisJson);
-    if (exteriorJson) exterior = JSON.parse(exteriorJson);
-    if (interiorJson) interior = JSON.parse(interiorJson);
   } catch (error) {
-    console.error("Error parsing component data:", error);
+    console.error("Error parsing images:", error);
   }
 
-  const carData = {
+  // Build the flattened car data object
+  const carData: Record<string, string | number | undefined | unknown[]> = {
     brand: brand.trim(),
     model: model.trim(),
     year,
     images,
-    engine,
-    chassis,
-    exterior,
-    interior,
   };
+
+  // Add all the flattened fields from FormData
+  const flattenedFields = [
+    "engine_code",
+    "displacement",
+    "aspiration",
+    "power_hp",
+    "torque_nm",
+    "ecu",
+    "tuned_by",
+    "pistons",
+    "connecting_rods",
+    "valves",
+    "valve_springs",
+    "camshafts",
+    "header",
+    "exhaust",
+    "intake",
+    "turbo",
+    "intercooler",
+    "fuel_injectors",
+    "fuel_pump",
+    "fuel_rail",
+    "head_unit",
+    "speakers",
+    "subwoofer",
+    "amplifier",
+    "front_bumper",
+    "front_lip",
+    "rear_bumper",
+    "rear_lip",
+    "side_skirts",
+    "rear_spoiler",
+    "diffuser",
+    "fender_flares",
+    "hood",
+    "paint_color",
+    "paint_finish",
+    "wrap_brand",
+    "wrap_color",
+    "front_seats",
+    "rear_seats",
+    "steering_wheel",
+    "headlights",
+    "taillights",
+    "fog_lights",
+    "underglow",
+    "interior_lighting",
+  ];
+
+  flattenedFields.forEach((field) => {
+    const value = formData.get(field);
+    if (value !== null && value !== "") {
+      if (field === "power_hp" || field === "torque_nm") {
+        carData[field] = value ? parseInt(value as string) : undefined;
+      } else {
+        carData[field] = value as string;
+      }
+    }
+  });
+
+  // Handle JSON structured fields
+  const jsonFields = ["brakes", "suspension", "wheels", "gauges"];
+  jsonFields.forEach((field) => {
+    const jsonValue = formData.get(field) as string;
+    if (jsonValue) {
+      try {
+        carData[field] = JSON.parse(jsonValue);
+      } catch (error) {
+        console.error(`Error parsing ${field}:`, error);
+      }
+    }
+  });
 
   const result = await updateCarWithComponents(carId, carData);
 
@@ -65,7 +122,8 @@ async function updateCarAction(carId: string, formData: FormData) {
 }
 
 export default async function EditCarPage({ params }: EditCarPageProps) {
-  const [user, car] = await Promise.all([getUser(), getCarById(params.id)]);
+  const { id } = await params;
+  const [user, car] = await Promise.all([getUser(), getCarById(id)]);
 
   if (!car) {
     notFound();
@@ -76,7 +134,7 @@ export default async function EditCarPage({ params }: EditCarPageProps) {
     redirect("/garage");
   }
 
-  const updateAction = updateCarAction.bind(null, params.id);
+  const updateAction = updateCarAction.bind(null, id);
 
   return <EditCarForm car={car} action={updateAction} />;
 }

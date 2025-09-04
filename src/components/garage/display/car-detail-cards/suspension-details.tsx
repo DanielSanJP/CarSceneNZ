@@ -8,10 +8,10 @@ interface SuspensionDetailsProps {
 export function SuspensionDetails({ car }: SuspensionDetailsProps) {
   // Helper function to get suspension by position
   const getSuspensionByPosition = (position: "front" | "rear") => {
-    return car.suspension?.find((susp) => susp.position === position);
+    return car.suspension?.[position];
   };
 
-  if (!car.suspension || car.suspension.length === 0) {
+  if (!car.suspension || (!car.suspension.front && !car.suspension.rear)) {
     return null;
   }
 
@@ -21,29 +21,6 @@ export function SuspensionDetails({ car }: SuspensionDetailsProps) {
         <CardTitle>Suspension</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Display suspension type from any available entry */}
-        {(() => {
-          // First try to get from general entry (no position)
-          const generalSuspension = car.suspension.find((s) => !s.position);
-          // If no general entry, get from any position-specific entry
-          const anySuspension =
-            generalSuspension || car.suspension.find((s) => s.suspension_type);
-
-          if (anySuspension?.suspension_type) {
-            return (
-              <div className="mb-4">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Type: </span>
-                  <span className="font-medium capitalize">
-                    {anySuspension.suspension_type}
-                  </span>
-                </p>
-              </div>
-            );
-          }
-          return null;
-        })()}
-
         {["front", "rear"].map((position) => {
           const susp = getSuspensionByPosition(position as "front" | "rear");
           if (!susp) return null;

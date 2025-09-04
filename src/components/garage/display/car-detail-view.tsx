@@ -18,6 +18,7 @@ import {
   CarStats,
 } from "./car-detail-cards";
 import type { Car } from "@/types/car";
+import { getEngineData } from "@/lib/utils/car-helpers";
 
 interface CarDetailViewProps {
   car: Car;
@@ -62,7 +63,7 @@ export function CarDetailView({ car, user }: CarDetailViewProps) {
 
             {isOwner && (
               <Link href={`/garage/edit/${car.id}`}>
-                <Button size="sm" className="md:px-4">
+                <Button className="md:px-4">
                   <Edit3 className="h-4 w-4 md:mr-2" />
                   <span className="hidden md:inline">Edit Car</span>
                 </Button>
@@ -85,7 +86,7 @@ export function CarDetailView({ car, user }: CarDetailViewProps) {
               <BasicCarInfo car={car} />
 
               {/* Engine Details */}
-              <EngineDetails engine={car.engine} />
+              <EngineDetails engine={getEngineData(car)} />
 
               {/* Engine Modifications */}
               <EngineModifications car={car} />

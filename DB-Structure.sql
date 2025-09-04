@@ -1,223 +1,13 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
-CREATE TABLE public.car_audio_system (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    head_unit character varying,
-    speakers character varying,
-    subwoofer character varying,
-    amplifier character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_audio_system_pkey PRIMARY KEY (id),
-    CONSTRAINT car_audio_system_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_bodykit_modifications (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    front_bumper character varying,
-    front_lip character varying,
-    rear_bumper character varying,
-    rear_lip character varying,
-    side_skirts character varying,
-    rear_spoiler character varying,
-    diffuser character varying,
-    fender_flares character varying,
-    hood character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_bodykit_modifications_pkey PRIMARY KEY (id),
-    CONSTRAINT car_bodykit_modifications_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_brakes (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL,
-    position character varying NOT NULL CHECK (
-        "position"::text = ANY (
-            ARRAY ['front'::character varying, 'rear'::character varying]::text []
-        )
-    ),
-    caliper character varying,
-    disc_size character varying,
-    disc_type character varying,
-    pads character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_brakes_pkey PRIMARY KEY (id),
-    CONSTRAINT car_brakes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_engine_management (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    tuned_by character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    ecu character varying,
-    CONSTRAINT car_engine_management_pkey PRIMARY KEY (id),
-    CONSTRAINT car_engine_management_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_engines (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    engine_code character varying,
-    displacement character varying,
-    aspiration character varying,
-    power_hp integer,
-    torque_nm integer,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_engines_pkey PRIMARY KEY (id),
-    CONSTRAINT car_engines_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_exhaust_system (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    header character varying,
-    exhaust character varying,
-    intake character varying,
-    CONSTRAINT car_exhaust_system_pkey PRIMARY KEY (id),
-    CONSTRAINT car_exhaust_system_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_fuel_system (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    fuel_injectors character varying,
-    fuel_pump character varying,
-    fuel_rail character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_fuel_system_pkey PRIMARY KEY (id),
-    CONSTRAINT car_fuel_system_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_gauges (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL,
-    gauge_type character varying NOT NULL,
-    brand character varying,
-    model character varying,
-    size character varying,
-    position character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_gauges_pkey PRIMARY KEY (id),
-    CONSTRAINT car_gauges_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_internal_components (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    pistons character varying,
-    connecting_rods character varying,
-    valves character varying,
-    valve_springs character varying,
-    camshafts character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_internal_components_pkey PRIMARY KEY (id),
-    CONSTRAINT car_internal_components_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_lighting_modifications (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    headlights character varying,
-    taillights character varying,
-    fog_lights character varying,
-    underglow character varying,
-    interior_lighting character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_lighting_modifications_pkey PRIMARY KEY (id),
-    CONSTRAINT car_lighting_modifications_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
 CREATE TABLE public.car_likes (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
     car_id uuid NOT NULL,
     user_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT car_likes_pkey PRIMARY KEY (id),
-    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_paint_finish (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    paint_color character varying,
-    paint_finish character varying,
-    wrap_brand character varying,
-    wrap_color character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_paint_finish_pkey PRIMARY KEY (id),
-    CONSTRAINT car_paint_finish_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_seats (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    front_seats character varying,
-    rear_seats character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT car_seats_pkey PRIMARY KEY (id),
-    CONSTRAINT car_seats_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_steering_wheel (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    steering_wheel character varying,
-    CONSTRAINT car_steering_wheel_pkey PRIMARY KEY (id),
-    CONSTRAINT car_steering_wheel_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_suspension (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL,
-    position character varying CHECK (
-        "position"::text = ANY (
-            ARRAY ['front'::character varying, 'rear'::character varying]::text []
-        )
-    ),
-    suspension_type character varying,
-    spring_rate character varying,
-    camber_degrees numeric,
-    toe_degrees character varying,
-    caster_degrees character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    suspension character varying,
-    anti_roll_bar character varying,
-    strut_brace character varying,
-    CONSTRAINT car_suspension_pkey PRIMARY KEY (id),
-    CONSTRAINT car_suspension_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_turbo_system (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL UNIQUE,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    turbo character varying,
-    intercooler character varying,
-    CONSTRAINT car_turbo_system_pkey PRIMARY KEY (id),
-    CONSTRAINT car_turbo_system_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
-);
-CREATE TABLE public.car_wheels (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    car_id uuid NOT NULL,
-    position character varying NOT NULL CHECK (
-        "position"::text = ANY (
-            ARRAY ['front'::character varying, 'rear'::character varying]::text []
-        )
-    ),
-    wheel_size character varying,
-    wheel_offset character varying,
-    tyre_size character varying,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    wheel character varying,
-    tyre character varying,
-    CONSTRAINT car_wheels_pkey PRIMARY KEY (id),
-    CONSTRAINT car_wheels_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id),
+    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.cars (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -229,6 +19,55 @@ CREATE TABLE public.cars (
     total_likes integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
+    engine_code character varying,
+    displacement character varying,
+    aspiration character varying,
+    power_hp integer,
+    torque_nm integer,
+    ecu character varying,
+    tuned_by character varying,
+    pistons character varying,
+    connecting_rods character varying,
+    valves character varying,
+    valve_springs character varying,
+    camshafts character varying,
+    header character varying,
+    exhaust character varying,
+    intake character varying,
+    turbo character varying,
+    intercooler character varying,
+    fuel_injectors character varying,
+    fuel_pump character varying,
+    fuel_rail character varying,
+    head_unit character varying,
+    speakers character varying,
+    subwoofer character varying,
+    amplifier character varying,
+    front_bumper character varying,
+    front_lip character varying,
+    rear_bumper character varying,
+    rear_lip character varying,
+    side_skirts character varying,
+    rear_spoiler character varying,
+    diffuser character varying,
+    fender_flares character varying,
+    hood character varying,
+    paint_color character varying,
+    paint_finish character varying,
+    wrap_brand character varying,
+    wrap_color character varying,
+    front_seats character varying,
+    rear_seats character varying,
+    steering_wheel character varying,
+    headlights character varying,
+    taillights character varying,
+    fog_lights character varying,
+    underglow character varying,
+    interior_lighting character varying,
+    brakes jsonb,
+    suspension jsonb,
+    wheels jsonb,
+    gauges jsonb,
     CONSTRAINT cars_pkey PRIMARY KEY (id),
     CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
 );
@@ -243,8 +82,8 @@ CREATE TABLE public.club_members (
     ),
     joined_at timestamp with time zone DEFAULT now(),
     CONSTRAINT club_members_pkey PRIMARY KEY (id),
-    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
-    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
 );
 CREATE TABLE public.clubs (
     id character varying NOT NULL,
@@ -276,8 +115,8 @@ CREATE TABLE public.event_attendees (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT event_attendees_pkey PRIMARY KEY (id),
-    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.events (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -302,8 +141,8 @@ CREATE TABLE public.messages (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT messages_pkey PRIMARY KEY (id),
-    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id),
-    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id)
+    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id),
+    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.user_follows (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -311,8 +150,8 @@ CREATE TABLE public.user_follows (
     following_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT user_follows_pkey PRIMARY KEY (id),
-    CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id),
-    CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.users(id)
+    CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.users(id),
+    CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.users (
     id uuid NOT NULL,

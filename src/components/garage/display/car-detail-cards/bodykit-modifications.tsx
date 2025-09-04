@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarBodykitModifications } from "@/types/car";
 
 interface BodykitModificationsProps {
-  bodykitModifications: Car["bodykit_modifications"];
+  bodykitModifications: CarBodykitModifications | undefined;
 }
 
 export function BodykitModifications({

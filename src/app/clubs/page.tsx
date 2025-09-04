@@ -1,16 +1,55 @@
 import { Suspense } from "react";
 import { getUserOptional } from "@/lib/auth";
-import { getAllClubs } from "@/lib/server/clubs";
+import { createClient } from "@/lib/utils/supabase/server";
 import { ClubsGallery } from "@/components/clubs/clubs-gallery";
 
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
 
 export default async function ClubsPage() {
-  const [currentUser, clubs] = await Promise.all([
-    getUserOptional(),
-    getAllClubs(),
-  ]);
+  // Get user (optional)
+  const currentUser = await getUserOptional();
+
+  // Fetch clubs directly from database
+  const supabase = await createClient();
+  const { data: clubs, error } = await supabase
+    .from("clubs")
+    .select(
+      `
+      *,
+      users!clubs_leader_id_fkey (
+        id,
+        username,
+        display_name,
+        profile_image_url
+      )
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching clubs:", error);
+  }
+
+  // Transform data to match expected format
+  const transformedClubs = (clubs || []).map((club) => ({
+    id: club.id,
+    name: club.name,
+    description: club.description,
+    banner_image_url: club.banner_image_url,
+    club_type: club.club_type,
+    location: club.location,
+    leader_id: club.leader_id,
+    total_likes: club.total_likes || 0,
+    created_at: club.created_at,
+    updated_at: club.updated_at,
+    leader: {
+      id: club.users.id,
+      username: club.users.username,
+      display_name: club.users.display_name || club.users.username,
+      profile_image_url: club.users.profile_image_url,
+    },
+  }));
 
   return (
     <Suspense
@@ -28,7 +67,7 @@ export default async function ClubsPage() {
       }
     >
       <ClubsGallery
-        clubs={clubs}
+        clubs={transformedClubs}
         currentUser={
           currentUser
             ? {

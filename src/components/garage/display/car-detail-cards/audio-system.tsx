@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarAudioSystem } from "@/types/car";
 
 interface AudioSystemProps {
-  audioSystem: Car["audio_system"];
+  audioSystem: CarAudioSystem | undefined;
 }
 
 export function AudioSystem({ audioSystem }: AudioSystemProps) {

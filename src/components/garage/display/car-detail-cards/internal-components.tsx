@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarInternalComponents } from "@/types/car";
 
 interface InternalComponentsProps {
-  internalComponents: Car["internal_components"];
+  internalComponents: CarInternalComponents | undefined;
 }
 
 export function InternalComponents({

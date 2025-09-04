@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarExhaustSystem } from "@/types/car";
 
 interface ExhaustSystemProps {
-  exhaustSystem: Car["exhaust_system"];
+  exhaustSystem: CarExhaustSystem | undefined;
 }
 
 export function ExhaustSystem({ exhaustSystem }: ExhaustSystemProps) {

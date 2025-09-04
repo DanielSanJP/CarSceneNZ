@@ -65,25 +65,14 @@ export function EventImageManager({
     setIsUploading(true);
 
     try {
-      // If we have a tempEventId, upload to Supabase immediately
-      if (tempEventId) {
-        const uploadedUrl = await uploadEventImageForCreation(
-          file,
-          tempEventId
-        );
-        if (uploadedUrl) {
-          onImageChange(uploadedUrl);
-        } else {
-          alert("Failed to upload image. Please try again.");
-        }
+      // Always upload to Supabase storage - use a temp ID if none provided
+      const eventId = tempEventId || `temp_${Date.now()}`;
+      const uploadedUrl = await uploadEventImageForCreation(file, eventId);
+
+      if (uploadedUrl) {
+        onImageChange(uploadedUrl);
       } else {
-        // Fall back to base64 for backward compatibility
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const imageUrl = event.target?.result as string;
-          onImageChange(imageUrl);
-        };
-        reader.readAsDataURL(file);
+        alert("Failed to upload image. Please try again.");
       }
     } catch (error) {
       console.error("Error uploading image:", error);

@@ -2,7 +2,7 @@ import { getUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CreateCarForm } from "@/components/garage";
-import { createCarWithComponents } from "@/lib/server/car-actions";
+import { createCarWithComponents } from "@/lib/server/cars";
 
 async function createCarAction(formData: FormData) {
   "use server";
@@ -15,43 +15,106 @@ async function createCarAction(formData: FormData) {
   const year = parseInt(formData.get("year") as string);
   const imagesJson = formData.get("images") as string;
 
-  // Extract component data (these will be JSON stringified from the form)
-  const engineJson = formData.get("engine") as string;
-  const chassisJson = formData.get("chassis") as string;
-  const exteriorJson = formData.get("exterior") as string;
-  const interiorJson = formData.get("interior") as string;
-
   if (!brand?.trim() || !model?.trim() || !year) {
     throw new Error("Brand, model, and year are required");
   }
 
-  // Parse JSON data
+  // Parse images
   let images = [];
-  let engine, chassis, exterior, interior;
-
   try {
     if (imagesJson) images = JSON.parse(imagesJson);
-    if (engineJson) engine = JSON.parse(engineJson);
-    if (chassisJson) chassis = JSON.parse(chassisJson);
-    if (exteriorJson) exterior = JSON.parse(exteriorJson);
-    if (interiorJson) interior = JSON.parse(interiorJson);
   } catch (error) {
-    console.error("Error parsing component data:", error);
+    console.error("Error parsing images:", error);
   }
 
+  // Build the flattened car data object
   const carData = {
     owner_id: user.id,
     brand: brand.trim(),
     model: model.trim(),
     year,
     images,
-    engine,
-    chassis,
-    exterior,
-    interior,
   };
 
-  const result = await createCarWithComponents(carData);
+  // Add all the flattened fields from FormData
+  const flattenedFields = [
+    "engine_code",
+    "displacement",
+    "aspiration",
+    "power_hp",
+    "torque_nm",
+    "ecu",
+    "tuned_by",
+    "pistons",
+    "connecting_rods",
+    "valves",
+    "valve_springs",
+    "camshafts",
+    "header",
+    "exhaust",
+    "intake",
+    "turbo",
+    "intercooler",
+    "fuel_injectors",
+    "fuel_pump",
+    "fuel_rail",
+    "head_unit",
+    "speakers",
+    "subwoofer",
+    "amplifier",
+    "front_bumper",
+    "front_lip",
+    "rear_bumper",
+    "rear_lip",
+    "side_skirts",
+    "rear_spoiler",
+    "diffuser",
+    "fender_flares",
+    "hood",
+    "paint_color",
+    "paint_finish",
+    "wrap_brand",
+    "wrap_color",
+    "front_seats",
+    "rear_seats",
+    "steering_wheel",
+    "headlights",
+    "taillights",
+    "fog_lights",
+    "underglow",
+    "interior_lighting",
+  ];
+
+  const additionalData: Record<string, unknown> = {};
+
+  flattenedFields.forEach((field) => {
+    const value = formData.get(field);
+    if (value !== null && value !== "") {
+      if (field === "power_hp" || field === "torque_nm") {
+        additionalData[field] = value ? parseInt(value as string) : undefined;
+      } else {
+        additionalData[field] = value as string;
+      }
+    }
+  });
+
+  // Handle JSON structured fields
+  const jsonFields = ["brakes", "suspension", "wheels", "gauges"];
+  jsonFields.forEach((field) => {
+    const jsonValue = formData.get(field) as string;
+    if (jsonValue) {
+      try {
+        additionalData[field] = JSON.parse(jsonValue);
+      } catch (error) {
+        console.error(`Error parsing ${field}:`, error);
+      }
+    }
+  });
+
+  const result = await createCarWithComponents({
+    ...carData,
+    ...additionalData,
+  } as Parameters<typeof createCarWithComponents>[0]);
 
   if (!result) {
     throw new Error("Failed to create car");

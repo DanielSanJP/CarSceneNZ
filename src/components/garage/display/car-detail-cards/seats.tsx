@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarSeats } from "@/types/car";
 
 interface SeatsProps {
-  seats: Car["seats"];
+  seats: CarSeats | undefined;
 }
 
 export function Seats({ seats }: SeatsProps) {

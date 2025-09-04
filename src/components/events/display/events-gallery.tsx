@@ -25,6 +25,7 @@ import {
   Filter,
   ImageIcon,
   Star,
+  Check,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -39,9 +40,30 @@ interface EventsGalleryProps {
     username: string;
     display_name?: string;
   } | null;
+  attendeeCounts?: Record<
+    string,
+    { interested: number; going: number; total: number }
+  >;
+  userEventStatuses?: Record<string, string>;
+  attendEventAction?: (
+    eventId: string,
+    userId: string,
+    status: "interested" | "going" | "approved"
+  ) => Promise<{ success: boolean; error?: string }>;
+  unattendEventAction?: (
+    eventId: string,
+    userId: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function EventsGallery({ events, user }: EventsGalleryProps) {
+export function EventsGallery({
+  events,
+  user,
+  attendeeCounts,
+  userEventStatuses,
+  attendEventAction,
+  unattendEventAction,
+}: EventsGalleryProps) {
   const router = useRouter();
 
   // State for filters
@@ -51,27 +73,10 @@ export function EventsGallery({ events, user }: EventsGalleryProps) {
   // State for tracking failed image loads
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Mock attendance data - replace with real data when Server Actions are implemented
-  const getMockAttendeeCount = (eventId: string) => {
-    // Generate consistent mock data based on event ID
-    const hash = eventId.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
-    return Math.floor((hash % 20) + 5); // 5-25 attendees
-  };
-
-  const getMockUserStatus = (eventId: string) => {
-    // For demo purposes, randomly show different statuses
-    if (!user) return null;
-    const hash = eventId.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
-    const statuses = [null, "attending", "interested", "not_attending"];
-    return statuses[hash % statuses.length];
-  };
-
-  // Handle attendance (placeholder for Server Actions)
-  const handleAttendanceChange = async (eventId: string, status: string) => {
-    // Placeholder - will be replaced with Server Actions
-    console.log(`Attendance change for event ${eventId}: ${status}`);
-    // You could show a toast here or update local state
-  };
+  // State for optimistic updates of user event statuses
+  const [localUserStatuses, setLocalUserStatuses] = useState<
+    Record<string, string | null>
+  >({});
 
   // Handle image error
   const handleImageError = (eventId: string) => {
@@ -148,18 +153,26 @@ export function EventsGallery({ events, user }: EventsGalleryProps) {
     return { day: date, date, time, full: `${date} at ${time}` };
   };
 
-  // Helper function to get event attendees count (using mock data)
+  // Helper function to get event attendees count (using real data)
   const getAttendeeCount = (eventId: string) => {
-    return getMockAttendeeCount(eventId);
+    return attendeeCounts?.[eventId]?.going || 0;
   };
 
-  // Helper function to get interested count (using mock data)
+  // Helper function to get interested count (using real data)
   const getInterestedCount = (eventId: string) => {
-    // For demo, return half of attendee count
-    return Math.floor(getMockAttendeeCount(eventId) / 2);
+    return attendeeCounts?.[eventId]?.interested || 0;
   };
 
-  // Handle user attendance actions (placeholder)
+  // Helper function to get user's status for an event (with optimistic updates)
+  const getUserStatus = (eventId: string) => {
+    // Check local state first (for optimistic updates), then fall back to prop
+    if (localUserStatuses[eventId] !== undefined) {
+      return localUserStatuses[eventId];
+    }
+    return userEventStatuses?.[eventId] || null;
+  };
+
+  // Handle user attendance actions with optimistic updates
   const handleAttendanceAction = async (
     eventId: string,
     status: "interested" | "going"
@@ -170,11 +183,54 @@ export function EventsGallery({ events, user }: EventsGalleryProps) {
       return;
     }
 
-    // Call the placeholder function
-    await handleAttendanceChange(eventId, status);
-  };
+    if (!attendEventAction || !unattendEventAction) {
+      console.error("Server actions not provided");
+      return;
+    }
 
-  // Helper function to get host info
+    try {
+      const currentStatus = getUserStatus(eventId);
+
+      // Optimistic update - update UI immediately
+      if (currentStatus === status) {
+        // User is removing their attendance
+        setLocalUserStatuses((prev) => ({ ...prev, [eventId]: null }));
+      } else {
+        // User is setting/changing their attendance
+        setLocalUserStatuses((prev) => ({ ...prev, [eventId]: status }));
+      }
+
+      // Then make the actual server call
+      if (currentStatus === status) {
+        // User is removing their attendance (same as detail page)
+        const result = await unattendEventAction(eventId, user.id);
+        if (!result.success) {
+          console.error("Failed to unattend event:", result.error);
+          // Revert optimistic update on failure
+          setLocalUserStatuses((prev) => ({
+            ...prev,
+            [eventId]: currentStatus,
+          }));
+        }
+      } else {
+        // User is setting/changing their attendance (same as detail page)
+        const result = await attendEventAction(eventId, user.id, status);
+        if (!result.success) {
+          console.error("Failed to attend event:", result.error);
+          // Revert optimistic update on failure
+          setLocalUserStatuses((prev) => ({
+            ...prev,
+            [eventId]: currentStatus,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      // Revert optimistic update on error
+      const currentStatus = userEventStatuses?.[eventId] || null;
+      setLocalUserStatuses((prev) => ({ ...prev, [eventId]: currentStatus }));
+    }
+  }; // Helper function to get host info
   const getHostInfo = (
     host:
       | {
@@ -282,6 +338,7 @@ export function EventsGallery({ events, user }: EventsGalleryProps) {
             const attendeeCount = getAttendeeCount(event.id);
             const interestedCount = getInterestedCount(event.id);
             const host = getHostInfo(event.host);
+            const userStatus = getUserStatus(event.id);
 
             return (
               <Link
@@ -416,9 +473,7 @@ export function EventsGallery({ events, user }: EventsGalleryProps) {
                       <Button
                         className="w-full flex-1"
                         variant={
-                          getMockUserStatus(event.id) === "interested"
-                            ? "default"
-                            : "outline"
+                          userStatus === "interested" ? "default" : "outline"
                         }
                         size="sm"
                         onClick={(e) => {
@@ -427,14 +482,17 @@ export function EventsGallery({ events, user }: EventsGalleryProps) {
                           handleAttendanceAction(event.id, "interested");
                         }}
                       >
-                        {getMockUserStatus(event.id) === "interested"
-                          ? "Interested ✓"
-                          : "Interested"}
+                        {userStatus === "interested" ? (
+                          <Check className="h-4 w-4 mr-1" />
+                        ) : (
+                          <Star className="h-4 w-4 mr-1" />
+                        )}
+                        Interested
                       </Button>
                       <Button
                         className="w-full flex-1"
                         variant={
-                          getMockUserStatus(event.id) === "going"
+                          userStatus === "going" || userStatus === "approved"
                             ? "default"
                             : "outline"
                         }
@@ -445,9 +503,12 @@ export function EventsGallery({ events, user }: EventsGalleryProps) {
                           handleAttendanceAction(event.id, "going");
                         }}
                       >
-                        {getMockUserStatus(event.id) === "going"
-                          ? "Going ✓"
-                          : "I'm Going"}
+                        {userStatus === "going" || userStatus === "approved" ? (
+                          <Check className="h-4 w-4 mr-1" />
+                        ) : (
+                          <Users className="h-4 w-4 mr-1" />
+                        )}
+                        I&apos;m Going
                       </Button>
                     </div>
                   </CardContent>

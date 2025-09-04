@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
+import { uploadClubImageForCreation } from "@/lib/utils/upload-club-images";
+
 interface ClubFormData {
   name: string;
   description: string;
@@ -53,13 +55,15 @@ const NZ_LOCATIONS = [
 ];
 
 interface CreateClubFormProps {
-  user: User;
+  user?: User;
+  action?: (formData: FormData) => Promise<void>;
   onSuccess?: () => void;
   embedded?: boolean;
 }
 
 export function CreateClubForm({
   user,
+  action,
   onSuccess,
   embedded = false,
 }: CreateClubFormProps) {
@@ -67,6 +71,7 @@ export function CreateClubForm({
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [imageError, setImageError] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const [formData, setFormData] = useState<ClubFormData>({
     name: "",
@@ -90,25 +95,52 @@ export function CreateClubForm({
   }
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev: ClubFormData) => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // In a real app, you would upload this to your server/cloud storage
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageUrl = event.target?.result as string;
-      setImagePreview(imageUrl);
-      setFormData((prev) => ({ ...prev, banner_image: imageUrl }));
-      setImageError(false);
-    };
-    reader.readAsDataURL(file);
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file.");
+      e.target.value = "";
+      return;
+    }
 
-    // Clear the input
-    e.target.value = "";
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert("Image size should be less than 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setImageUploading(true);
+
+    try {
+      // Generate a temp ID for the club
+      const tempClubId = `temp_${Date.now()}`;
+      const uploadedUrl = await uploadClubImageForCreation(file, tempClubId);
+
+      if (uploadedUrl) {
+        setImagePreview(uploadedUrl);
+        setFormData((prev: ClubFormData) => ({
+          ...prev,
+          banner_image: uploadedUrl,
+        }));
+        setImageError(false);
+      } else {
+        alert("Failed to upload image. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      alert("Failed to upload image. Please try again.");
+    } finally {
+      setImageUploading(false);
+      e.target.value = "";
+    }
   };
 
   const handleImageError = () => {
@@ -136,30 +168,41 @@ export function CreateClubForm({
     setIsLoading(true);
 
     try {
-      // In a real app, this would be an API call
-      const clubData = {
-        ...formData,
-        id: `club-${Date.now()}`,
-        leader_id: user.id,
-        total_likes: 0,
-        created_at: new Date().toISOString(),
-      };
+      if (action) {
+        // Use server action when provided
+        const formDataObj = new FormData();
+        formDataObj.append("name", formData.name);
+        formDataObj.append("description", formData.description);
+        formDataObj.append("location", formData.location);
+        formDataObj.append("club_type", formData.club_type);
+        formDataObj.append("banner_image", formData.banner_image);
 
-      console.log("Creating club:", clubData);
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Call success callback if provided, otherwise redirect
-      if (onSuccess) {
-        onSuccess();
+        await action(formDataObj);
       } else {
-        router.push("/clubs?tab=myclub");
+        // Fallback for embedded mode or when no action provided
+        const clubData = {
+          ...formData,
+          id: `club-${Date.now()}`,
+          leader_id: user?.id || "",
+          total_likes: 0,
+          created_at: new Date().toISOString(),
+        };
+
+        console.log("Creating club:", clubData);
+
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        // Call success callback if provided, otherwise redirect
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push("/clubs?tab=myclub");
+        }
       }
     } catch (error) {
       console.error("Error creating club:", error);
       alert("Failed to create club. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -250,7 +293,7 @@ export function CreateClubForm({
                 <Button type="button" variant="outline" size="sm" asChild>
                   <Label htmlFor="banner-upload" className="cursor-pointer">
                     <Upload className="h-4 w-4 mr-2" />
-                    Choose Image
+                    {imageUploading ? "Uploading..." : "Choose Image"}
                   </Label>
                 </Button>
               </div>

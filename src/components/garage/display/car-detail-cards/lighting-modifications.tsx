@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarLightingModifications } from "@/types/car";
 
 interface LightingModificationsProps {
-  lightingModifications: Car["lighting_modifications"];
+  lightingModifications: CarLightingModifications | undefined;
 }
 
 export function LightingModifications({

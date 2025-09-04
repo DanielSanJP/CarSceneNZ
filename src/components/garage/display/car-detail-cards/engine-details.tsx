@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Car } from "@/types/car";
+import type { CarEngine } from "@/types/car";
 
 interface EngineDetailsProps {
-  engine: Car["engine"];
+  engine: CarEngine | undefined;
 }
 
 export function EngineDetails({ engine }: EngineDetailsProps) {

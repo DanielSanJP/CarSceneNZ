@@ -1,220 +1,385 @@
 'use server';
-import { cache } from 'react';
+
 import { createClient } from '@/lib/utils/supabase/server';
+import { cache } from 'react';
 import type { Car } from '@/types/car';
-import { getAllCarComponents } from './car-components';
 
-/**
- * Get all cars with caching - server-only version
- */
-export const getAllCars = cache(async (): Promise<Car[]> => {
-  try {
-    const supabase = await createClient();
-    
-    const { data, error } = await supabase
-      .from('cars')
-      .select(`
-        *,
-        users!cars_owner_id_fkey (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        )
-      `)
-      .order('created_at', { ascending: false });
+// Helper function to get car by ID for server actions
+export const getCarById = cache(async (id: string): Promise<Car | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cars")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-    if (error) {
-      console.error('Error getting all cars:', error);
-      return [];
-    }
-
-    return (data || []).map((car) => ({
-      id: car.id,
-      owner_id: car.owner_id,
-      brand: car.brand,
-      model: car.model,
-      year: car.year,
-      images: car.images || [],
-      total_likes: car.total_likes || 0,
-      created_at: car.created_at,
-      updated_at: car.updated_at,
-      owner: car.users ? {
-        id: car.users.id,
-        username: car.users.username,
-        display_name: car.users.display_name || car.users.username,
-        profile_image_url: car.users.profile_image_url,
-      } : undefined,
-    } as Car));
-  } catch (error) {
-    console.error('Error getting all cars:', error);
-    return [];
-  }
+  if (error || !data) return null;
+  return data as Car;
 });
 
-/**
- * Get basic car information by ID with caching - server-only version
- */
-export const getBasicCar = cache(async (carId: string): Promise<Omit<Car, 'engine' | 'wheels' | 'suspension' | 'brakes' | 'paint_finish' | 'lighting_modifications' | 'bodykit_modifications' | 'seats' | 'steering_wheel' | 'audio_system' | 'gauges' | 'turbo_system' | 'exhaust_system' | 'engine_management' | 'internal_components' | 'fuel_system'> | null> => {
-  try {
-    const supabase = await createClient();
-    
-    const { data, error } = await supabase
-      .from('cars')
-      .select(`
-        *,
-        users!cars_owner_id_fkey (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        )
-      `)
-      .eq('id', carId)
-      .single();
+// Form data interface for complete car updates
+export interface CompleteCarUpdateData {
+  // Basic car info
+  brand?: string;
+  model?: string;
+  year?: number;
+  images?: string[];
+  
+  // Engine specifications
+  engine_code?: string;
+  displacement?: string;
+  aspiration?: string;
+  power_hp?: number;
+  torque_nm?: number;
 
-    if (error || !data) {
-      console.error('Error getting basic car:', error);
-      return null;
-    }
+  // Engine management
+  ecu?: string;
+  tuned_by?: string;
 
-    return {
-      id: data.id,
-      owner_id: data.owner_id,
-      brand: data.brand,
-      model: data.model,
-      year: data.year,
-      images: data.images || [],
-      total_likes: data.total_likes || 0,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      owner: data.users ? {
-        id: data.users.id,
-        username: data.users.username,
-        display_name: data.users.display_name || data.users.username,
-        profile_image_url: data.users.profile_image_url,
-      } : undefined,
+  // Internal engine components
+  pistons?: string;
+  connecting_rods?: string;
+  valves?: string;
+  valve_springs?: string;
+  camshafts?: string;
+
+  // Exhaust & intake
+  header?: string;
+  exhaust?: string;
+  intake?: string;
+
+  // Turbo system
+  turbo?: string;
+  intercooler?: string;
+
+  // Fuel system
+  fuel_injectors?: string;
+  fuel_pump?: string;
+  fuel_rail?: string;
+
+  // Audio system
+  head_unit?: string;
+  speakers?: string;
+  subwoofer?: string;
+  amplifier?: string;
+
+  // Exterior modifications
+  front_bumper?: string;
+  front_lip?: string;
+  rear_bumper?: string;
+  rear_lip?: string;
+  side_skirts?: string;
+  rear_spoiler?: string;
+  diffuser?: string;
+  fender_flares?: string;
+  hood?: string;
+
+  // Paint & finish
+  paint_color?: string;
+  paint_finish?: string;
+  wrap_brand?: string;
+  wrap_color?: string;
+
+  // Interior
+  front_seats?: string;
+  rear_seats?: string;
+  steering_wheel?: string;
+
+  // Lighting
+  headlights?: string;
+  taillights?: string;
+  fog_lights?: string;
+  underglow?: string;
+  interior_lighting?: string;
+
+  // JSON structured fields
+  brakes?: {
+    front?: {
+      caliper?: string;
+      pads?: string;
+      disc_size?: string;
+      disc_type?: string;
     };
-  } catch (error) {
-    console.error('Error getting basic car:', error);
-    return null;
-  }
-});
+    rear?: {
+      caliper?: string;
+      pads?: string;
+      disc_size?: string;
+      disc_type?: string;
+    };
+  };
+
+  suspension?: {
+    front?: {
+      suspension?: string;
+      spring_rate?: string;
+      strut_brace?: string;
+      anti_roll_bar?: string;
+      camber_degrees?: number;
+      caster_degrees?: string;
+      toe_degrees?: string;
+    };
+    rear?: {
+      suspension?: string;
+      spring_rate?: string;
+      strut_brace?: string;
+      anti_roll_bar?: string;
+      camber_degrees?: number;
+      caster_degrees?: string;
+      toe_degrees?: string;
+    };
+  };
+
+  wheels?: {
+    front?: {
+      wheel?: string;
+      wheel_size?: string;
+      wheel_offset?: string;
+      tyre?: string;
+      tyre_size?: string;
+    };
+    rear?: {
+      wheel?: string;
+      wheel_size?: string;
+      wheel_offset?: string;
+      tyre?: string;
+      tyre_size?: string;
+    };
+  };
+
+  gauges?: Array<{
+    id?: string;
+    gauge_type?: string;
+    brand?: string;
+  }>;
+}
 
 /**
- * Get cars by owner ID with caching - server-only version
+ * Create basic car (just core info)
  */
-export const getCarsByOwner = cache(async (ownerId: string): Promise<Car[]> => {
+export async function createCar(carData: {
+  owner_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  images?: string[];
+}): Promise<Car | null> {
   try {
     const supabase = await createClient();
-    
     const { data, error } = await supabase
       .from('cars')
-      .select(`
-        *,
-        users!cars_owner_id_fkey (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        )
-      `)
-      .eq('owner_id', ownerId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error getting cars by owner:', error);
-      return [];
-    }
-
-    return (data || []).map((car) => ({
-      id: car.id,
-      owner_id: car.owner_id,
-      brand: car.brand,
-      model: car.model,
-      year: car.year,
-      images: car.images || [],
-      total_likes: car.total_likes || 0,
-      created_at: car.created_at,
-      updated_at: car.updated_at,
-      owner: car.users ? {
-        id: car.users.id,
-        username: car.users.username,
-        display_name: car.users.display_name || car.users.username,
-        profile_image_url: car.users.profile_image_url,
-      } : undefined,
-    } as Car));
-  } catch (error) {
-    console.error('Error getting cars by owner:', error);
-    return [];
-  }
-});
-
-/**
- * Get complete car by ID with all components - server-only version
- */
-export const getCarById = cache(async (carId: string): Promise<Car | null> => {
-  try {
-    const supabase = await createClient();
-    
-    const { data, error } = await supabase
-      .from('cars')
-      .select(`
-        *,
-        users!cars_owner_id_fkey (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        )
-      `)
-      .eq('id', carId)
+      .insert({
+        owner_id: carData.owner_id,
+        brand: carData.brand,
+        model: carData.model,
+        year: carData.year,
+        images: carData.images || [],
+      })
+      .select()
       .single();
 
-    if (error || !data) {
-      console.error('Error getting car by id:', error);
+    if (error) {
+      console.error('Error creating car:', error);
       return null;
     }
 
-    // Get all car components using the new consolidated function
-    const components = await getAllCarComponents(carId);
-
-    return {
-      id: data.id,
-      owner_id: data.owner_id,
-      brand: data.brand,
-      model: data.model,
-      year: data.year,
-      images: data.images || [],
-      total_likes: data.total_likes || 0,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      owner: data.users ? {
-        id: data.users.id,
-        username: data.users.username,
-        display_name: data.users.display_name || data.users.username,
-        profile_image_url: data.users.profile_image_url,
-      } : undefined,
-      // Include all component data from the consolidated car-components module
-      engine: components.engine.engine,
-      wheels: components.chassis.wheels,
-      suspension: components.chassis.suspension,
-      brakes: components.chassis.brakes,
-      paint_finish: components.exterior.paint_finish,
-      lighting_modifications: components.exterior.lighting_modifications,
-      bodykit_modifications: components.exterior.bodykit_modifications,
-      seats: components.interior.seats,
-      steering_wheel: components.interior.steering_wheel,
-      audio_system: components.interior.audio_system,
-      gauges: components.interior.gauges,
-      turbo_system: components.engine.turbo_system,
-      exhaust_system: components.engine.exhaust_system,
-      engine_management: components.engine.engine_management,
-      internal_components: components.engine.internal_components,
-      fuel_system: components.engine.fuel_system,
-    } as Car;
+    return await getCarById(data.id);
   } catch (error) {
-    console.error('Error getting car by id:', error);
+    console.error('Error creating car:', error);
     return null;
   }
-});
+}
+
+/**
+ * Update car with all data
+ */
+export async function updateCar(carId: string, updates: CompleteCarUpdateData): Promise<Car | null> {
+  try {
+    const supabase = await createClient();
+    
+    // Prepare update data, excluding undefined values
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // Add all fields that are defined in updates
+    Object.keys(updates).forEach(key => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const value = (updates as Record<string, any>)[key];
+      if (value !== undefined) {
+        updateData[key] = value;
+      }
+    });
+
+    const { error } = await supabase
+      .from('cars')
+      .update(updateData)
+      .eq('id', carId);
+
+    if (error) {
+      console.error('Error updating car:', error);
+      return null;
+    }
+
+    return await getCarById(carId);
+  } catch (error) {
+    console.error('Error updating car:', error);
+    return null;
+  }
+}
+
+/**
+ * Create car with all components
+ */
+export async function createCarWithComponents(carData: {
+  owner_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  images?: string[];
+} & CompleteCarUpdateData): Promise<Car | null> {
+  try {
+    // Create basic car first
+    const car = await createCar({
+      owner_id: carData.owner_id,
+      brand: carData.brand,
+      model: carData.model,
+      year: carData.year,
+      images: carData.images,
+    });
+
+    if (!car) {
+      throw new Error('Failed to create basic car');
+    }
+
+    // Update with all component data
+    const componentData: CompleteCarUpdateData = { ...carData };
+    // Remove the basic car fields that were already used in creation
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+    const { owner_id, brand, model, year, images, ...restData } = componentData as any;
+
+    return await updateCar(car.id, restData);
+  } catch (error) {
+    console.error('Error creating car with components:', error);
+    return null;
+  }
+}
+
+/**
+ * Update car with all components (alias for updateCar)
+ */
+export async function updateCarWithComponents(
+  carId: string,
+  carData: CompleteCarUpdateData
+): Promise<Car | null> {
+  return await updateCar(carId, carData);
+}
+
+/**
+ * Delete car and all associated components
+ */
+export async function deleteCar(carId: string): Promise<boolean> {
+  try {
+    // With the flattened structure, we just need to delete the main car record
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from('cars')
+      .delete()
+      .eq('id', carId);
+
+    if (error) {
+      console.error('Error deleting car:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting car:', error);
+    return false;
+  }
+}
+
+/**
+ * Like/Unlike functions
+ */
+export async function likeCar(carId: string, userId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data: existingLike } = await supabase
+      .from('car_likes')
+      .select('id')
+      .eq('car_id', carId)
+      .eq('user_id', userId)
+      .single();
+
+    if (existingLike) {
+      return true; // Already liked
+    }
+
+    const { error: likeError } = await supabase
+      .from('car_likes')
+      .insert({
+        car_id: carId,
+        user_id: userId,
+      });
+
+    if (likeError) {
+      console.error('Error liking car:', likeError);
+      return false;
+    }
+
+    // Update car likes count
+    const { error: updateError } = await supabase.rpc('increment_car_likes', { car_id: carId });
+    if (updateError) {
+      console.error('Error updating car likes count:', updateError);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error liking car:', error);
+    return false;
+  }
+}
+
+export async function unlikeCar(carId: string, userId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { error: unlikeError } = await supabase
+      .from('car_likes')
+      .delete()
+      .eq('car_id', carId)
+      .eq('user_id', userId);
+
+    if (unlikeError) {
+      console.error('Error unliking car:', unlikeError);
+      return false;
+    }
+
+    // Update car likes count
+    const { error: updateError } = await supabase.rpc('decrement_car_likes', { car_id: carId });
+    if (updateError) {
+      console.error('Error updating car likes count:', updateError);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error unliking car:', error);
+    return false;
+  }
+}
+
+export async function isCarLiked(carId: string, userId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from('car_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('car_id', carId)
+      .eq('user_id', userId);
+
+    return (count || 0) > 0;
+  } catch (error) {
+    console.error('Error checking car like status:', error);
+    return false;
+  }
+}

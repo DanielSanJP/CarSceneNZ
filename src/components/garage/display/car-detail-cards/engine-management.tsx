@@ -1,7 +1,7 @@
-import type { Car } from "@/types/car";
+import type { CarEngineManagement } from "@/types/car";
 
 interface EngineManagementProps {
-  engineManagement: Car["engine_management"];
+  engineManagement: CarEngineManagement | undefined;
 }
 
 export function EngineManagement({ engineManagement }: EngineManagementProps) {

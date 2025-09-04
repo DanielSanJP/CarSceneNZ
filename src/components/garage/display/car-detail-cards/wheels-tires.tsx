@@ -8,10 +8,10 @@ interface WheelsTiresProps {
 export function WheelsTires({ car }: WheelsTiresProps) {
   // Helper function to get wheels by position
   const getWheelsByPosition = (position: "front" | "rear") => {
-    return car.wheels?.find((wheel) => wheel.position === position);
+    return car.wheels?.[position];
   };
 
-  if (!car.wheels || car.wheels.length === 0) {
+  if (!car.wheels || (!car.wheels.front && !car.wheels.rear)) {
     return null;
   }
 

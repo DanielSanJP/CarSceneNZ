@@ -7,20 +7,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, GripVertical } from "lucide-react";
 import Image from "next/image";
+import { uploadCarImages } from "@/lib/utils/upload-car-images";
 
 interface CarImageManagerProps {
   images: string[];
   onChange: (images: string[]) => void;
   isLoading?: boolean;
+  carId?: string; // Optional - only provided for existing cars
+  onFilesChange?: (files: File[]) => void; // For new cars, pass files instead
 }
 
 export default function CarImageManager({
   images,
   onChange,
   isLoading,
+  carId,
+  onFilesChange,
 }: CarImageManagerProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
@@ -31,7 +38,7 @@ export default function CarImageManager({
     onChange(newImages);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
@@ -53,18 +60,38 @@ export default function CarImageManager({
       );
     }
 
-    // In a real app, you would upload these files to your server/cloud storage
-    // For now, we'll simulate adding them as URLs
-    filesToProcess.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const imageUrl = event.target?.result as string;
-        if (images.length < maxImages) {
-          onChange([...images, imageUrl]);
+    if (carId) {
+      // For existing cars, upload immediately to Supabase
+      setIsUploading(true);
+      try {
+        const uploadedUrls = await uploadCarImages(filesToProcess, carId);
+        if (uploadedUrls.length > 0) {
+          onChange([...images, ...uploadedUrls]);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (error) {
+        console.error("Error uploading images:", error);
+        alert("Failed to upload images. Please try again.");
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      // For new cars, store files temporarily and show preview
+      const newFiles = [...pendingFiles, ...filesToProcess];
+      setPendingFiles(newFiles);
+      onFilesChange?.(newFiles);
+
+      // Show preview using data URLs
+      filesToProcess.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageUrl = event.target?.result as string;
+          if (images.length < maxImages) {
+            onChange([...images, imageUrl]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
 
     // Clear the input
     e.target.value = "";
@@ -202,18 +229,18 @@ export default function CarImageManager({
               multiple
               onChange={handleImageUpload}
               className="cursor-pointer"
-              disabled={images.length >= 10 || isLoading}
+              disabled={images.length >= 10 || isLoading || isUploading}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
               asChild
-              disabled={images.length >= 10 || isLoading}
+              disabled={images.length >= 10 || isLoading || isUploading}
             >
               <label htmlFor="image-upload" className="cursor-pointer">
                 <Upload className="h-4 w-4 mr-2" />
-                Choose Files
+                {isUploading ? "Uploading..." : "Choose Files"}
               </label>
             </Button>
           </div>

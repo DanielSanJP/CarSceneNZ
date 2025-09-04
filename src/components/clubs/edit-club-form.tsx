@@ -27,6 +27,7 @@ import {
   Users,
 } from "lucide-react";
 import type { Club } from "@/types/club";
+import { uploadClubImage } from "@/lib/utils/upload-club-images";
 
 interface ClubFormData {
   name: string;
@@ -64,6 +65,7 @@ export function EditClubForm({ club, fromTab = "join" }: EditClubFormProps) {
     club.banner_image_url || ""
   );
   const [imageError, setImageError] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const [formData, setFormData] = useState<ClubFormData>({
     name: club.name || "",
@@ -74,25 +76,50 @@ export function EditClubForm({ club, fromTab = "join" }: EditClubFormProps) {
   });
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev: ClubFormData) => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // In a real app, you would upload this to your server/cloud storage
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageUrl = event.target?.result as string;
-      setImagePreview(imageUrl);
-      setFormData((prev) => ({ ...prev, banner_image: imageUrl }));
-      setImageError(false);
-    };
-    reader.readAsDataURL(file);
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file.");
+      e.target.value = "";
+      return;
+    }
 
-    // Clear the input
-    e.target.value = "";
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert("Image size should be less than 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setImageUploading(true);
+
+    try {
+      const uploadedUrl = await uploadClubImage(file, club.id);
+
+      if (uploadedUrl) {
+        setImagePreview(uploadedUrl);
+        setFormData((prev: ClubFormData) => ({
+          ...prev,
+          banner_image: uploadedUrl,
+        }));
+        setImageError(false);
+      } else {
+        alert("Failed to upload image. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      alert("Failed to upload image. Please try again.");
+    } finally {
+      setImageUploading(false);
+      e.target.value = "";
+    }
   };
 
   const handleImageError = () => {
@@ -231,9 +258,14 @@ export function EditClubForm({ club, fromTab = "join" }: EditClubFormProps) {
                       onChange={handleImageUpload}
                       className="cursor-pointer"
                     />
-                    <Button type="button" variant="outline" size="sm">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={imageUploading}
+                    >
                       <Upload className="h-4 w-4 mr-2" />
-                      Choose File
+                      {imageUploading ? "Uploading..." : "Choose File"}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
