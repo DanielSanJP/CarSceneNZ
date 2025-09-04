@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Users,
   MapPin,
@@ -20,7 +20,6 @@ import {
   Edit,
   UserPlus,
   UserMinus,
-  Settings,
 } from "lucide-react";
 import type { Club, ClubMember } from "@/types/club";
 import type { User } from "@/types/user";
@@ -181,115 +180,136 @@ export function ClubDetailView({
                   : `/clubs?tab=${fromTab}`
               }
             >
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
             <div className="flex-1">
               <h1 className="text-3xl font-bold">{club.name}</h1>
-              <p className="text-muted-foreground mt-1">
-                {memberCount} {memberCount === 1 ? "member" : "members"}
-              </p>
+              <div className="flex items-center gap-4 text-muted-foreground mt-1">
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  {club.location}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  {memberCount} members
+                </div>
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                  {club.total_likes || 0}
+                </div>
+              </div>
             </div>
-            {canManage && (
-              <Link href={`/clubs/edit/${club.id}?from=${fromTab}`}>
-                <Button variant="outline" size="sm">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Club
-                </Button>
-              </Link>
-            )}
           </div>
 
           {/* Club Info Card - Three Column Layout */}
           <Card className="overflow-hidden mb-8">
             <CardContent className="p-6">
-              <div className="grid gap-6 md:grid-cols-3">
-                {/* Left Column - Club Image */}
-                <div className="space-y-4">
-                  <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                    {imageError ? (
-                      <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                        <Users className="h-16 w-16 text-primary opacity-50" />
-                      </div>
-                    ) : (
+              <div className="grid gap-6 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
+                {/* Column 1: Banner Image */}
+                <div className="relative">
+                  {club.banner_image_url && !imageError ? (
+                    <div className="relative w-full aspect-square lg:aspect-[4/3] overflow-hidden rounded-lg">
                       <Image
-                        src={club.banner_image_url || "/clubs/default-club.jpg"}
-                        alt={club.name}
+                        src={club.banner_image_url}
+                        alt={`${club.name} banner`}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 33vw"
+                        quality={100}
+                        priority
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onError={() => setImageError(true)}
                       />
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-square lg:aspect-[4/3] bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center rounded-lg">
+                      <Users className="h-16 w-16 text-primary opacity-50" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 2: Club Name and Description */}
+                <div className="space-y-4 md:col-span-1 lg:col-span-1">
+                  {/* Club Name */}
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">{club.name}</h1>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      #{club.id}
+                    </p>
+                  </div>
+                  {/* About This Club */}
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground leading-relaxed">
+                      {club.description || "No description available."}
+                    </p>
+                    {canManage && (
+                      <div className="pt-2">
+                        <Link href={`/clubs/edit/${club.id}?from=${fromTab}`}>
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Club
+                          </Button>
+                        </Link>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* Middle Column - Club Details */}
-                <div className="space-y-4 md:col-span-2">
+                {/* Column 3: Stats List */}
+                <div className="space-y-4 md:col-span-2 lg:col-span-1">
+                  <h3 className="text-lg font-semibold">Club Stats</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                          {club.location}
-                        </span>
+                    {/* Likes */}
+                    <div className="flex items-center justify-between py-2 border-b border-border">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Star className="h-4 w-4" />
+                        <span>Total Likes</span>
                       </div>
-                      <Badge className={`${typeInfo.color} text-white`}>
+                      <span className="font-semibold">
+                        {club.total_likes || 0}
+                      </span>
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-center justify-between py-2 border-b border-border">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        <span>Location</span>
+                      </div>
+                      <span className="font-semibold">{club.location}</span>
+                    </div>
+
+                    {/* Type */}
+                    <div className="flex items-center justify-between py-2 border-b border-border">
+                      <div className="flex items-center gap-2 text-muted-foreground">
                         {typeInfo.icon}
-                        <span className="ml-1">{typeInfo.text}</span>
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        <span className="text-sm font-medium">
-                          {club.total_likes}
-                        </span>
+                        <span>Type</span>
                       </div>
+                      <span className="font-semibold">{typeInfo.text}</span>
                     </div>
 
-                    <p className="text-muted-foreground">
-                      {club.description || "No description available."}
-                    </p>
-
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      Created {new Date(club.created_at).toLocaleDateString()}
+                    {/* Created */}
+                    <div className="flex items-center justify-between py-2 border-b border-border">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>Created</span>
+                      </div>
+                      <span className="font-semibold">
+                        {new Date(club.created_at).toLocaleDateString()}
+                      </span>
                     </div>
 
-                    {/* Leader Info */}
-                    {club.leader && (
-                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                        {club.leader.profile_image_url ? (
-                          <Image
-                            src={club.leader.profile_image_url}
-                            alt={
-                              club.leader.display_name || club.leader.username
-                            }
-                            width={40}
-                            height={40}
-                            quality={100}
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback>
-                              {club.leader.display_name?.charAt(0) || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {club.leader.display_name}
-                            </p>
-                            <Crown className="h-4 w-4 text-yellow-500" />
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            Club Leader
-                          </p>
-                        </div>
+                    {/* Members */}
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span>Members</span>
                       </div>
-                    )}
+                      <span className="font-semibold text-primary">
+                        {memberCount}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -298,122 +318,152 @@ export function ClubDetailView({
 
           {/* Action Button Card */}
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex justify-center">
-                {!currentUser ? (
+            <CardContent className="px-2">
+              <div className="flex justify-end px-4 py-0">
+                {isUserMember ? (
+                  <Button
+                    variant="destructive"
+                    onClick={handleLeaveClub}
+                    disabled={isLeaving}
+                    size="lg"
+                  >
+                    {isLeaving ? (
+                      "Leaving..."
+                    ) : (
+                      <>
+                        <UserMinus className="h-4 w-4 mr-2" />
+                        Leave Club
+                      </>
+                    )}
+                  </Button>
+                ) : canJoin ? (
+                  <Button
+                    onClick={handleJoinClub}
+                    disabled={isJoining}
+                    size="lg"
+                  >
+                    {isJoining ? (
+                      "Joining..."
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Join Club
+                      </>
+                    )}
+                  </Button>
+                ) : !currentUser ? (
                   <Link href="/login">
-                    <Button>
+                    <Button size="lg">
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Login to Join
+                      Sign In to Join
                     </Button>
                   </Link>
-                ) : canJoin ? (
-                  <Button onClick={handleJoinClub} disabled={isJoining}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    {isJoining ? "Joining..." : "Join Club"}
+                ) : club.club_type === "closed" ? (
+                  <Button disabled size="lg">
+                    <Lock className="h-4 w-4 mr-2" />
+                    Closed
                   </Button>
-                ) : isUserMember ? (
-                  <div className="flex items-center gap-4">
-                    <Badge variant="secondary" className="text-sm px-3 py-2">
-                      <Users className="h-4 w-4 mr-2" />
-                      You are a member
-                    </Badge>
-                    {canManageMembers && (
-                      <Link href={`/clubs/edit/${club.id}?from=${fromTab}`}>
-                        <Button variant="outline" size="sm">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Manage Club
-                        </Button>
-                      </Link>
-                    )}
-                    <Button
-                      variant="outline"
-                      onClick={handleLeaveClub}
-                      disabled={isLeaving}
-                    >
-                      <UserMinus className="h-4 w-4 mr-2" />
-                      {isLeaving ? "Leaving..." : "Leave Club"}
-                    </Button>
-                  </div>
                 ) : club.club_type === "invite" ? (
-                  <Button variant="outline" disabled>
+                  <Button disabled size="lg">
                     <Shield className="h-4 w-4 mr-2" />
                     Invite Only
                   </Button>
-                ) : club.club_type === "closed" ? (
-                  <Button variant="outline" disabled>
-                    <Lock className="h-4 w-4 mr-2" />
-                    Closed Club
-                  </Button>
-                ) : (
-                  <Button variant="outline" disabled>
-                    <Users className="h-4 w-4 mr-2" />
-                    View Only
-                  </Button>
-                )}
+                ) : null}
               </div>
             </CardContent>
           </Card>
 
-          {/* Members Card */}
+          {/* Members List - Full Width */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Members ({memberCount})
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Members ({memberCount})
+                </div>
+                {canManage && (
+                  <Button variant="outline" size="sm">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Invite Members
+                  </Button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {members.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {members.map((member) => (
+              {memberCount > 0 ? (
+                <div className="space-y-3">
+                  {members.map((member, index) => (
                     <div
-                      key={member.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card"
+                      key={member.user_id}
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                     >
-                      {member.user?.profile_image_url ? (
-                        <Image
-                          src={member.user.profile_image_url}
-                          alt={member.user.username || "User"}
-                          width={40}
-                          height={40}
-                          quality={100}
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <Avatar className="h-10 w-10">
+                      {/* Rank Number */}
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium">
+                        {index + 1}.
+                      </div>
+
+                      {/* Avatar */}
+                      <Link href={`/profile/${member.user?.username}`}>
+                        <Avatar className="h-12 w-12 cursor-pointer border-2 border-muted">
+                          {member.user?.profile_image_url && (
+                            <AvatarImage src={member.user.profile_image_url} />
+                          )}
                           <AvatarFallback>
                             {member.user?.username?.charAt(0) || "?"}
                           </AvatarFallback>
                         </Avatar>
-                      )}
+                      </Link>
+
+                      {/* User Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">
+                        <Link href={`/profile/${member.user?.username}`}>
+                          <p className="font-medium hover:underline cursor-pointer">
                             {member.user?.username}
                           </p>
-                          {getRoleIcon(member.role || "member")}
+                        </Link>
+                        <div className="text-sm text-muted-foreground">
+                          @{member.user?.username}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            className={`text-xs ${getRoleBadgeColor(
-                              member.role || "member"
-                            )}`}
-                          >
-                            {member.role || "member"}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(member.joined_at).toLocaleDateString()}
+                      </div>
+
+                      {/* Role Badge */}
+                      <div className="flex items-center gap-2">
+                        {getRoleIcon(member.role || "member")}
+                        <Badge
+                          className={`text-xs ${getRoleBadgeColor(
+                            member.role || "member"
+                          )}`}
+                        >
+                          {member.role || "member"}
+                        </Badge>
+                      </div>
+
+                      {/* Total Likes */}
+                      <div className="text-right flex-shrink-0 hidden md:block">
+                        <div className="flex items-center gap-1 md:gap-2 justify-end mb-0.5 md:mb-1">
+                          <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
+                          <span className="text-lg md:text-2xl font-bold text-primary">
+                            0
                           </span>
                         </div>
                       </div>
+
+                      {/* Actions - placeholder for future member management */}
+                      {(canManage || canManageMembers) &&
+                        member.role !== "leader" &&
+                        member.user_id !== currentUser?.id && (
+                          <div className="text-xs text-muted-foreground">
+                            {/* Future: Member management dropdown */}
+                          </div>
+                        )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No members found</p>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold mb-2">No members yet</h3>
+                  <p>Be the first to join this club!</p>
                 </div>
               )}
             </CardContent>

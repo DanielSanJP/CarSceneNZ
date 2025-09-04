@@ -23,24 +23,38 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Club } from "@/types/club";
 import type { User } from "@/types/user";
+import { Pagination, PaginationInfo } from "@/components/ui/pagination";
 
 interface ClubGalleryProps {
-  clubs: Club[];
+  clubs: (Club & { memberCount: number })[];
   currentUser: User | null;
+  userClubIds: Set<string>;
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    itemsPerPage: number;
+  };
 }
 
 export function ClubGallery({
   clubs: propClubs,
   currentUser,
+  userClubIds,
+  pagination,
 }: ClubGalleryProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("likes");
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
-  const [clubs, setClubs] = useState<Club[]>(propClubs || []);
+  const [clubs, setClubs] = useState<(Club & { memberCount: number })[]>(
+    propClubs || []
+  );
 
   // Update clubs when propClubs changes
   useEffect(() => {
@@ -49,29 +63,16 @@ export function ClubGallery({
     }
   }, [propClubs]);
 
-  // For now, since we don't have auth, we'll show all clubs
-
-  // Get member counts for each club (simplified for now)
-  const getClubMemberCount = (clubId: string) => {
-    // For now, return a random number between 5-50 based on club ID for consistency
-    const hash = clubId.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
-    return Math.floor((hash % 45) + 5);
+  // Handle pagination navigation
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("page", page.toString());
+    router.push(`/clubs?tab=gallery&${params.toString()}`);
   };
 
   // Check if current user is a member of a club
   const isUserMemberOfClub = (clubId: string) => {
-    // Check if current user is provided and has membership
-    if (!currentUser) return false;
-
-    // For now, since we don't have membership data in props, return false
-    // In future, this would check membership based on clubId and currentUser
-    console.log(
-      "Checking membership for club:",
-      clubId,
-      "user:",
-      currentUser.id
-    ); // Prevent unused parameter warning
-    return false;
+    return userClubIds.has(clubId);
   };
 
   // Get club type icon and styling
@@ -146,8 +147,10 @@ export function ClubGallery({
         break;
       case "members":
         filtered.sort(
-          (a: Club, b: Club) =>
-            getClubMemberCount(b.id) - getClubMemberCount(a.id)
+          (
+            a: Club & { memberCount: number },
+            b: Club & { memberCount: number }
+          ) => b.memberCount - a.memberCount
         );
         break;
       case "newest":
@@ -287,16 +290,20 @@ export function ClubGallery({
 
       {/* Clubs Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {getFilteredClubs().map((club: Club) => {
-          const memberCount = getClubMemberCount(club.id);
+        {getFilteredClubs().map((club: Club & { memberCount: number }) => {
+          const memberCount = club.memberCount; // Use real member count from server
           const typeInfo = getClubTypeInfo(club.club_type || "general");
-          const leader = { name: "Unknown Leader" }; // Placeholder since getUserById is not available
+          const leader = club.leader; // Use real leader from server
           const isUserMember = isUserMemberOfClub(club.id);
 
           // Determine button text based on club type and membership
           const getActionButtonText = () => {
             if (isUserMember) {
               return "View Club";
+            }
+
+            if (!currentUser) {
+              return "Sign In to Join";
             }
 
             switch (club.club_type) {
@@ -327,6 +334,9 @@ export function ClubGallery({
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      loading="lazy"
+                      placeholder="blur"
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                       onError={() => handleImageError(club.id)}
                     />
                   )}
@@ -374,7 +384,7 @@ export function ClubGallery({
                   {/* Leader info */}
                   {leader && (
                     <div className="text-xs text-muted-foreground mb-4">
-                      Led by {leader.name}
+                      Led by {leader.display_name || leader.username}
                     </div>
                   )}
 
@@ -386,6 +396,12 @@ export function ClubGallery({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+
+                        // If user is not authenticated, redirect to login
+                        if (!currentUser) {
+                          window.location.href = "/login";
+                          return;
+                        }
 
                         // If user is already a member, navigate to club page
                         if (isUserMember) {
@@ -429,6 +445,24 @@ export function ClubGallery({
           <p className="text-muted-foreground">
             Try adjusting your search criteria or browse all clubs
           </p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <PaginationInfo
+              currentPage={pagination.currentPage}
+              totalItems={pagination.totalCount}
+              itemsPerPage={pagination.itemsPerPage}
+            />
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+            />
+          </div>
         </div>
       )}
     </div>

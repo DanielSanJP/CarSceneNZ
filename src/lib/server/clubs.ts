@@ -3,6 +3,37 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/utils/supabase/server'
 import type { Club, ClubMember } from '@/types/club'
+import type { User } from '@/types/user'
+
+export const getUserById = cache(async (userId: string): Promise<User | null> => {
+  try {
+    const supabase = await createClient()
+
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (error || !profile) {
+      console.error('Error getting user by ID:', error)
+      return null
+    }
+
+    return {
+      id: profile.id,
+      username: profile.username,
+      display_name: profile.display_name || profile.username,
+      email: profile.email || '',
+      profile_image_url: profile.profile_image_url,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    }
+  } catch (error) {
+    console.error('Error getting user by ID:', error)
+    return null
+  }
+})
 
 export const getClubById = cache(async (clubId: string): Promise<Club | null> => {
   try {
@@ -96,6 +127,7 @@ export const getUserClubMemberships = cache(async (userId: string): Promise<{ cl
   try {
     const supabase = await createClient()
 
+    // Get basic membership data first
     const { data, error } = await supabase
       .from('club_members')
       .select(`
@@ -110,28 +142,60 @@ export const getUserClubMemberships = cache(async (userId: string): Promise<{ cl
       return []
     }
 
-    const membershipsWithCounts = await Promise.all(
-      data?.map(async (membership) => {
-        // Get club details
-        const club = await getClubById(membership.club_id)
-        if (!club) return null
+    if (!data || data.length === 0) return []
 
-        // Get member count for each club
-        const { count } = await supabase
-          .from('club_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('club_id', membership.club_id)
+    // Get all club details in a single query
+    const clubIds = data.map(m => m.club_id)
+    const { data: clubs, error: clubsError } = await supabase
+      .from('clubs')
+      .select(`
+        *,
+        users!clubs_leader_id_fkey (
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .in('id', clubIds)
 
-        return {
-          club,
-          role: membership.role || 'member',
-          joined_at: membership.joined_at,
-          memberCount: count || 0,
-        }
-      }) || []
-    )
+    if (clubsError || !clubs) {
+      console.error('Error getting clubs:', clubsError)
+      return []
+    }
 
-    return membershipsWithCounts.filter((m): m is { club: Club; role: string; joined_at: string; memberCount: number } => m !== null)
+    // Get member counts for all clubs in one batch query
+    const memberCounts = await getMemberCountsForClubs(clubIds)
+
+    // Combine the data
+    return data.map(membership => {
+      const clubData = clubs.find(c => c.id === membership.club_id)
+      if (!clubData) return null
+
+      return {
+        club: {
+          id: clubData.id,
+          name: clubData.name,
+          description: clubData.description,
+          banner_image_url: clubData.banner_image_url,
+          club_type: clubData.club_type,
+          location: clubData.location,
+          leader_id: clubData.leader_id,
+          total_likes: clubData.total_likes || 0,
+          created_at: clubData.created_at,
+          updated_at: clubData.updated_at,
+          leader: {
+            id: clubData.users.id,
+            username: clubData.users.username,
+            display_name: clubData.users.display_name || clubData.users.username,
+            profile_image_url: clubData.users.profile_image_url,
+          }
+        },
+        role: membership.role || 'member',
+        joined_at: membership.joined_at,
+        memberCount: memberCounts[membership.club_id] || 0,
+      }
+    }).filter(Boolean) as { club: Club; role: string; joined_at: string; memberCount: number }[]
   } catch (error) {
     console.error('Error getting user club memberships:', error)
     return []
@@ -232,6 +296,208 @@ export const getClubMemberCount = cache(async (clubId: string): Promise<number> 
     return count || 0
   } catch (error) {
     console.error('Error getting club member count:', error)
+    return 0
+  }
+})
+
+// Optimized batch function to get member counts for multiple clubs
+export const getMemberCountsForClubs = cache(async (clubIds: string[]): Promise<Record<string, number>> => {
+  try {
+    if (clubIds.length === 0) return {}
+    
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from('club_members')
+      .select('club_id')
+      .in('club_id', clubIds)
+
+    if (error) {
+      console.error('Error getting member counts for clubs:', error)
+      return {}
+    }
+
+    // Count members per club
+    const counts: Record<string, number> = {}
+    clubIds.forEach(id => counts[id] = 0) // Initialize all to 0
+    
+    data?.forEach(member => {
+      counts[member.club_id] = (counts[member.club_id] || 0) + 1
+    })
+
+    return counts
+  } catch (error) {
+    console.error('Error getting member counts for clubs:', error)
+    return {}
+  }
+})
+
+// Get total count of clubs (for pagination)
+export const getClubsCount = cache(async (filters?: {
+  search?: string;
+  location?: string;
+  club_type?: string;
+}): Promise<number> => {
+  try {
+    const supabase = await createClient()
+
+    let query = supabase
+      .from('clubs')
+      .select('*', { count: 'exact', head: true })
+
+    // Apply same filters as main query
+    if (filters?.search) {
+      query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+    }
+
+    if (filters?.location && filters.location !== 'all') {
+      query = query.eq('location', filters.location)
+    }
+
+    if (filters?.club_type && filters.club_type !== 'all') {
+      query = query.eq('club_type', filters.club_type)
+    }
+
+    const { count, error } = await query
+
+    if (error) {
+      console.error('Error getting clubs count:', error)
+      return 0
+    }
+
+    return count || 0
+  } catch (error) {
+    console.error('Error getting clubs count:', error)
+    return 0
+  }
+})
+
+export const getAllClubsWithStats = cache(async (filters?: {
+  search?: string;
+  location?: string;
+  club_type?: string;
+  sortBy?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<(Club & { memberCount: number })[]> => {
+  try {
+    const supabase = await createClient()
+
+    // Build the query with filters
+    let query = supabase
+      .from('clubs')
+      .select(`
+        *,
+        users!clubs_leader_id_fkey (
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+
+    // Apply filters
+    if (filters?.search) {
+      query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+    }
+
+    if (filters?.location && filters.location !== 'all') {
+      query = query.eq('location', filters.location)
+    }
+
+    if (filters?.club_type && filters.club_type !== 'all') {
+      query = query.eq('club_type', filters.club_type)
+    }
+
+    // Apply sorting
+    switch (filters?.sortBy) {
+      case 'newest':
+        query = query.order('created_at', { ascending: false })
+        break
+      case 'name':
+        query = query.order('name', { ascending: true })
+        break
+      case 'likes':
+      default:
+        query = query.order('total_likes', { ascending: false })
+        break
+    }
+
+    // Apply pagination
+    if (filters?.limit) {
+      query = query.limit(filters.limit)
+    }
+    if (filters?.offset) {
+      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1)
+    }
+
+    const { data: clubs, error } = await query
+
+    if (error || !clubs) {
+      console.error('Error getting clubs:', error)
+      return []
+    }
+
+    // Get member counts for all clubs in a single optimized query
+    const clubIds = clubs.map(club => club.id)
+    const memberCounts = await getMemberCountsForClubs(clubIds)
+
+    return clubs.map((club) => ({
+      id: club.id,
+      name: club.name,
+      description: club.description,
+      banner_image_url: club.banner_image_url,
+      club_type: club.club_type,
+      location: club.location,
+      leader_id: club.leader_id,
+      total_likes: club.total_likes || 0,
+      created_at: club.created_at,
+      updated_at: club.updated_at,
+      leader: {
+        id: club.users.id,
+        username: club.users.username,
+        display_name: club.users.display_name || club.users.username,
+        profile_image_url: club.users.profile_image_url,
+      },
+      memberCount: memberCounts[club.id] || 0,
+    }))
+  } catch (error) {
+    console.error('Error getting clubs with stats:', error)
+    return []
+  }
+})
+
+export const getClubTotalLikes = cache(async (clubId: string): Promise<number> => {
+  try {
+    const supabase = await createClient()
+
+    // Calculate total likes from all cars owned by club members
+    const { data, error } = await supabase
+      .from('club_members')
+      .select(`
+        user_id,
+        cars!cars_owner_id_fkey (
+          total_likes
+        )
+      `)
+      .eq('club_id', clubId)
+
+    if (error) {
+      console.error('Error calculating club total likes:', error)
+      return 0
+    }
+
+    // Sum up all likes from member cars
+    const totalLikes = data?.reduce((total, member) => {
+      const memberCarLikes = member.cars?.reduce((carTotal, car) => {
+        return carTotal + (car.total_likes || 0)
+      }, 0) || 0
+      return total + memberCarLikes
+    }, 0) || 0
+
+    return totalLikes
+  } catch (error) {
+    console.error('Error calculating club total likes:', error)
     return 0
   }
 })

@@ -6,8 +6,8 @@ CREATE TABLE public.car_likes (
     user_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT car_likes_pkey PRIMARY KEY (id),
-    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id),
-    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
 );
 CREATE TABLE public.cars (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -72,12 +72,12 @@ CREATE TABLE public.cars (
     CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.club_members (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
-    club_id character varying NOT NULL,
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    club_id uuid NOT NULL,
     user_id uuid NOT NULL,
     role character varying DEFAULT 'member'::character varying CHECK (
         role::text = ANY (
-            ARRAY ['leader'::character varying, 'co-leader'::character varying, 'member'::character varying]::text []
+            ARRAY ['leader'::character varying::text, 'admin'::character varying::text, 'member'::character varying::text]
         )
     ),
     joined_at timestamp with time zone DEFAULT now(),
@@ -86,13 +86,13 @@ CREATE TABLE public.club_members (
     CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
 );
 CREATE TABLE public.clubs (
-    id character varying NOT NULL,
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
     name character varying NOT NULL,
     description text,
     banner_image_url text,
     club_type character varying CHECK (
         club_type::text = ANY (
-            ARRAY ['open'::character varying, 'invite'::character varying, 'closed'::character varying]::text []
+            ARRAY ['open'::character varying::text, 'invite'::character varying::text, 'closed'::character varying::text]
         )
     ),
     location character varying,
@@ -115,8 +115,8 @@ CREATE TABLE public.event_attendees (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT event_attendees_pkey PRIMARY KEY (id),
-    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.events (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),

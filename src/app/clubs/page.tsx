@@ -1,10 +1,14 @@
 import { Suspense } from "react";
 import { getUserOptional } from "@/lib/auth";
-import { createClient } from "@/lib/utils/supabase/server";
 import { ClubTabNavigation } from "@/components/clubs/club-tab-navigation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClub, getUserClubMemberships } from "@/lib/server/clubs";
+import {
+  createClub,
+  getUserClubMemberships,
+  getAllClubsWithStats,
+  getClubsCount,
+} from "@/lib/server/clubs";
 import {
   moveClubImageFromTemp,
   deleteClubImage,
@@ -13,6 +17,9 @@ import { getUser } from "@/lib/auth";
 
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
+
+// Cache club data for 5 minutes since it doesn't change frequently
+export const revalidate = 300;
 
 async function createClubAction(formData: FormData) {
   "use server";
@@ -125,38 +132,56 @@ async function createClubAction(formData: FormData) {
   }
 }
 
-export default async function ClubsPage() {
+export default async function ClubsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   // Get user (optional)
   const currentUser = await getUserOptional();
+
+  // Parse search parameters
+  const params = await searchParams;
+  const search = typeof params.search === "string" ? params.search : undefined;
+  const location =
+    typeof params.location === "string" ? params.location : undefined;
+  const club_type =
+    typeof params.club_type === "string" ? params.club_type : undefined;
+  const sortBy = typeof params.sortBy === "string" ? params.sortBy : undefined;
+  const page = typeof params.page === "string" ? parseInt(params.page, 10) : 1;
+
+  const itemsPerPage = 12; // Show 12 clubs per page
+  const offset = (page - 1) * itemsPerPage;
 
   // Fetch user's club memberships if authenticated
   const userMemberships = currentUser
     ? await getUserClubMemberships(currentUser.id)
     : [];
 
-  // Fetch clubs directly from database
-  const supabase = await createClient();
-  const { data: clubs, error } = await supabase
-    .from("clubs")
-    .select(
-      `
-      *,
-      users!clubs_leader_id_fkey (
-        id,
-        username,
-        display_name,
-        profile_image_url
-      )
-    `
-    )
-    .order("created_at", { ascending: false });
+  // Fetch clubs with stats and total count in parallel
+  const [clubsWithStats, totalCount] = await Promise.all([
+    getAllClubsWithStats({
+      search,
+      location,
+      club_type,
+      sortBy,
+      limit: itemsPerPage,
+      offset,
+    }),
+    getClubsCount({
+      search,
+      location,
+      club_type,
+    }),
+  ]);
 
-  if (error) {
-    console.error("Error fetching clubs:", error);
-  }
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  // Transform data to match expected format
-  const transformedClubs = (clubs || []).map((club) => ({
+  // Create a Set of club IDs the user is a member of for quick lookup
+  const userClubIds = new Set(userMemberships.map((m) => m.club.id));
+
+  // Transform data to match expected format (already includes memberCount)
+  const transformedClubs = clubsWithStats.map((club) => ({
     id: club.id,
     name: club.name,
     description: club.description,
@@ -167,12 +192,8 @@ export default async function ClubsPage() {
     total_likes: club.total_likes || 0,
     created_at: club.created_at,
     updated_at: club.updated_at,
-    leader: {
-      id: club.users.id,
-      username: club.users.username,
-      display_name: club.users.display_name || club.users.username,
-      profile_image_url: club.users.profile_image_url,
-    },
+    leader: club.leader,
+    memberCount: club.memberCount, // Real member count from server
   }));
 
   return (
@@ -202,6 +223,13 @@ export default async function ClubsPage() {
             : null
         }
         userMemberships={userMemberships}
+        userClubIds={userClubIds}
+        pagination={{
+          currentPage: page,
+          totalPages,
+          totalCount,
+          itemsPerPage,
+        }}
         createClubAction={createClubAction}
       />
     </Suspense>
