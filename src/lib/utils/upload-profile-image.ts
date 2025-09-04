@@ -15,15 +15,18 @@ export async function uploadProfileImage(file: File, userId: string): Promise<st
     
     // First, try to remove existing file (ignore if it doesn't exist)
     console.log('Removing existing file if it exists...')
-    const { error: removeError } = await supabase.storage
-      .from('profiles')
-      .remove([fileName])
     
-    if (removeError) {
-      console.log('Remove operation result (may not exist):', removeError)
-    } else {
-      console.log('Existing file removed or did not exist')
-    }
+    // Try to remove potential old files with different extensions
+    const possibleExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+    const removePromises = possibleExtensions.map(ext => 
+      supabase.storage
+        .from('profiles')
+        .remove([`${userId}_profile.${ext}`])
+    )
+    
+    // Wait for all removal attempts to complete (ignore errors)
+    await Promise.allSettled(removePromises)
+    console.log('Old profile images cleanup completed')
     
     console.log('Starting fresh file upload...')
     
@@ -78,7 +81,12 @@ export async function uploadProfileImage(file: File, userId: string): Promise<st
     }
     
     console.log('Public URL generated successfully:', urlData.publicUrl)
-    return urlData.publicUrl
+    
+    // Add cache-busting parameter to force browser to reload the image
+    const cacheBustingUrl = `${urlData.publicUrl}?v=${Date.now()}`
+    console.log('Cache-busting URL:', cacheBustingUrl)
+    
+    return cacheBustingUrl
   } catch (error) {
     console.error('Unexpected error uploading profile image:', error)
     return null

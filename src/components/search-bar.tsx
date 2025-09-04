@@ -83,9 +83,18 @@ export function MobileSearchButton() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search..."
-                    className="pl-10 pr-4 w-full"
+                    className="pl-10 pr-12 w-full"
                     autoFocus
                   />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="ghost"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                  >
+                    <Search className="h-4 w-4" />
+                    <span className="sr-only">Search</span>
+                  </Button>
                 </div>
               </form>
               <Button

@@ -24,6 +24,7 @@ interface CreateCarFormData {
   model: string;
   year: number | "";
   images: string[];
+  tempCarId?: string; // For tracking temp uploads
 
   // Flattened engine data
   engine_code?: string;
@@ -165,6 +166,7 @@ export function CreateCarForm({ action }: CreateCarFormProps) {
     model: "",
     year: "",
     images: [],
+    tempCarId: undefined,
 
     // All optional flattened fields start as undefined
     engine_code: undefined,
@@ -236,94 +238,61 @@ export function CreateCarForm({ action }: CreateCarFormProps) {
 
     setIsLoading(true);
 
-    // Create FormData object for server action
-    const formDataObj = new FormData();
+    try {
+      // Create FormData object for server action
+      const formDataObj = new FormData();
 
-    // Add basic car info
-    formDataObj.append("brand", formData.brand);
-    formDataObj.append("model", formData.model);
-    formDataObj.append("year", formData.year.toString());
+      // Add basic car info
+      formDataObj.append("brand", formData.brand);
+      formDataObj.append("model", formData.model);
+      formDataObj.append("year", formData.year.toString());
 
-    // Only send image URLs, not the full image data
-    if (formData.images && formData.images.length > 0) {
-      formDataObj.append("images", JSON.stringify(formData.images));
-    }
-
-    // Add flattened fields individually (more efficient than nested objects)
-    const fieldsToAdd = [
-      "engine_code",
-      "displacement",
-      "aspiration",
-      "power_hp",
-      "torque_nm",
-      "ecu",
-      "tuned_by",
-      "pistons",
-      "connecting_rods",
-      "valves",
-      "valve_springs",
-      "camshafts",
-      "header",
-      "exhaust",
-      "intake",
-      "turbo",
-      "intercooler",
-      "fuel_injectors",
-      "fuel_pump",
-      "fuel_rail",
-      "head_unit",
-      "speakers",
-      "subwoofer",
-      "amplifier",
-      "front_bumper",
-      "front_lip",
-      "rear_bumper",
-      "rear_lip",
-      "side_skirts",
-      "rear_spoiler",
-      "diffuser",
-      "fender_flares",
-      "hood",
-      "paint_color",
-      "paint_finish",
-      "wrap_brand",
-      "wrap_color",
-      "front_seats",
-      "rear_seats",
-      "steering_wheel",
-      "headlights",
-      "taillights",
-      "fog_lights",
-      "underglow",
-      "interior_lighting",
-    ];
-
-    fieldsToAdd.forEach((field) => {
-      const value = formData[field as keyof CreateCarFormData];
-      if (value !== undefined && value !== "" && value !== null) {
-        formDataObj.append(field, String(value));
+      // Add temp car ID if images were pre-uploaded
+      if (formData.tempCarId) {
+        formDataObj.append("tempCarId", formData.tempCarId);
       }
-    });
 
-    // Add JSON structured fields only if they have data
-    if (formData.brakes && Object.keys(formData.brakes).length > 0) {
-      formDataObj.append("brakes", JSON.stringify(formData.brakes));
+      // Send image URLs (not base64 data)
+      if (formData.images && formData.images.length > 0) {
+        formDataObj.append("images", JSON.stringify(formData.images));
+      }
+
+      // Add all other form fields (let server handle the extraction)
+      Object.entries(formData).forEach(([key, value]) => {
+        if (
+          key !== "brand" &&
+          key !== "model" &&
+          key !== "year" &&
+          key !== "images" &&
+          key !== "tempCarId"
+        ) {
+          if (value !== undefined && value !== "" && value !== null) {
+            if (typeof value === "object") {
+              formDataObj.append(key, JSON.stringify(value));
+            } else {
+              formDataObj.append(key, String(value));
+            }
+          }
+        }
+      });
+
+      // Call the server action
+      await action(formDataObj);
+
+      // If we reach here, the action completed successfully
+      // (redirect will throw and prevent this line from executing)
+    } catch (error) {
+      // Check if this is a redirect error (which is expected behavior)
+      if (error && typeof error === "object" && "digest" in error) {
+        // This is likely a Next.js redirect, which is expected - don't show error
+        return;
+      }
+
+      console.error("Error creating car:", error);
+      alert("Failed to create car. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    if (formData.suspension && Object.keys(formData.suspension).length > 0) {
-      formDataObj.append("suspension", JSON.stringify(formData.suspension));
-    }
-
-    if (formData.wheels && Object.keys(formData.wheels).length > 0) {
-      formDataObj.append("wheels", JSON.stringify(formData.wheels));
-    }
-
-    if (formData.gauges && formData.gauges.length > 0) {
-      formDataObj.append("gauges", JSON.stringify(formData.gauges));
-    }
-
-    // Call the server action - let it handle redirects naturally
-    await action(formDataObj);
   };
 
   return (
@@ -355,6 +324,10 @@ export function CreateCarForm({ action }: CreateCarFormProps) {
         <CarImageManager
           images={formData.images}
           onChange={(images) => setFormData((prev) => ({ ...prev, images }))}
+          tempCarId={formData.tempCarId}
+          onTempCarIdChange={(tempCarId) =>
+            setFormData((prev) => ({ ...prev, tempCarId }))
+          }
         />
 
         {/* Basic Car Info */}

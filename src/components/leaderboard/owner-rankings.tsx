@@ -70,9 +70,9 @@ export function OwnerRankings({ data }: OwnerRankingsProps) {
                             alt={entry.owner.username}
                             fill
                             className="object-cover"
-                            sizes="(max-width: 768px) 112px, 160px"
-                            quality={100}
-                            priority={rank <= 10}
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            quality={25}
+                            priority={true}
                             unoptimized={false}
                           />
                         ) : (

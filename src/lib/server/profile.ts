@@ -1,5 +1,4 @@
 // import 'server-only';
-import { cache } from 'react';
 import { createClient } from '@/lib/utils/supabase/server';
 import type { User } from '@/types/user';
 
@@ -14,7 +13,10 @@ export interface UserProfile extends User {
 /**
  * Get user by ID with caching - server-only version
  */
-export const getUserById = cache(async (userId: string): Promise<User | null> => {
+/**
+ * Get user by ID - no caching for profile data since it changes frequently
+ */
+export const getUserById = async (userId: string): Promise<User | null> => {
   try {
     const supabase = await createClient();
 
@@ -41,12 +43,12 @@ export const getUserById = cache(async (userId: string): Promise<User | null> =>
     console.error('Error getting user by ID:', error);
     return null;
   }
-});
+};
 
 /**
- * Get user by username with caching - server-only version
+ * Get user by username - no caching for profile data since it changes frequently
  */
-export const getUserByUsername = cache(async (username: string): Promise<User | null> => {
+export const getUserByUsername = async (username: string): Promise<User | null> => {
   try {
     const supabase = await createClient();
 
@@ -73,12 +75,12 @@ export const getUserByUsername = cache(async (username: string): Promise<User | 
     console.error('Error getting user by username:', error);
     return null;
   }
-});
+};
 
 /**
- * Get user profile with stats by ID with caching - server-only version
+ * Get user profile with stats by ID - no caching for profile data since it changes frequently
  */
-export const getUserProfile = cache(async (userId: string): Promise<UserProfile | null> => {
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   try {
     const supabase = await createClient();
     
@@ -113,12 +115,12 @@ export const getUserProfile = cache(async (userId: string): Promise<UserProfile 
     console.error('Error getting user profile:', error);
     return null;
   }
-});
+};
 
 /**
- * Get user profile by username with caching - server-only version
+ * Get user profile by username - no caching for profile data since it changes frequently
  */
-export const getUserProfileByUsername = cache(async (username: string): Promise<UserProfile | null> => {
+export const getUserProfileByUsername = async (username: string): Promise<UserProfile | null> => {
   try {
     // First get the user by username
     const user = await getUserByUsername(username);
@@ -130,12 +132,12 @@ export const getUserProfileByUsername = cache(async (username: string): Promise<
     console.error('Error getting user profile by username:', error);
     return null;
   }
-});
+};
 
 /**
- * Get user followers with caching - server-only version
+ * Get user followers - no caching for dynamic social data
  */
-export const getUserFollowers = cache(async (userId: string): Promise<User[]> => {
+export const getUserFollowers = async (userId: string): Promise<User[]> => {
   try {
     const supabase = await createClient();
 
@@ -170,12 +172,12 @@ export const getUserFollowers = cache(async (userId: string): Promise<User[]> =>
     console.error('Error getting user followers:', error);
     return [];
   }
-});
+};
 
 /**
- * Get user following with caching - server-only version
+ * Get user following - no caching for dynamic social data
  */
-export const getUserFollowing = cache(async (userId: string): Promise<User[]> => {
+export const getUserFollowing = async (userId: string): Promise<User[]> => {
   try {
     const supabase = await createClient();
 
@@ -210,12 +212,12 @@ export const getUserFollowing = cache(async (userId: string): Promise<User[]> =>
     console.error('Error getting user following:', error);
     return [];
   }
-});
+};
 
 /**
- * Check if user is following another user with caching - server-only version
+ * Check if user is following another user - no caching for dynamic social data
  */
-export const isFollowing = cache(async (followerId: string, followingId: string): Promise<boolean> => {
+export const isFollowing = async (followerId: string, followingId: string): Promise<boolean> => {
   try {
     const supabase = await createClient();
     const { count } = await supabase
@@ -229,7 +231,7 @@ export const isFollowing = cache(async (followerId: string, followingId: string)
     console.error('Error checking follow status:', error);
     return false;
   }
-});
+};
 
 /**
  * Server actions for profile mutations
@@ -312,6 +314,18 @@ export async function updateUserProfile(
 
     if (error) {
       console.error('Error updating user profile:', error);
+      
+      // Check for specific error types
+      if (error.code === '23505' && error.message.includes('username')) {
+        console.error('Username already exists');
+        throw new Error('Username already exists. Please choose a different username.');
+      }
+      
+      return null;
+    }
+
+    if (!data) {
+      console.error('No data returned from update operation');
       return null;
     }
 
@@ -326,6 +340,12 @@ export async function updateUserProfile(
     };
   } catch (error) {
     console.error('Error updating user profile:', error);
+    
+    // Re-throw specific errors to be handled by the server action
+    if (error instanceof Error && error.message.includes('Username already exists')) {
+      throw error;
+    }
+    
     return null;
   }
 }

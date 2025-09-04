@@ -51,10 +51,11 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
               src={car.images[currentImageIndex]}
               alt={`${car.brand} ${car.model} - Image ${currentImageIndex + 1}`}
               fill
-              priority={currentImageIndex === 0}
-              quality={100}
               className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              quality={100}
+              priority={true}
+              unoptimized={false}
               onError={() => handleImageError(currentImageIndex)}
             />
           )}
@@ -84,7 +85,10 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
                     alt={`Thumbnail ${index + 1}`}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 768px) 25vw, 12.5vw"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    quality={100}
+                    priority={true}
+                    unoptimized={false}
                     onError={() => handleImageError(index)}
                   />
                 )}
@@ -113,7 +117,10 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
                   }`}
                   fill
                   className="object-contain"
-                  sizes="100vw"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  quality={100}
+                  priority={true}
+                  unoptimized={false}
                 />
               )}
 

@@ -26,7 +26,7 @@ export default async function LeaderboardsPage({
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold tracking-tight mb-4">
-              🏆 Community Leaderboards
+              Community Leaderboards
             </h1>
             <p className="text-xl text-muted-foreground">
               Top performers in the Car Scene NZ community

@@ -7,14 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, GripVertical } from "lucide-react";
 import Image from "next/image";
-import { uploadCarImages } from "@/lib/utils/upload-car-images";
+import {
+  uploadCarImages,
+  preUploadCarImages,
+  generateTempCarId,
+} from "@/lib/utils/upload-car-images";
 
 interface CarImageManagerProps {
   images: string[];
   onChange: (images: string[]) => void;
   isLoading?: boolean;
   carId?: string; // Optional - only provided for existing cars
-  onFilesChange?: (files: File[]) => void; // For new cars, pass files instead
+  tempCarId?: string; // For new cars - temp ID for pre-upload
+  onTempCarIdChange?: (tempCarId: string) => void; // Callback to set temp car ID
 }
 
 export default function CarImageManager({
@@ -22,12 +27,12 @@ export default function CarImageManager({
   onChange,
   isLoading,
   carId,
-  onFilesChange,
+  tempCarId,
+  onTempCarIdChange,
 }: CarImageManagerProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
@@ -75,22 +80,29 @@ export default function CarImageManager({
         setIsUploading(false);
       }
     } else {
-      // For new cars, store files temporarily and show preview
-      const newFiles = [...pendingFiles, ...filesToProcess];
-      setPendingFiles(newFiles);
-      onFilesChange?.(newFiles);
+      // For new cars, also upload immediately to temp folder
+      setIsUploading(true);
+      try {
+        // Generate temp car ID if not provided
+        let currentTempId = tempCarId;
+        if (!currentTempId) {
+          currentTempId = generateTempCarId();
+          onTempCarIdChange?.(currentTempId);
+        }
 
-      // Show preview using data URLs
-      filesToProcess.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const imageUrl = event.target?.result as string;
-          if (images.length < maxImages) {
-            onChange([...images, imageUrl]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+        const uploadedUrls = await preUploadCarImages(
+          filesToProcess,
+          currentTempId
+        );
+        if (uploadedUrls.length > 0) {
+          onChange([...images, ...uploadedUrls]);
+        }
+      } catch (error) {
+        console.error("Error pre-uploading images:", error);
+        alert("Failed to upload images. Please try again.");
+      } finally {
+        setIsUploading(false);
+      }
     }
 
     // Clear the input

@@ -24,14 +24,17 @@ export function OwnerDetails({ owner }: OwnerDetailsProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <div className="relative h-16 w-16 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+            <div className="relative h-20 w-20 flex-shrink-0 rounded-full overflow-hidden bg-muted">
               {owner.profile_image_url ? (
                 <Image
                   src={owner.profile_image_url}
                   alt={owner.display_name || owner.username}
                   fill
                   className="object-cover"
-                  sizes="64px"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  quality={50}
+                  priority={true}
+                  unoptimized={false}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-lg font-medium">

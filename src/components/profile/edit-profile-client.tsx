@@ -2,21 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, UserIcon, Upload, Loader2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
 import type { User } from "@/types/user";
+import { useRouter } from "next/navigation";
 
 interface EditProfileClientProps {
   user: User;
-  action: (formData: FormData) => Promise<void>;
+  action: (
+    formData: FormData
+  ) => Promise<{ success: boolean; error?: string; user?: User } | void>;
 }
 
 export function EditProfileClient({ user, action }: EditProfileClientProps) {
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -65,6 +69,35 @@ export function EditProfileClient({ user, action }: EditProfileClientProps) {
     setSuccess("");
 
     try {
+      // Client-side validation
+      if (!username.trim()) {
+        setError("Username is required");
+        setSaving(false);
+        return;
+      }
+
+      if (!displayName.trim()) {
+        setError("Display name is required");
+        setSaving(false);
+        return;
+      }
+
+      // Validate username format
+      const usernameRegex = /^[a-z0-9_]+$/;
+      if (!usernameRegex.test(username.trim())) {
+        setError(
+          "Username can only contain lowercase letters, numbers, and underscores"
+        );
+        setSaving(false);
+        return;
+      }
+
+      if (username.trim().length < 3) {
+        setError("Username must be at least 3 characters long");
+        setSaving(false);
+        return;
+      }
+
       console.log("Starting profile update process...");
       let finalImageUrl = user.profile_image_url;
 
@@ -99,7 +132,37 @@ export function EditProfileClient({ user, action }: EditProfileClientProps) {
       }
 
       // Call the server action
-      await action(formData);
+      const result = await action(formData);
+
+      // Handle the response from server action
+      if (result && !result.success) {
+        setError(result.error || "Failed to update profile");
+        setSaving(false);
+        setUploadingImage(false);
+        return;
+      }
+
+      // If we reach here, the action was successful
+      if (result && result.success) {
+        setSuccess("Profile updated successfully!");
+        setSaving(false);
+        setUploadingImage(false);
+
+        // Navigate to the profile page after a short delay
+        setTimeout(() => {
+          if (result.user) {
+            router.push(`/profile/${result.user.username}`);
+          } else {
+            router.push(`/profile/${username}`);
+          }
+        }, 1000);
+        return;
+      }
+
+      // Fallback - shouldn't reach here but just in case
+      setSuccess("Profile updated successfully!");
+      setSaving(false);
+      setUploadingImage(false);
     } catch (error) {
       console.error("Unexpected error during profile update:", error);
       setError("An unexpected error occurred. Please try again.");
@@ -153,18 +216,26 @@ export function EditProfileClient({ user, action }: EditProfileClientProps) {
               <div className="space-y-4">
                 <Label>Profile Image</Label>
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage
-                      src={previewUrl || undefined}
-                      alt="Profile"
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="text-lg">
-                      {displayName
-                        ? displayName.slice(0, 2).toUpperCase()
-                        : username.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative h-20 w-20 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                    {previewUrl ? (
+                      <Image
+                        src={previewUrl}
+                        alt="Profile"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        quality={25}
+                        priority={true}
+                        unoptimized={false}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-lg font-medium">
+                        {displayName
+                          ? displayName.slice(0, 2).toUpperCase()
+                          : username.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="profile-image" className="cursor-pointer">
                       <Button variant="outline" type="button" asChild>

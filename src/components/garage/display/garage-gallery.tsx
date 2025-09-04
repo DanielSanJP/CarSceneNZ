@@ -110,25 +110,28 @@ export function GarageGallery({ cars, user }: GarageGalleryProps) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Car Gallery</h1>
           <p className="text-muted-foreground mt-2">
             Discover amazing builds from the community
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
           {user && (
-            <Link href="/garage/my-garage">
-              <Button variant="outline" className="flex items-center gap-2">
+            <Link href="/garage/my-garage" className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto flex items-center justify-center gap-2"
+              >
                 <CarIcon className="h-4 w-4" />
                 My Garage
               </Button>
             </Link>
           )}
           {user && (
-            <Link href="/garage/create">
-              <Button className="flex items-center gap-2">
+            <Link href="/garage/create" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto flex items-center justify-center gap-2">
                 <Plus className="h-4 w-4" />
                 Add Car
               </Button>
@@ -138,70 +141,74 @@ export function GarageGallery({ cars, user }: GarageGalleryProps) {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Select value={brandFilter} onValueChange={setBrandFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="All Brands" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Brands</SelectItem>
-            {brands.map((brand) => (
-              <SelectItem key={brand} value={brand}>
-                {brand}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="space-y-4">
+        {/* Mobile: Stack filters vertically, Desktop: Grid layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Select value={brandFilter} onValueChange={setBrandFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Brands" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Brands</SelectItem>
+              {brands.map((brand) => (
+                <SelectItem key={brand} value={brand}>
+                  {brand}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select
-          value={modelFilter}
-          onValueChange={setModelFilter}
-          disabled={brandFilter === "all"}
-        >
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                brandFilter === "all" ? "Select brand first" : "All Models"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Models</SelectItem>
-            {models.map((model) => (
-              <SelectItem key={model} value={model}>
-                {model}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select
+            value={modelFilter}
+            onValueChange={setModelFilter}
+            disabled={brandFilter === "all"}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder={
+                  brandFilter === "all" ? "Select brand first" : "All Models"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Models</SelectItem>
+              {models.map((model) => (
+                <SelectItem key={model} value={model}>
+                  {model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={yearFilter} onValueChange={setYearFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="All Years" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Years</SelectItem>
-            {years.map((year) => (
-              <SelectItem key={year} value={year.toString()}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Years" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={sortOrder} onValueChange={setSortOrder}>
-          <SelectTrigger>
-            <SelectValue placeholder="Sort By" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">Newest First</SelectItem>
-            <SelectItem value="oldest">Oldest First</SelectItem>
-            <SelectItem value="most_liked">Most Liked</SelectItem>
-            <SelectItem value="least_liked">Least Liked</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="most_liked">Most Liked</SelectItem>
+              <SelectItem value="least_liked">Least Liked</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <div className="text-sm text-muted-foreground flex items-center">
+        {/* Results count - separate row for better mobile layout */}
+        <div className="text-sm text-muted-foreground text-center sm:text-left">
           {filteredAndSortedCars.length} cars found
         </div>
       </div>

@@ -164,9 +164,13 @@ export async function createClub(clubData: {
   leader_id: string;
 }): Promise<Club | null> {
   try {
+    console.log('=== createClub function called ===');
+    console.log('Club data:', clubData);
+    
     const supabase = await createClient()
+    console.log('Supabase client created');
 
-    // Insert the club
+    // Insert the club (database will auto-generate UUID)
     const { data: clubInsertData, error: clubError } = await supabase
       .from('clubs')
       .insert({
@@ -180,10 +184,14 @@ export async function createClub(clubData: {
       .select()
       .single()
 
+    console.log('Club insert result:', { data: clubInsertData, error: clubError });
+
     if (clubError || !clubInsertData) {
       console.error('Error creating club:', clubError)
       return null
     }
+
+    console.log('Club created successfully, ID:', clubInsertData.id);
 
     // Add the leader as a member with 'leader' role
     const { error: memberError } = await supabase
@@ -194,15 +202,20 @@ export async function createClub(clubData: {
         role: 'leader',
       })
 
+    console.log('Club member insert result:', { error: memberError });
+
     if (memberError) {
       console.error('Error adding leader as member:', memberError)
       // Don't fail the whole operation, but log the error
     }
 
     // Return the created club with leader info
-    return await getClubById(clubInsertData.id)
+    console.log('Fetching complete club data...');
+    const result = await getClubById(clubInsertData.id);
+    console.log('Final club result:', result ? 'Success' : 'Failed to fetch');
+    return result;
   } catch (error) {
-    console.error('Error creating club:', error)
+    console.error('=== createClub function error ===', error)
     return null
   }
 }

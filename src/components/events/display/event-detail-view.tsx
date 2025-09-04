@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   Calendar,
@@ -19,7 +20,6 @@ import {
   Check,
   Users,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { Event } from "@/types/event";
 
@@ -301,19 +301,25 @@ export function EventDetailView({
               {/* Host */}
               {event.host && (
                 <div className="flex items-center space-x-3">
-                  <Avatar className="h-10 w-10 ">
-                    <AvatarImage
-                      className="object-cover"
+                  {event.host.profile_image_url ? (
+                    <Image
                       src={event.host.profile_image_url}
                       alt={event.host.username}
+                      width={40}
+                      height={40}
+                      quality={100}
+                      className="h-10 w-10 rounded-full object-cover"
                     />
-                    <AvatarFallback>
-                      {(event.host.display_name || event.host.username || "U")
-                        .split(" ")
-                        .map((n: string) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
+                  ) : (
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>
+                        {(event.host.display_name || event.host.username || "U")
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
                   <div>
                     <div className="text-xs text-muted-foreground">
                       Event by

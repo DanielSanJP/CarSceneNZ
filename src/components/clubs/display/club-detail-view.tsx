@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Users,
   MapPin,
@@ -259,12 +259,24 @@ export function ClubDetailView({
                     {/* Leader Info */}
                     {club.leader && (
                       <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={club.leader.profile_image_url} />
-                          <AvatarFallback>
-                            {club.leader.display_name?.charAt(0) || "?"}
-                          </AvatarFallback>
-                        </Avatar>
+                        {club.leader.profile_image_url ? (
+                          <Image
+                            src={club.leader.profile_image_url}
+                            alt={
+                              club.leader.display_name || club.leader.username
+                            }
+                            width={40}
+                            height={40}
+                            quality={100}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback>
+                              {club.leader.display_name?.charAt(0) || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">
@@ -359,12 +371,22 @@ export function ClubDetailView({
                       key={member.id}
                       className="flex items-center gap-3 p-3 rounded-lg border bg-card"
                     >
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={member.user?.profile_image_url} />
-                        <AvatarFallback>
-                          {member.user?.username?.charAt(0) || "?"}
-                        </AvatarFallback>
-                      </Avatar>
+                      {member.user?.profile_image_url ? (
+                        <Image
+                          src={member.user.profile_image_url}
+                          alt={member.user.username || "User"}
+                          width={40}
+                          height={40}
+                          quality={100}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback>
+                            {member.user?.username?.charAt(0) || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-medium truncate">

@@ -3,19 +3,11 @@
 import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Search, Car, Calendar, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  type Car as CarType,
-  type User,
-  type Event,
-  type Club,
-} from "@/types/ddd";
+import { type Car as CarType, type User, type Event, type Club } from "@/types";
 
 interface SearchClientProps {
   initialData: {
@@ -45,7 +37,7 @@ function SearchFallback() {
 
 function SearchContent({ initialData }: SearchClientProps) {
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const query = searchParams.get("q") || "";
   const [results, setResults] = useState<{
     cars: CarType[];
     users: User[];
@@ -112,11 +104,6 @@ function SearchContent({ initialData }: SearchClientProps) {
     performSearch(query);
   }, [query, performSearch]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    performSearch(query);
-  };
-
   const totalResults =
     results.cars.length +
     results.users.length +
@@ -128,22 +115,9 @@ function SearchContent({ initialData }: SearchClientProps) {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-4">Search</h1>
-            <form
-              onSubmit={handleSearch}
-              className="flex gap-2 max-w-2xl mx-auto"
-            >
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search cars, users, events, or clubs..."
-                  className="pl-10"
-                />
-              </div>
-              <Button type="submit">Search</Button>
-            </form>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4">
+              Search Results
+            </h1>
           </div>
 
           {query && (
@@ -155,14 +129,26 @@ function SearchContent({ initialData }: SearchClientProps) {
           )}
 
           <div className="space-y-8">
+            {/* No search query */}
+            {!query && (
+              <div className="text-center py-12">
+                <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Ready to search</h3>
+                <p className="text-muted-foreground">
+                  Use the search bar in the navigation to find cars, users,
+                  events, or clubs.
+                </p>
+              </div>
+            )}
+
             {/* Cars Results */}
             {results.cars.length > 0 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-2">
                   <Car className="h-5 w-5" />
                   Cars ({results.cars.length})
                 </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {results.cars.map((car) => (
                     <Link key={car.id} href={`/garage/${car.id}`}>
                       <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden pt-0">
@@ -214,28 +200,36 @@ function SearchContent({ initialData }: SearchClientProps) {
             {/* Users Results */}
             {results.users.length > 0 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-2">
                   <Users className="h-5 w-5" />
                   Users ({results.users.length})
                 </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {results.users.map((user) => (
                     <Link key={user.id} href={`/profile/${user.username}`}>
                       <Card className="hover:shadow-md transition-shadow cursor-pointer">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12">
-                              <AvatarImage
-                                src={user.profile_image_url}
-                                alt={user.username}
-                              />
-                              <AvatarFallback>
-                                {user.username
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="relative h-12 w-12 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                              {user.profile_image_url ? (
+                                <Image
+                                  src={user.profile_image_url}
+                                  alt={user.username}
+                                  fill
+                                  className="object-cover"
+                                  sizes="48px"
+                                  quality={100}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-sm font-medium">
+                                  {user.username
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </div>
+                              )}
+                            </div>
                             <div>
                               <h3 className="font-semibold">{user.username}</h3>
                               <p className="text-sm text-muted-foreground">
@@ -254,11 +248,11 @@ function SearchContent({ initialData }: SearchClientProps) {
             {/* Events Results */}
             {results.events.length > 0 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   Events ({results.events.length})
                 </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {results.events.map((event) => (
                     <Link key={event.id} href={`/events?event=${event.id}`}>
                       <Card className="hover:shadow-md transition-shadow cursor-pointer pt-2">
@@ -293,29 +287,36 @@ function SearchContent({ initialData }: SearchClientProps) {
             {/* Clubs Results */}
             {results.clubs.length > 0 && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-2">
                   <Trophy className="h-5 w-5" />
                   Clubs ({results.clubs.length})
                 </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {results.clubs.map((club) => (
                     <Link key={club.id} href={`/clubs?club=${club.id}`}>
                       <Card className="hover:shadow-md transition-shadow cursor-pointer py-2">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12">
-                              <AvatarImage
-                                src={club.banner_image_url}
-                                alt={club.name}
-                              />
-                              <AvatarFallback>
-                                {club.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="relative h-12 w-12 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                              {club.banner_image_url ? (
+                                <Image
+                                  src={club.banner_image_url}
+                                  alt={club.name}
+                                  fill
+                                  className="object-cover"
+                                  sizes="48px"
+                                  quality={100}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-sm font-medium">
+                                  {club.name
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </div>
+                              )}
+                            </div>
                             <div>
                               <h3 className="font-semibold">{club.name}</h3>
                               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">

@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     // Use modern formats for better compression and quality
     formats: ['image/webp', 'image/avif'],
     // Configure allowed quality values
-    qualities: [75, 90, 95, 100],
+    qualities: [25, 50, 75, 100],
     // Allow images from Supabase storage
     remotePatterns: [
       {
@@ -17,6 +17,12 @@ const nextConfig: NextConfig = {
     ],
     // Additional image optimization settings
     minimumCacheTTL: 60 * 60 * 24 * 30, // Cache for 30 days
+  },
+  // Configure server actions
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb', // Increase limit for handling image data
+    },
   },
 };
 

@@ -26,17 +26,15 @@ import Link from "next/link";
 import type { Club } from "@/types/club";
 import type { User } from "@/types/user";
 
-interface JoinClubViewProps {
-  currentTab?: string;
-  clubs?: Club[];
-  currentUser?: User | null;
+interface ClubGalleryProps {
+  clubs: Club[];
+  currentUser: User | null;
 }
 
-export function JoinClubView({
-  currentTab = "join",
+export function ClubGallery({
   clubs: propClubs,
   currentUser,
-}: JoinClubViewProps) {
+}: ClubGalleryProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -314,7 +312,7 @@ export function JoinClubView({
           };
 
           return (
-            <Link href={`/clubs/${club.id}?from=${currentTab}`} key={club.id}>
+            <Link href={`/clubs/${club.id}?from=gallery`} key={club.id}>
               <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group py-0">
                 {/* Banner Image Background */}
                 <div className="relative aspect-square overflow-hidden">
@@ -391,7 +389,7 @@ export function JoinClubView({
 
                         // If user is already a member, navigate to club page
                         if (isUserMember) {
-                          window.location.href = `/clubs/${club.id}?from=${currentTab}`;
+                          window.location.href = `/clubs/${club.id}?from=gallery`;
                           return;
                         }
 
@@ -411,7 +409,7 @@ export function JoinClubView({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        window.location.href = `/clubs/${club.id}?from=${currentTab}`;
+                        window.location.href = `/clubs/${club.id}?from=gallery`;
                       }}
                     >
                       View

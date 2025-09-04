@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/utils/supabase/client'
 
+// Generate a temporary club ID for new clubs
+export function generateTempClubId(): string {
+  return `temp_${crypto.randomUUID()}`
+}
+
 export async function uploadClubImage(file: File, clubId: string): Promise<string | null> {
   try {
     console.log('Starting club image upload for club:', clubId)
@@ -63,7 +68,7 @@ export async function uploadClubImageForCreation(file: File, tempId: string): Pr
     
     // Generate unique filename with temp prefix for creation flow
     const fileExt = file.name.split('.').pop()
-    const fileName = `temp_${tempId}_banner.${fileExt}`
+    const fileName = `${tempId}_banner.${fileExt}`
     
     console.log('Generated filename:', fileName)
     
@@ -92,6 +97,68 @@ export async function uploadClubImageForCreation(file: File, tempId: string): Pr
     return urlData.publicUrl
   } catch (error) {
     console.error('Error uploading club image:', error)
+    return null
+  }
+}
+
+// Move images from temp folder to final club folder
+export async function moveClubImageFromTemp(tempClubId: string, finalClubId: string): Promise<string | null> {
+  try {
+    console.log('Moving club image from temp ID:', tempClubId, 'to final ID:', finalClubId)
+    
+    const supabase = createClient()
+    
+    // List all files in the temp folder
+    const { data: files, error: listError } = await supabase.storage
+      .from('clubs')
+      .list('', {
+        search: `${tempClubId}_banner`
+      })
+    
+    if (listError) {
+      console.error('Error listing temp images:', listError)
+      return null
+    }
+    
+    if (!files || files.length === 0) {
+      console.log('No temp images found')
+      return null
+    }
+    
+    // Get the first file (should only be one banner image)
+    const tempFile = files[0]
+    const oldPath = tempFile.name
+    const fileExt = tempFile.name.split('.').pop()
+    const newPath = `${finalClubId}_banner.${fileExt}`
+    
+    // Copy to new location
+    const { error: copyError } = await supabase.storage
+      .from('clubs')
+      .copy(oldPath, newPath)
+    
+    if (copyError) {
+      console.error('Error copying club image:', copyError)
+      return null
+    }
+    
+    // Delete from temp location
+    const { error: deleteError } = await supabase.storage
+      .from('clubs')
+      .remove([oldPath])
+    
+    if (deleteError) {
+      console.error('Error deleting temp image:', deleteError)
+    }
+    
+    // Get new public URL
+    const { data: urlData } = supabase.storage
+      .from('clubs')
+      .getPublicUrl(newPath)
+    
+    console.log('Club image moved successfully. New URL:', urlData.publicUrl)
+    return urlData.publicUrl
+  } catch (error) {
+    console.error('Error moving club image:', error)
     return null
   }
 }

@@ -30,14 +30,17 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
       // If we reach here, the action completed successfully
       // The redirect will happen automatically
     } catch (error) {
-      console.error("Login error:", error);
-
-      // Check if this is a redirect error (which is expected for successful login)
-      if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
-        // This is a successful redirect, don't show as error
+      // Check if this is a Next.js redirect (expected behavior)
+      if (
+        error &&
+        typeof error === "object" &&
+        ("digest" in error || error.constructor.name === "RedirectError")
+      ) {
+        // This is a redirect, which is expected - don't show error
         return;
       }
 
+      console.error("Login error:", error);
       setError(
         error instanceof Error
           ? error.message

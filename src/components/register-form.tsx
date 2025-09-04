@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Camera, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 
@@ -74,6 +75,16 @@ export function RegisterForm({
 
       // Redirect handled by Server Action
     } catch (error) {
+      // Check if this is a Next.js redirect (expected behavior)
+      if (
+        error &&
+        typeof error === "object" &&
+        ("digest" in error || error.constructor.name === "RedirectError")
+      ) {
+        // This is a redirect, which is expected - don't show error
+        return;
+      }
+
       console.error("Registration error:", error);
       setError(
         error instanceof Error
@@ -106,7 +117,14 @@ export function RegisterForm({
                       onClick={handleImageClick}
                     >
                       {profileImage ? (
-                        <AvatarImage src={profileImage} alt="Profile preview" />
+                        <Image
+                          src={profileImage}
+                          alt="Profile preview"
+                          width={96}
+                          height={96}
+                          quality={100}
+                          className="h-24 w-24 rounded-full object-cover"
+                        />
                       ) : (
                         <AvatarFallback className="text-lg">
                           <Camera className="h-8 w-8" />

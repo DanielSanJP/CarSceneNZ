@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import type { Message } from "@/types/message";
 
@@ -34,15 +35,22 @@ export function InboxView({ messages }: InboxViewProps) {
                   href={`/profile/${msg.sender?.username}`}
                   className="flex space-x-4 flex-1 hover:underline"
                 >
-                  <Avatar>
-                    <AvatarImage
-                      src={msg.sender?.profile_image_url}
-                      alt={msg.sender?.username}
+                  {msg.sender?.profile_image_url ? (
+                    <Image
+                      src={msg.sender.profile_image_url}
+                      alt={msg.sender.username || "User"}
+                      width={40}
+                      height={40}
+                      quality={100}
+                      className="h-10 w-10 rounded-full object-cover"
                     />
-                    <AvatarFallback>
-                      {msg.sender?.username?.charAt(0) || "?"}
-                    </AvatarFallback>
-                  </Avatar>
+                  ) : (
+                    <Avatar>
+                      <AvatarFallback>
+                        {msg.sender?.username?.charAt(0) || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
                   <div>
                     <p className="font-semibold">{msg.sender?.username}</p>
                   </div>

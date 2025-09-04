@@ -345,7 +345,24 @@ export function EditCarForm({ car, action }: EditCarFormProps) {
     }
 
     // Call the server action - let it handle redirects naturally
-    await action(formDataObj);
+    try {
+      await action(formDataObj);
+    } catch (error) {
+      // Check if this is a Next.js redirect (expected behavior)
+      if (
+        error &&
+        typeof error === "object" &&
+        ("digest" in error || error.constructor.name === "RedirectError")
+      ) {
+        // This is a redirect, which is expected - don't show error
+        return;
+      }
+
+      console.error("Error updating car:", error);
+      alert("Failed to update car. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

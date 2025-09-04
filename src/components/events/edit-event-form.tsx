@@ -107,6 +107,16 @@ export function EditEventForm({
       // Call the server action
       await updateAction(formDataObj);
     } catch (error) {
+      // Check if this is a Next.js redirect (expected behavior)
+      if (
+        error &&
+        typeof error === "object" &&
+        ("digest" in error || error.constructor.name === "RedirectError")
+      ) {
+        // This is a redirect, which is expected - don't show error
+        return;
+      }
+
       console.error("Error updating event:", error);
       alert("An error occurred while updating the event.");
       setIsLoading(false);
@@ -129,6 +139,16 @@ export function EditEventForm({
       // Call the server action
       await deleteAction();
     } catch (error) {
+      // Check if this is a Next.js redirect (expected behavior)
+      if (
+        error &&
+        typeof error === "object" &&
+        ("digest" in error || error.constructor.name === "RedirectError")
+      ) {
+        // This is a redirect, which is expected - don't show error
+        return;
+      }
+
       console.error("Error deleting event:", error);
       alert("An error occurred while deleting the event.");
       setIsLoading(false);

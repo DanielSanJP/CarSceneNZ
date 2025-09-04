@@ -7,12 +7,22 @@ interface CarStatsProps {
 }
 
 export function CarStats({ car }: CarStatsProps) {
+  // Format date consistently to avoid hydration mismatch
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-NZ", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
   return (
     <Card>
       <CardContent className="pt-6">
         <div className="text-center">
           <p className="text-muted-foreground text-sm mb-2">
-            Added on {new Date(car.created_at).toLocaleDateString()}
+            Added on {formatDate(car.created_at)}
           </p>
           <div className="flex items-center justify-center gap-2">
             <Star className="h-4 w-4" />

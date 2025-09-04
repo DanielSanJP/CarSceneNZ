@@ -3,6 +3,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CreateCarForm } from "@/components/garage";
 import { createCarWithComponents } from "@/lib/server/cars";
+import {
+  moveCarImagesFromTemp,
+  deleteCarImages,
+} from "@/lib/utils/upload-car-images";
 
 async function createCarAction(formData: FormData) {
   "use server";
@@ -14,6 +18,7 @@ async function createCarAction(formData: FormData) {
   const model = formData.get("model") as string;
   const year = parseInt(formData.get("year") as string);
   const imagesJson = formData.get("images") as string;
+  const tempCarId = formData.get("tempCarId") as string;
 
   if (!brand?.trim() || !model?.trim() || !year) {
     throw new Error("Brand, model, and year are required");
@@ -111,17 +116,45 @@ async function createCarAction(formData: FormData) {
     }
   });
 
-  const result = await createCarWithComponents({
-    ...carData,
-    ...additionalData,
-  } as Parameters<typeof createCarWithComponents>[0]);
+  try {
+    // Create the car record
+    const result = await createCarWithComponents({
+      ...carData,
+      ...additionalData,
+    } as Parameters<typeof createCarWithComponents>[0]);
 
-  if (!result) {
-    throw new Error("Failed to create car");
+    if (!result) {
+      throw new Error("Failed to create car");
+    }
+
+    // If we have temp images, move them to the final car folder
+    if (tempCarId && images.length > 0) {
+      try {
+        const newImageUrls = await moveCarImagesFromTemp(tempCarId, result.id);
+        if (newImageUrls.length > 0) {
+          // Update the car record with the new image URLs
+          // Note: You might want to add an updateCarImages function to your cars.ts
+          console.log("Images moved successfully:", newImageUrls);
+        }
+      } catch (error) {
+        console.error("Error moving temp images:", error);
+        // Car was created but images failed to move - log but don't fail
+      }
+    }
+
+    revalidatePath("/garage");
+    redirect(`/garage/${result.id}`);
+  } catch (error) {
+    // If car creation failed and we have temp images, clean them up
+    if (tempCarId) {
+      try {
+        await deleteCarImages(tempCarId);
+      } catch (cleanupError) {
+        console.error("Error cleaning up temp images:", cleanupError);
+      }
+    }
+    throw error;
   }
-
-  revalidatePath("/garage");
-  redirect(`/garage/${result.id}`);
 }
 
 export default async function CreateCarPage() {

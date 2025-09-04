@@ -116,6 +116,16 @@ export function CreateEventForm({ action, user }: CreateEventFormProps) {
 
       await action(formDataFromForm);
     } catch (error) {
+      // Check if this is a Next.js redirect (expected behavior)
+      if (
+        error &&
+        typeof error === "object" &&
+        ("digest" in error || error.constructor.name === "RedirectError")
+      ) {
+        // This is a redirect, which is expected - don't show error
+        return;
+      }
+
       console.error("Error creating event:", error);
       setError(
         error instanceof Error

@@ -1,19 +1,10 @@
 "use client";
 
 import * as React from "react";
-import {
-  Moon,
-  Sun,
-  Car,
-  Trophy,
-  Calendar,
-  Users,
-  Mail,
-  User,
-  LogOut,
-} from "lucide-react";
-import { useTheme } from "next-themes";
+import { Car, Trophy, Calendar, Users, Mail, User, LogOut } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth";
 
 import { Button } from "@/components/ui/button";
@@ -30,38 +21,30 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchBar, MobileSearchButton } from "@/components/search-bar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeButton } from "@/components/theme-button";
 import type { User as UserType } from "@/types/user";
 
-export function ModeToggle() {
-  const { setTheme } = useTheme();
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 function ProfileDropdown({ user }: { user: UserType | null }) {
+  const [imageError, setImageError] = React.useState(false);
+
+  // Use user data from our combined auth context
+  const displayName = user?.display_name || user?.username || "User";
+  const username = user?.username || "user";
+  const avatarUrl = user?.profile_image_url;
+
+  // Reset image error when avatarUrl changes
+  React.useEffect(() => {
+    setImageError(false);
+    console.log("ProfileDropdown - User data:", {
+      user,
+      avatarUrl,
+      displayName,
+      username,
+    });
+  }, [avatarUrl, user, displayName, username]);
+
   if (!user) return null;
 
   const handleLogout = async () => {
@@ -72,29 +55,39 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
     }
   };
 
-  // Use user data from our combined auth context
-  const displayName = user.display_name || user.username || "User";
-  const username = user.username || "user";
-  const avatarUrl = user.profile_image_url;
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage
+        <Button
+          variant="ghost"
+          className="relative h-10 w-10 rounded-full overflow-hidden bg-muted"
+        >
+          {avatarUrl && !imageError ? (
+            <Image
               src={avatarUrl}
               alt={displayName}
+              fill
               className="object-cover"
+              quality={50}
+              sizes="128px"
+              priority
+              onError={() => {
+                console.error("Failed to load profile image:", avatarUrl);
+                setImageError(true);
+              }}
+              onLoad={() => {
+                console.log("Profile image loaded successfully:", avatarUrl);
+              }}
             />
-            <AvatarFallback>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs font-medium">
               {displayName
                 .split(" ")
                 .map((n: string) => n[0])
                 .join("")
                 .toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+            </div>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -142,11 +135,37 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
 }
 
 export function Navigation({ user }: { user: UserType | null }) {
+  const pathname = usePathname();
+
+  const isActivePath = (path: string) => {
+    if (path === "/") return pathname === "/";
+
+    // For exact matches and specific sub-routes
+    if (pathname === path) return true;
+
+    // Only match sub-routes if we're not dealing with overlapping paths
+    if (path === "/events" && pathname.startsWith("/events/")) {
+      // Don't activate main events if we're on a specific sub-route
+      return pathname === "/events";
+    }
+
+    if (path === "/garage" && pathname.startsWith("/garage/")) {
+      // Don't activate main garage if we're on a specific sub-route
+      return pathname === "/garage";
+    }
+
+    // For other paths, use exact match or direct sub-path
+    return pathname.startsWith(path + "/") || pathname === path;
+  };
+
   return (
     <div className="border-b">
       <div className=" mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
+            {/* Mobile sidebar trigger */}
+            <SidebarTrigger className="lg:hidden" />
+
             {/* Always visible navigation */}
             <NavigationMenu className="hidden lg:flex">
               <NavigationMenuList>
@@ -155,6 +174,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                     <Link
                       href="/"
                       className="flex flex-row items-center gap-3 px-4"
+                      data-active={isActivePath("/")}
                     >
                       <Car className="h-10 w-10 text-primary" />
                       <h2 className="text-xl font-bold text-foreground">
@@ -168,6 +188,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                     <Link
                       href="/events"
                       className="flex flex-row items-center gap-2"
+                      data-active={isActivePath("/events")}
                     >
                       <Calendar className="h-4 w-4" />
                       <span>Events</span>
@@ -179,6 +200,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                     <Link
                       href="/garage"
                       className="flex flex-row items-center gap-2"
+                      data-active={isActivePath("/garage")}
                     >
                       <Car className="h-4 w-4" />
                       <span>Cars</span>
@@ -190,6 +212,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                     <Link
                       href="/leaderboards"
                       className="flex flex-row items-center gap-2"
+                      data-active={isActivePath("/leaderboards")}
                     >
                       <Trophy className="h-4 w-4" />
                       <span>Leaderboards</span>
@@ -201,6 +224,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                     <Link
                       href="/clubs"
                       className="flex flex-row items-center gap-2"
+                      data-active={isActivePath("/clubs")}
                     >
                       <Users className="h-4 w-4" />
                       <span>Clubs</span>
@@ -215,6 +239,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                         <Link
                           href="/garage/my-garage"
                           className="flex flex-row items-center gap-2"
+                          data-active={isActivePath("/garage/my-garage")}
                         >
                           <Car className="h-4 w-4" />
                           <span>My Garage</span>
@@ -226,6 +251,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                         <Link
                           href="/events/my-events"
                           className="flex flex-row items-center gap-2"
+                          data-active={isActivePath("/events/my-events")}
                         >
                           <Calendar className="h-4 w-4" />
                           <span>My Events</span>
@@ -237,6 +263,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                         <Link
                           href="/inbox"
                           className="flex flex-row items-center gap-2"
+                          data-active={isActivePath("/inbox")}
                         >
                           <Mail className="h-4 w-4" />
                           <span>Inbox</span>
@@ -249,7 +276,7 @@ export function Navigation({ user }: { user: UserType | null }) {
             </NavigationMenu>
 
             {/* Mobile logo */}
-            <Link href="/" className="flex lg:hidden items-center">
+            <Link href="/" className="flex lg:hidden items-center ml-2">
               <Car className="h-8 w-8 text-primary" />
             </Link>
           </div>
@@ -257,18 +284,18 @@ export function Navigation({ user }: { user: UserType | null }) {
           <div className="flex items-center space-x-2">
             <SearchBar />
             <MobileSearchButton />
-            <ModeToggle />
+            <ThemeButton />
             {user ? (
               <ProfileDropdown user={user} />
             ) : (
-              <>
+              <div className="hidden lg:flex space-x-2">
                 <Link href="/login">
                   <Button variant="ghost">Sign In</Button>
                 </Link>
                 <Link href="/register">
                   <Button>Get Started</Button>
                 </Link>
-              </>
+              </div>
             )}
           </div>
         </div>

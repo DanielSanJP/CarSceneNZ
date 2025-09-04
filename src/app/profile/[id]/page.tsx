@@ -4,13 +4,12 @@ import {
   getUserProfile,
   getUserProfileByUsername,
 } from "@/lib/server/profile";
-import { getUser } from "@/lib/auth";
+import { getUserOptional } from "@/lib/auth";
 import { UserProfileClient } from "@/components/profile/user-profile-client";
 import { createClient } from "@/lib/utils/supabase/server";
 import type { Car } from "@/types/car";
-import { cache } from "react";
 
-const getCarsByOwner = cache(async (ownerId: string): Promise<Car[]> => {
+const getCarsByOwner = async (ownerId: string): Promise<Car[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cars")
@@ -24,7 +23,7 @@ const getCarsByOwner = cache(async (ownerId: string): Promise<Car[]> => {
   }
 
   return data as Car[];
-});
+};
 
 interface UserProfilePageProps {
   params: Promise<{ id: string }>;
@@ -35,8 +34,8 @@ export default async function UserProfilePage({
 }: UserProfilePageProps) {
   const { id: userId } = await params;
 
-  // Get current user for authentication/following status
-  const currentUser = await getUser();
+  // Get current user for authentication/following status (optional - allows public access)
+  const currentUser = await getUserOptional();
 
   // Try to get user profile - first by ID, then by username
   let profileUser = await getUserProfile(userId);

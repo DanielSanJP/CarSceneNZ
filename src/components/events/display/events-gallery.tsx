@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -438,21 +438,25 @@ export function EventsGallery({
                     {/* Host */}
                     {host && (
                       <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          {host.profile_image_url && (
-                            <AvatarImage
-                              src={host.profile_image_url}
-                              alt={host.display_name || host.username}
-                              className="object-cover"
-                            />
-                          )}
-                          <AvatarFallback>
-                            {(host.display_name || host.username || "Unknown")
-                              .split(" ")
-                              .map((n: string) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
+                        {host.profile_image_url ? (
+                          <Image
+                            src={host.profile_image_url}
+                            alt={host.display_name || host.username}
+                            width={32}
+                            height={32}
+                            quality={100}
+                            className="h-8 w-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>
+                              {(host.display_name || host.username || "Unknown")
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
                         <div>
                           <div className="text-xs text-muted-foreground">
                             Hosted by

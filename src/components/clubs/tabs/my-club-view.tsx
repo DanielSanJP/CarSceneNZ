@@ -28,7 +28,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/utils/supabase/client";
-import type { User } from "@/types/ddd";
+import type { User } from "@/types";
 
 interface Club {
   id: string;

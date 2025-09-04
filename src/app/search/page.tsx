@@ -26,7 +26,7 @@ const getAllEvents = cache(async (): Promise<Event[]> => {
   const { data, error } = await supabase
     .from("events")
     .select("*")
-    .order("event_date", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching all events:", error);

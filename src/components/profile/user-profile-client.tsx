@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,16 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Calendar,
-  Mail,
-  User as UserIcon,
-  Car,
-  Star,
-  Eye,
-  ExternalLink,
-  Edit,
-} from "lucide-react";
+import { Car, Star, Eye, ExternalLink, Edit } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import type { User } from "@/types/user";
@@ -89,66 +79,136 @@ export function UserProfileClient({
             {/* Profile Info */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <UserIcon className="h-5 w-5" />
-                    Profile Information
-                  </CardTitle>
-                  {isOwnProfile && (
-                    <Link href="/profile/edit">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Profile
-                      </Button>
-                    </Link>
-                  )}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative h-24 w-24 sm:h-32 sm:w-32 lg:h-48 lg:w-48 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                      {profileUser.profile_image_url ? (
+                        <Image
+                          src={profileUser.profile_image_url}
+                          alt={profileUser.username}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          quality={100}
+                          priority={true}
+                          unoptimized={false}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-lg font-medium">
+                          {profileUser.display_name
+                            ?.slice(0, 2)
+                            .toUpperCase() ||
+                            profileUser.username.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                        <div>
+                          <h2 className="text-xl font-semibold">
+                            {profileUser.display_name || profileUser.username}
+                          </h2>
+                          <p className="text-muted-foreground">
+                            @{profileUser.username}
+                          </p>
+                        </div>
+                        {isOwnProfile && (
+                          <Link href="/profile/edit">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-fit"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Profile
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage
-                      src={profileUser.profile_image_url}
-                      alt={profileUser.username}
-                    />
-                    <AvatarFallback className="text-lg">
-                      {profileUser.display_name?.slice(0, 2).toUpperCase() ||
-                        profileUser.username.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h2 className="text-xl font-semibold">
-                      {profileUser.display_name || profileUser.username}
-                    </h2>
-                    <p className="text-muted-foreground">
-                      @{profileUser.username}
-                    </p>
-                  </div>
-                </div>
-
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center space-x-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        Joined{" "}
-                        {new Date(profileUser.created_at).toLocaleDateString(
-                          "en-NZ",
-                          {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          }
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-6">
+                  <div className="flex flex-col gap-4">
+                    {/* Stats Grid - Mobile: 2x2, Desktop: 1x4 */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+                      <Dialog
+                        open={followingDialogOpen}
+                        onOpenChange={setFollowingDialogOpen}
+                      >
+                        <DialogTrigger asChild>
+                          <button className="flex items-center space-x-2 hover:underline cursor-pointer justify-start">
+                            <span className="text-sm">Following</span>
+                            <span className="font-semibold text-sm">
+                              {following.length}
+                            </span>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>
+                              Following ({following.length})
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            {following.length === 0 ? (
+                              <p className="text-center text-muted-foreground py-8">
+                                Not following anyone yet
+                              </p>
+                            ) : (
+                              following.map((followedUser) => (
+                                <Link
+                                  key={followedUser.id}
+                                  href={`/profile/${followedUser.username}`}
+                                  onClick={() => setFollowingDialogOpen(false)}
+                                  className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="relative h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                                    {followedUser.profile_image_url ? (
+                                      <Image
+                                        src={followedUser.profile_image_url}
+                                        alt={followedUser.username}
+                                        fill
+                                        className="object-cover"
+                                        sizes="40px"
+                                        quality={100}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-sm font-medium">
+                                        {followedUser.display_name
+                                          ?.slice(0, 2)
+                                          .toUpperCase() ||
+                                          followedUser.username
+                                            .slice(0, 2)
+                                            .toUpperCase()}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-medium">
+                                      {followedUser.display_name ||
+                                        followedUser.username}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      @{followedUser.username}
+                                    </p>
+                                  </div>
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                                </Link>
+                              ))
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
                       <Dialog
                         open={followersDialogOpen}
                         onOpenChange={setFollowersDialogOpen}
                       >
                         <DialogTrigger asChild>
-                          <button className="flex items-center space-x-2 hover:bg-muted/50 px-2 py-1 rounded-md transition-colors">
+                          <button className="flex items-center space-x-2 hover:underline cursor-pointer justify-start">
                             <span className="text-sm">Followers</span>
                             <span className="font-semibold text-sm">
                               {followers.length}
@@ -175,21 +235,27 @@ export function UserProfileClient({
                                   onClick={() => setFollowersDialogOpen(false)}
                                   className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                                 >
-                                  <Avatar className="h-10 w-10">
-                                    <AvatarImage
-                                      src={follower.profile_image_url}
-                                      alt={follower.username}
-                                      className="object-cover"
-                                    />
-                                    <AvatarFallback>
-                                      {follower.display_name
-                                        ?.slice(0, 2)
-                                        .toUpperCase() ||
-                                        follower.username
-                                          .slice(0, 2)
-                                          .toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
+                                  <div className="relative h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                                    {follower.profile_image_url ? (
+                                      <Image
+                                        src={follower.profile_image_url}
+                                        alt={follower.username}
+                                        fill
+                                        className="object-cover"
+                                        sizes="40px"
+                                        quality={100}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-sm font-medium">
+                                        {follower.display_name
+                                          ?.slice(0, 2)
+                                          .toUpperCase() ||
+                                          follower.username
+                                            .slice(0, 2)
+                                            .toUpperCase()}
+                                      </div>
+                                    )}
+                                  </div>
                                   <div className="flex-1">
                                     <p className="font-medium">
                                       {follower.display_name ||
@@ -207,76 +273,14 @@ export function UserProfileClient({
                         </DialogContent>
                       </Dialog>
 
-                      <Dialog
-                        open={followingDialogOpen}
-                        onOpenChange={setFollowingDialogOpen}
-                      >
-                        <DialogTrigger asChild>
-                          <button className="flex items-center space-x-2 hover:bg-muted/50 px-2 py-1 rounded-md transition-colors">
-                            <span className="text-sm">Following</span>
-                            <span className="font-semibold text-sm">
-                              {following.length}
-                            </span>
-                          </button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle>
-                              Following ({following.length})
-                            </DialogTitle>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            {following.length === 0 ? (
-                              <p className="text-center text-muted-foreground py-8">
-                                Not following anyone yet
-                              </p>
-                            ) : (
-                              following.map((followedUser) => (
-                                <Link
-                                  key={followedUser.id}
-                                  href={`/profile/${followedUser.username}`}
-                                  onClick={() => setFollowingDialogOpen(false)}
-                                  className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                                >
-                                  <Avatar className="h-10 w-10">
-                                    <AvatarImage
-                                      src={followedUser.profile_image_url}
-                                      alt={followedUser.username}
-                                      className="object-cover"
-                                    />
-                                    <AvatarFallback>
-                                      {followedUser.display_name
-                                        ?.slice(0, 2)
-                                        .toUpperCase() ||
-                                        followedUser.username
-                                          .slice(0, 2)
-                                          .toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1">
-                                    <p className="font-medium">
-                                      {followedUser.display_name ||
-                                        followedUser.username}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      @{followedUser.username}
-                                    </p>
-                                  </div>
-                                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                                </Link>
-                              ))
-                            )}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-
                       <div className="flex items-center space-x-2">
                         <Car className="h-4 w-4 text-primary" />
-                        <span className="text-sm">Public Cars</span>
+                        <span className="text-sm">Cars</span>
                         <span className="font-semibold text-sm">
                           {userCars.length}
                         </span>
                       </div>
+
                       <div className="flex items-center space-x-2">
                         <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="text-sm">Total Likes</span>
@@ -289,14 +293,6 @@ export function UserProfileClient({
                       </div>
                     </div>
                   </div>
-                  {isOwnProfile && (
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {profileUser.email}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -304,21 +300,21 @@ export function UserProfileClient({
             {/* Cars Grid */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <CardTitle className="flex items-center gap-2">
                     <Car className="h-5 w-5" />
                     {isOwnProfile
                       ? "My Cars"
                       : `${profileUser.display_name}'s Garage`}
+                    {isOwnProfile && (
+                      <Link href="/garage/my-garage">
+                        <Button variant="outline" size="sm" className="ml-3">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          My Garage
+                        </Button>
+                      </Link>
+                    )}
                   </CardTitle>
-                  {isOwnProfile && (
-                    <Link href="/garage/my-garage">
-                      <Button variant="outline" size="sm">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View All
-                      </Button>
-                    </Link>
-                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -361,6 +357,9 @@ export function UserProfileClient({
                                 fill
                                 className="object-cover"
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                quality={100}
+                                priority={true}
+                                unoptimized={false}
                                 onError={() => handleImageError(car.id)}
                               />
                             )}
