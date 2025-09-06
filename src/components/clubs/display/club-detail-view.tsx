@@ -25,8 +25,8 @@ import {
 import type { Club, ClubMember } from "@/types/club";
 import type { User } from "@/types/user";
 import { SendClubMail } from "@/components/inbox/send-club-mail";
-import { sendClubJoinRequest } from "@/lib/server/inbox";
-import { joinClub, leaveClub } from "@/lib/server/clubs";
+import { RequestToJoin } from "@/components/inbox/request-to-join";
+import type { ClubMailData } from "@/types/inbox";
 
 interface ClubDetailViewProps {
   club: Club;
@@ -43,6 +43,21 @@ interface ClubDetailViewProps {
   userRole?: string;
   fromTab?: string;
   leaderboardTab?: string;
+  sendClubMailAction: (
+    mailData: ClubMailData
+  ) => Promise<{ success: boolean; error?: string }>;
+  joinClubAction: (
+    clubId: string,
+    userId: string
+  ) => Promise<{ success: boolean; message?: string }>;
+  leaveClubAction: (
+    clubId: string,
+    userId: string
+  ) => Promise<{ success: boolean; message?: string }>;
+  sendClubJoinRequestAction: (
+    clubId: string,
+    message?: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function ClubDetailView({
@@ -54,11 +69,14 @@ export function ClubDetailView({
   userRole,
   fromTab = "join",
   leaderboardTab = "clubs",
+  sendClubMailAction,
+  joinClubAction,
+  leaveClubAction,
+  sendClubJoinRequestAction,
 }: ClubDetailViewProps) {
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [joinRequestSent, setJoinRequestSent] = useState(false);
 
   const isLeader = userRole === "leader";
   const isCoLeader = userRole === "co-leader";
@@ -70,25 +88,14 @@ export function ClubDetailView({
 
     setIsJoining(true);
     try {
-      if (club.is_invite_only) {
-        // Send join request for invite-only clubs
-        const success = await sendClubJoinRequest(club.id, currentUser.id);
-        if (success) {
-          setJoinRequestSent(true);
-          alert("Join request sent to club leaders!");
-        } else {
-          alert("Failed to send join request. You may have already sent one.");
-        }
-      } else {
-        // Join immediately for public clubs
-        const result = await joinClub(club.id, currentUser.id);
+      // Join immediately for public clubs (invite-only clubs use RequestToJoin component)
+      const result = await joinClubAction(club.id, currentUser.id);
 
-        if (result.success) {
-          // Reload page to reflect changes
-          window.location.reload();
-        } else {
-          alert("Failed to join club");
-        }
+      if (result.success) {
+        // Reload page to reflect changes
+        window.location.reload();
+      } else {
+        alert(result.message || "Failed to join club");
       }
     } catch (error) {
       console.error("Error joining club:", error);
@@ -111,7 +118,7 @@ export function ClubDetailView({
 
     setIsLeaving(true);
     try {
-      const result = await leaveClub(club.id, currentUser.id);
+      const result = await leaveClubAction(club.id, currentUser.id);
 
       if (result.success) {
         if (isLeader) {
@@ -188,7 +195,6 @@ export function ClubDetailView({
   };
 
   const typeInfo = getClubTypeInfo(club.club_type || "open");
-  const canJoin = currentUser && !isUserMember && club.club_type === "open";
 
   return (
     <div className="min-h-screen bg-background">
@@ -319,7 +325,11 @@ export function ClubDetailView({
                         <span>Created</span>
                       </div>
                       <span className="font-semibold">
-                        {new Date(club.created_at).toLocaleDateString()}
+                        {new Date(club.created_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </span>
                     </div>
 
@@ -350,6 +360,7 @@ export function ClubDetailView({
                       clubId={club.id}
                       clubName={club.name}
                       currentUserId={currentUser?.id || ""}
+                      sendClubMailAction={sendClubMailAction}
                       trigger={
                         <Button size="lg">
                           <Mail className="h-4 w-4 mr-2" />
@@ -378,29 +389,6 @@ export function ClubDetailView({
                         </>
                       )}
                     </Button>
-                  ) : canJoin ? (
-                    <Button
-                      onClick={handleJoinClub}
-                      disabled={isJoining || joinRequestSent}
-                      size="lg"
-                    >
-                      {isJoining ? (
-                        club.is_invite_only ? (
-                          "Sending Request..."
-                        ) : (
-                          "Joining..."
-                        )
-                      ) : joinRequestSent ? (
-                        "Request Sent"
-                      ) : (
-                        <>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          {club.is_invite_only
-                            ? "Request to Join"
-                            : "Join Club"}
-                        </>
-                      )}
-                    </Button>
                   ) : !currentUser ? (
                     <Link href="/login">
                       <Button size="lg">
@@ -413,11 +401,33 @@ export function ClubDetailView({
                       <Lock className="h-4 w-4 mr-2" />
                       Closed
                     </Button>
-                  ) : club.club_type === "invite" ? (
-                    <Button disabled size="lg">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Invite Only
+                  ) : club.club_type === "open" ? (
+                    <Button
+                      onClick={handleJoinClub}
+                      disabled={isJoining}
+                      size="lg"
+                    >
+                      {isJoining ? (
+                        "Joining..."
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Join Club
+                        </>
+                      )}
                     </Button>
+                  ) : club.club_type === "invite" || club.is_invite_only ? (
+                    <RequestToJoin
+                      clubId={club.id}
+                      clubName={club.name}
+                      sendClubJoinRequestAction={sendClubJoinRequestAction}
+                      trigger={
+                        <Button size="lg">
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Join Club
+                        </Button>
+                      }
+                    />
                   ) : null}
                 </div>
               </div>

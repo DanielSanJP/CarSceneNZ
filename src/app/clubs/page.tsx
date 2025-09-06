@@ -45,6 +45,26 @@ async function uploadClubImageServerAction(formData: FormData) {
   }
 }
 
+// Server action wrapper for joining a club
+async function joinClubAction(
+  clubId: string,
+  userId: string
+): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  const { joinClub } = await import("@/lib/server/clubs");
+  return await joinClub(clubId, userId);
+}
+
+// Server action wrapper for sending club join request
+async function sendClubJoinRequestAction(
+  clubId: string,
+  message?: string
+): Promise<{ success: boolean; error?: string }> {
+  "use server";
+  const { sendClubJoinRequest } = await import("@/lib/server/inbox");
+  return await sendClubJoinRequest(clubId, message);
+}
+
 async function createClubAction(formData: FormData) {
   "use server";
 
@@ -259,6 +279,8 @@ export default async function ClubsPage({
         }}
         createClubAction={createClubAction}
         uploadAction={uploadClubImageServerAction}
+        joinClubAction={joinClubAction}
+        sendClubJoinRequestAction={sendClubJoinRequestAction}
       />
     </Suspense>
   );

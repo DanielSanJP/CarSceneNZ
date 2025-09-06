@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import type { Club } from "@/types/club";
 import type { User } from "@/types/user";
 import { Pagination, PaginationInfo } from "@/components/ui/pagination";
+import { RequestToJoin } from "@/components/inbox/request-to-join";
 
 interface ClubGalleryProps {
   clubs: (Club & { memberCount: number })[];
@@ -38,6 +39,14 @@ interface ClubGalleryProps {
     totalCount: number;
     itemsPerPage: number;
   };
+  joinClubAction?: (
+    clubId: string,
+    userId: string
+  ) => Promise<{ success: boolean; message?: string }>;
+  sendClubJoinRequestAction?: (
+    clubId: string,
+    message?: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function ClubGallery({
@@ -45,6 +54,8 @@ export function ClubGallery({
   currentUser,
   userClubIds,
   pagination,
+  joinClubAction,
+  sendClubJoinRequestAction,
 }: ClubGalleryProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -296,31 +307,12 @@ export function ClubGallery({
           const leader = club.leader; // Use real leader from server
           const isUserMember = isUserMemberOfClub(club.id);
 
-          // Determine button text based on club type and membership
-          const getActionButtonText = () => {
-            if (isUserMember) {
-              return "View Club";
-            }
-
-            if (!currentUser) {
-              return "Sign In to Join";
-            }
-
-            switch (club.club_type) {
-              case "open":
-                return "Join Club";
-              case "invite":
-                return "Request Invite";
-              case "closed":
-                return "View Club";
-              default:
-                return "View Club";
-            }
-          };
-
           return (
-            <Link href={`/clubs/${club.id}?from=gallery`} key={club.id}>
-              <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group py-0">
+            <Card
+              key={club.id}
+              className="overflow-hidden hover:shadow-lg transition-all duration-300 group py-0 cursor-pointer"
+            >
+              <Link href={`/clubs/${club.id}?from=gallery`} className="block">
                 {/* Banner Image Background */}
                 <div className="relative aspect-square overflow-hidden">
                   {failedImages.has(club.id) ? (
@@ -335,8 +327,6 @@ export function ClubGallery({
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       loading="lazy"
-                      placeholder="blur"
-                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                       onError={() => handleImageError(club.id)}
                     />
                   )}
@@ -356,7 +346,7 @@ export function ClubGallery({
                   </div>
                 </div>
 
-                <CardContent className="p-4 pt-0">
+                <CardContent className="p-4 pt-6">
                   {/* Club name and location */}
                   <div className="space-y-2 mb-3">
                     <h3 className="font-bold text-lg leading-tight">
@@ -387,53 +377,116 @@ export function ClubGallery({
                       Led by {leader.display_name || leader.username}
                     </div>
                   )}
+                </CardContent>
+              </Link>
 
-                  {/* Action button */}
-                  <div className="flex gap-2">
+              {/* Action buttons outside the clickable area */}
+              <CardContent className="p-4 pt-0 relative z-10">
+                {/* Action button */}
+                <div
+                  className="flex gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Main Action Button */}
+                  {isUserMember ? (
+                    <Link
+                      href={`/clubs/${club.id}?from=gallery`}
+                      className="flex-1"
+                    >
+                      <Button className="w-full" size="sm">
+                        View Club
+                      </Button>
+                    </Link>
+                  ) : !currentUser ? (
+                    <Link href="/login" className="flex-1">
+                      <Button className="w-full" size="sm">
+                        Sign In to Join
+                      </Button>
+                    </Link>
+                  ) : club.club_type === "closed" ? (
+                    <Link
+                      href={`/clubs/${club.id}?from=gallery`}
+                      className="flex-1"
+                    >
+                      <Button className="w-full" size="sm" variant="outline">
+                        View Club
+                      </Button>
+                    </Link>
+                  ) : club.club_type === "invite" || club.is_invite_only ? (
+                    sendClubJoinRequestAction ? (
+                      <RequestToJoin
+                        clubId={club.id}
+                        clubName={club.name}
+                        sendClubJoinRequestAction={sendClubJoinRequestAction}
+                        trigger={
+                          <Button className="flex-1" size="sm">
+                            Request to Join
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <Link
+                        href={`/clubs/${club.id}?from=gallery`}
+                        className="flex-1"
+                      >
+                        <Button className="w-full" size="sm">
+                          Request to Join
+                        </Button>
+                      </Link>
+                    )
+                  ) : // Open club - direct join
+                  joinClubAction ? (
                     <Button
                       className="flex-1"
                       size="sm"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
 
-                        // If user is not authenticated, redirect to login
-                        if (!currentUser) {
-                          window.location.href = "/login";
-                          return;
-                        }
+                        if (!currentUser) return;
 
-                        // If user is already a member, navigate to club page
-                        if (isUserMember) {
-                          window.location.href = `/clubs/${club.id}?from=gallery`;
-                          return;
+                        try {
+                          const result = await joinClubAction(
+                            club.id,
+                            currentUser.id
+                          );
+                          if (result.success) {
+                            window.location.reload();
+                          } else {
+                            alert(result.message || "Failed to join club");
+                          }
+                        } catch (error) {
+                          console.error("Error joining club:", error);
+                          alert("Failed to join club. Please try again.");
                         }
-
-                        // Handle join/request logic here
-                        const actionText =
-                          club.club_type === "open"
-                            ? "Joining"
-                            : "Requesting to join";
-                        console.log(`${actionText} club:`, club.id);
                       }}
                     >
-                      {getActionButtonText()}
+                      Join Club
                     </Button>
+                  ) : (
+                    <Link
+                      href={`/clubs/${club.id}?from=gallery`}
+                      className="flex-1"
+                    >
+                      <Button className="w-full" size="sm">
+                        Join Club
+                      </Button>
+                    </Link>
+                  )}
+
+                  {/* View Button */}
+                  <Link href={`/clubs/${club.id}?from=gallery`}>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.location.href = `/clubs/${club.id}?from=gallery`;
-                      }}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       View
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           );
         })}
       </div>

@@ -4,6 +4,7 @@ export interface Message {
   receiver_id: string;
   subject?: string;
   message: string;
+  message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'system';
   created_at: string;
   updated_at: string;
   sender?: {

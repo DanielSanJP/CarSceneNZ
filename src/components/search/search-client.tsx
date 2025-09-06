@@ -267,10 +267,19 @@ function SearchContent({ initialData }: SearchClientProps) {
                               event.daily_schedule.length > 0
                                 ? new Date(
                                     event.daily_schedule[0].date
-                                  ).toLocaleDateString()
-                                : new Date(
-                                    event.created_at
-                                  ).toLocaleDateString()}
+                                  ).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                : new Date(event.created_at).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric",
+                                    }
+                                  )}
                             </p>
                             <p className="text-sm mt-2 line-clamp-2">
                               {event.description}

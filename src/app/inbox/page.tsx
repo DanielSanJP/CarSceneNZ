@@ -1,8 +1,8 @@
-import { getAllMessages } from "@/lib/server/messages";
+import { getUserInboxMessages } from "@/lib/server/inbox";
 import { markInboxAsRead, handleJoinRequestAction } from "@/lib/server/inbox";
 import { InboxView } from "@/components/inbox/inbox-view";
 import { getUser } from "@/lib/auth";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
@@ -26,7 +26,17 @@ async function handleJoinRequestServerAction(
 ) {
   "use server";
 
-  return await handleJoinRequestAction(messageId, action, clubId, senderId);
+  const result = await handleJoinRequestAction(
+    messageId,
+    action,
+    clubId,
+    senderId
+  );
+
+  // Force revalidation of the inbox page to refresh the messages list
+  revalidatePath("/inbox");
+
+  return result;
 }
 
 export default async function InboxPage() {
@@ -38,8 +48,8 @@ export default async function InboxPage() {
     await markInboxAsRead(user.id);
   }
 
-  // Fetch messages
-  const messages = await getAllMessages();
+  // Fetch messages with proper typing and message_type detection
+  const messages = await getUserInboxMessages();
 
   return (
     <div className="min-h-screen bg-background">

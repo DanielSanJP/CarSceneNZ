@@ -43,8 +43,8 @@ export const getUserInboxMessages = cache(async (userId?: string): Promise<Inbox
     // Transform basic messages to inbox messages with enhanced context
     return data?.map((msg): InboxMessage => ({
       ...msg,
-      message_type: (msg.subject?.includes('[CLUB REQUEST]') ? 'club_join_request' : 
-                    msg.subject?.includes('[CLUB MAIL]') ? 'club_announcement' : 'general') as 'general' | 'club_join_request' | 'club_announcement' | 'system',
+      // Use the new message_type column directly from database
+      message_type: msg.message_type || 'general',
       // Parse metadata from subject/message if it exists
       club_id: extractClubIdFromMessage(msg),
       club_name: extractClubNameFromMessage(msg),
@@ -78,37 +78,24 @@ export async function sendClubJoinRequest(
       return { success: false, error: 'Club not found' }
     }
 
-    // Check if user already sent a request
-    const { data: existingRequest } = await supabase
-      .from('messages')
-      .select('id')
-      .eq('sender_id', user.id)
-      .eq('receiver_id', club.leader_id)
-      .like('subject', `[CLUB REQUEST] ${club.name}%`)
-      .single()
+    // Allow multiple requests - users can send follow-up messages
+    // Removed the existing request check to allow multiple requests
 
-    if (existingRequest) {
-      return { success: false, error: 'You have already sent a join request to this club' }
-    }
+    // Create the join request message - clean format for display
+    const subject = `Join Request from ${user.username}`
 
-    // Create the join request message
-    const subject = `[CLUB REQUEST] ${club.name} - Join Request from ${user.username}`
-    const requestMessage = `
-${message}
+    // Store metadata separately in a JSON field if your database supports it,
+    // or use a more structured approach. For now, we'll append metadata at the end
+    // in a way that can be parsed but won't be displayed to users
+    const messageWithMetadata = `${message}
 
----
-User: ${user.username}
-Club: ${club.name}
-Request Date: ${new Date().toLocaleDateString()}
-
-METADATA:CLUB_JOIN_REQUEST:${JSON.stringify({
+<!-- METADATA:CLUB_JOIN_REQUEST:${JSON.stringify({
   club_id: clubId,
   club_name: club.name,
   user_id: user.id,
   username: user.username,
   status: 'pending'
-})}
-    `.trim()
+})} -->`
 
       const { error: messageError } = await supabase
         .from('messages')
@@ -116,7 +103,8 @@ METADATA:CLUB_JOIN_REQUEST:${JSON.stringify({
           sender_id: user.id,
           receiver_id: club.leader_id,
           subject,
-          message: requestMessage,
+          message: messageWithMetadata,
+          message_type: 'club_join_request'
         })
 
     if (messageError) {
@@ -185,9 +173,21 @@ export async function handleJoinRequestAction(
         .insert({
           sender_id: currentUser.id,
           receiver_id: userId,
-          subject: `[CLUB MAIL] Welcome to ${clubData?.name}!`,
+          subject: `Welcome to ${clubData?.name}!`,
           message: `Congratulations! Your request to join ${clubData?.name} has been approved. Welcome to the club!`,
+          message_type: 'club_announcement'
         })
+
+      // Delete the original join request message from the database (since it's been processed)
+      const { error: deleteError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId)
+
+      if (deleteError) {
+        console.error('Error deleting join request message:', deleteError)
+        // Don't return error here since the main action (approval) succeeded
+      }
     } else {
       // Send rejection message to the user
       const { data: clubData } = await supabase
@@ -201,9 +201,21 @@ export async function handleJoinRequestAction(
         .insert({
           sender_id: currentUser.id,
           receiver_id: userId,
-          subject: `[CLUB MAIL] ${clubData?.name} - Join Request Update`,
+          subject: `${clubData?.name} - Join Request Update`,
           message: `Thank you for your interest in ${clubData?.name}. Unfortunately, we cannot accept your membership request at this time.`,
+          message_type: 'club_announcement'
         })
+
+      // Delete the original join request message from the database
+      const { error: deleteError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId)
+
+      if (deleteError) {
+        console.error('Error deleting join request message:', deleteError)
+        // Don't return error here since the main action (rejection) succeeded
+      }
     }
 
     // Mark the original request message as read - Remove this since read column doesn't exist
@@ -214,6 +226,9 @@ export async function handleJoinRequestAction(
 
     // Revalidate unread count specifically for the user who submitted the request
     revalidateTag(`unread-messages-${userId}`)
+    
+    // Revalidate inbox messages for the current user (club leader) to refresh the UI
+    revalidateTag(`inbox-messages-${currentUser.id}`)
 
     return { success: true }
   } catch (error) {
@@ -256,19 +271,13 @@ export async function sendClubMail(mailData: ClubMailData): Promise<{ success: b
       return { success: false, error: 'No members found in club' }
     }
 
-    // Get club name
-    const { data: club } = await supabase
-      .from('clubs')
-      .select('name')
-      .eq('id', mailData.club_id)
-      .single()
-
     // Create messages for all members
     const messages = members.map(member => ({
       sender_id: user.id,
       receiver_id: member.user_id,
-      subject: `[CLUB MAIL] ${club?.name}: ${mailData.subject}`,
+      subject: mailData.subject,
       message: mailData.message,
+      message_type: 'club_announcement'
     }))
 
     const { error: sendError } = await supabase
@@ -328,7 +337,7 @@ export async function deleteMessage(messageId: string): Promise<{ success: boole
 
 // Helper functions
 function extractClubIdFromMessage(msg: Message): string | undefined {
-  const metadataMatch = msg.message.match(/METADATA:CLUB_JOIN_REQUEST:({.*})/)
+  const metadataMatch = msg.message.match(/<!-- METADATA:CLUB_JOIN_REQUEST:({.*?}) -->/)
   if (metadataMatch) {
     try {
       const metadata = JSON.parse(metadataMatch[1])
@@ -341,7 +350,7 @@ function extractClubIdFromMessage(msg: Message): string | undefined {
 }
 
 function extractClubNameFromMessage(msg: Message): string | undefined {
-  const metadataMatch = msg.message.match(/METADATA:CLUB_JOIN_REQUEST:({.*})/)
+  const metadataMatch = msg.message.match(/<!-- METADATA:CLUB_JOIN_REQUEST:({.*?}) -->/)
   if (metadataMatch) {
     try {
       const metadata = JSON.parse(metadataMatch[1])
@@ -362,7 +371,7 @@ interface ClubJoinRequestMetadata {
 }
 
 function parseMessageMetadata(msg: Message): { club_join_request?: ClubJoinRequestMetadata } | undefined {
-  const metadataMatch = msg.message.match(/METADATA:CLUB_JOIN_REQUEST:({.*})/)
+  const metadataMatch = msg.message.match(/<!-- METADATA:CLUB_JOIN_REQUEST:({.*?}) -->/)
   if (metadataMatch) {
     try {
       const metadata = JSON.parse(metadataMatch[1])

@@ -6,12 +6,51 @@ import {
   getClubMembersWithStats,
   isClubMember,
   updateClubTotalLikes,
+  joinClub,
+  leaveClub,
 } from "@/lib/server/clubs";
+import { sendClubMail, sendClubJoinRequest } from "@/lib/server/inbox";
 import { ClubDetailView } from "@/components/clubs/display/club-detail-view";
+import type { ClubMailData } from "@/types/inbox";
 
 interface ClubDetailPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string; tab?: string }>;
+}
+
+// Server action wrapper for sending club mail
+async function sendClubMailAction(
+  mailData: ClubMailData
+): Promise<{ success: boolean; error?: string }> {
+  "use server";
+  return await sendClubMail(mailData);
+}
+
+// Server action wrapper for joining a club
+async function joinClubAction(
+  clubId: string,
+  userId: string
+): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  return await joinClub(clubId, userId);
+}
+
+// Server action wrapper for leaving a club
+async function leaveClubAction(
+  clubId: string,
+  userId: string
+): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  return await leaveClub(clubId, userId);
+}
+
+// Server action wrapper for sending club join request
+async function sendClubJoinRequestAction(
+  clubId: string,
+  message?: string
+): Promise<{ success: boolean; error?: string }> {
+  "use server";
+  return await sendClubJoinRequest(clubId, message);
 }
 
 export default async function ClubDetailPage({
@@ -77,6 +116,10 @@ export default async function ClubDetailPage({
         userRole={userRole}
         fromTab={from}
         leaderboardTab={tab}
+        sendClubMailAction={sendClubMailAction}
+        joinClubAction={joinClubAction}
+        leaveClubAction={leaveClubAction}
+        sendClubJoinRequestAction={sendClubJoinRequestAction}
       />
     </Suspense>
   );

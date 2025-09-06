@@ -32,6 +32,14 @@ interface ClubTabNavigationProps {
   uploadAction: (
     formData: FormData
   ) => Promise<{ url: string | null; error: string | null }>;
+  joinClubAction?: (
+    clubId: string,
+    userId: string
+  ) => Promise<{ success: boolean; message?: string }>;
+  sendClubJoinRequestAction?: (
+    clubId: string,
+    message?: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 function ClubTabNavigationContent({
@@ -42,6 +50,8 @@ function ClubTabNavigationContent({
   pagination,
   createClubAction,
   uploadAction,
+  joinClubAction,
+  sendClubJoinRequestAction,
 }: ClubTabNavigationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -127,6 +137,8 @@ function ClubTabNavigationContent({
               currentUser={currentUser}
               userClubIds={userClubIds}
               pagination={pagination}
+              joinClubAction={joinClubAction}
+              sendClubJoinRequestAction={sendClubJoinRequestAction}
             />
           )}
 
@@ -151,7 +163,6 @@ function ClubTabNavigationContent({
                 joined_at: membership.joined_at,
                 memberCount: membership.memberCount,
               }))}
-              user={currentUser!}
             />
           )}
 
@@ -182,8 +193,11 @@ export function ClubTabNavigation({
   currentUser,
   userMemberships,
   userClubIds,
+  pagination,
   createClubAction,
   uploadAction,
+  joinClubAction,
+  sendClubJoinRequestAction,
 }: ClubTabNavigationProps) {
   return (
     <Suspense
@@ -205,8 +219,11 @@ export function ClubTabNavigation({
         currentUser={currentUser}
         userMemberships={userMemberships}
         userClubIds={userClubIds}
+        pagination={pagination}
         createClubAction={createClubAction}
         uploadAction={uploadAction}
+        joinClubAction={joinClubAction}
+        sendClubJoinRequestAction={sendClubJoinRequestAction}
       />
     </Suspense>
   );

@@ -42,7 +42,16 @@ export function InboxView({
     };
 
     markAsRead();
-  }, [revalidateBadgeAction]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run once on mount
+
+  // Function to clean message content by removing metadata
+  const getCleanMessage = (message: string): string => {
+    // Remove HTML comment metadata
+    return message
+      .replace(/<!-- METADATA:CLUB_JOIN_REQUEST:.*? -->/g, "")
+      .trim();
+  };
 
   const handleJoinRequest = async (
     msg: InboxMessage,
@@ -62,8 +71,8 @@ export function InboxView({
         msg.sender_id
       );
       if (result.success) {
-        // Refresh the page to show updated messages
-        window.location.reload();
+        // Server action will handle revalidation, no need for manual reload
+        console.log(`Successfully ${action}ed join request`);
       } else {
         alert(
           `Failed to ${action} join request: ${result.error || "Unknown error"}`
@@ -152,7 +161,14 @@ export function InboxView({
                       {/* Date - Bottom Right */}
                       <div className="flex justify-end mt-auto">
                         <p className="text-xs text-muted-foreground">
-                          {new Date(msg.created_at).toLocaleDateString()}
+                          {new Date(msg.created_at).toLocaleDateString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
                         </p>
                       </div>
                     </div>
@@ -167,12 +183,12 @@ export function InboxView({
 
                     {/* Message Content */}
                     <p className="leading-relaxed break-words whitespace-pre-wrap">
-                      {msg.message}
+                      {getCleanMessage(msg.message)}
                     </p>
 
                     {/* Club Context */}
                     {msg.club_name && (
-                      <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                      <div className=" rounded-lg p-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-gray-500" />
                           <span className="font-medium">{msg.club_name}</span>
@@ -180,60 +196,38 @@ export function InboxView({
                       </div>
                     )}
 
-                    {/* Join Request Actions */}
-                    {msg.message_type === "club_join_request" &&
-                      msg.metadata?.club_join_request?.status === "pending" && (
-                        <div className="flex gap-2 pt-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleJoinRequest(msg, "approve")}
-                            disabled={processingRequest === msg.id}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            {processingRequest === msg.id ? (
-                              <Clock className="h-4 w-4 mr-1" />
-                            ) : (
-                              <Check className="h-4 w-4 mr-1" />
-                            )}
-                            Accept
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleJoinRequest(msg, "reject")}
-                            disabled={processingRequest === msg.id}
-                            className="border-red-200 text-red-600 hover:bg-red-50"
-                          >
-                            {processingRequest === msg.id ? (
-                              <Clock className="h-4 w-4 mr-1" />
-                            ) : (
-                              <X className="h-4 w-4 mr-1" />
-                            )}
-                            Reject
-                          </Button>
-                        </div>
-                      )}
-
-                    {/* Status indicators for processed requests */}
-                    {msg.message_type === "club_join_request" &&
-                      msg.metadata?.club_join_request?.status !== "pending" && (
-                        <div className="pt-2">
-                          <Badge
-                            variant={
-                              msg.metadata?.club_join_request?.status ===
-                              "approved"
-                                ? "default"
-                                : "destructive"
-                            }
-                            className="text-xs"
-                          >
-                            {msg.metadata?.club_join_request?.status ===
-                            "approved"
-                              ? "Accepted"
-                              : "Rejected"}
-                          </Badge>
-                        </div>
-                      )}
+                    {/* Join Request Actions - Show for all club join requests */}
+                    {msg.message_type === "club_join_request" && (
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleJoinRequest(msg, "approve")}
+                          disabled={processingRequest === msg.id}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          {processingRequest === msg.id ? (
+                            <Clock className="h-4 w-4 mr-1" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-1" />
+                          )}
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleJoinRequest(msg, "reject")}
+                          disabled={processingRequest === msg.id}
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          {processingRequest === msg.id ? (
+                            <Clock className="h-4 w-4 mr-1" />
+                          ) : (
+                            <X className="h-4 w-4 mr-1" />
+                          )}
+                          Reject
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

@@ -77,13 +77,13 @@ CREATE TABLE public.club_members (
     user_id uuid NOT NULL,
     role character varying DEFAULT 'member'::character varying CHECK (
         role::text = ANY (
-            ARRAY ['leader'::character varying::text, 'admin'::character varying::text, 'member'::character varying::text]
+            ARRAY ['leader'::character varying::text, 'co-leader'::character varying::text, 'member'::character varying::text]
         )
     ),
     joined_at timestamp with time zone DEFAULT now(),
     CONSTRAINT club_members_pkey PRIMARY KEY (id),
-    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
+    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
+    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.clubs (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -139,6 +139,11 @@ CREATE TABLE public.messages (
     message text NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
+    message_type character varying DEFAULT 'general'::character varying CHECK (
+        message_type::text = ANY (
+            ARRAY ['general'::character varying::text, 'club_join_request'::character varying::text, 'club_announcement'::character varying::text, 'system'::character varying::text]
+        )
+    ),
     CONSTRAINT messages_pkey PRIMARY KEY (id),
     CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id),
     CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id)
