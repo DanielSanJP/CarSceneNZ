@@ -1,4 +1,5 @@
 import { getAllMessages } from "@/lib/server/messages";
+import { markInboxAsRead } from "@/lib/server/inbox";
 import { InboxView } from "@/components/inbox/inbox-view";
 
 // Force dynamic rendering since we use authentication/cookies
@@ -12,7 +13,7 @@ export default async function InboxPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
-          <InboxView messages={messages} />
+          <InboxView messages={messages} markInboxAsRead={markInboxAsRead} />
         </div>
       </div>
     </div>

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { InboxUnreadBadge } from "@/components/inbox/inbox-unread-badge";
 import type { User as UserType } from "@/types/user";
 
 // Main navigation items (available to everyone)
@@ -84,9 +85,10 @@ const userNavItems = [
 
 interface AppSidebarProps {
   user: UserType | null;
+  unreadCount: number;
 }
 
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar({ user, unreadCount }: AppSidebarProps) {
   const { setOpenMobile } = useSidebar();
   const pathname = usePathname();
 
@@ -178,9 +180,16 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         asChild
                         isActive={isActivePath(item.url)}
                       >
-                        <Link href={item.url} onClick={handleLinkClick}>
+                        <Link
+                          href={item.url}
+                          onClick={handleLinkClick}
+                          className="relative"
+                        >
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
+                          {item.title === "Inbox" && (
+                            <InboxUnreadBadge unreadCount={unreadCount} />
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

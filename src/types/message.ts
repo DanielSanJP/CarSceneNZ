@@ -4,7 +4,6 @@ export interface Message {
   receiver_id: string;
   subject?: string;
   message: string;
-  read: boolean;
   created_at: string;
   updated_at: string;
   sender?: {

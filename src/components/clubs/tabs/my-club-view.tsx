@@ -1,33 +1,12 @@
 "use client";
 
-import { useState } from "react";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Users,
-  MapPin,
-  Crown,
-  Shield,
-  UserPlus,
-  UserMinus,
-  MoreVertical,
-  Settings,
-  Globe,
-  Lock,
-  Star,
-} from "lucide-react";
+
+import { Users, MapPin, Crown, Shield, Globe, Lock, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import type { User } from "@/types";
 
 interface Club {
   id: string;
@@ -57,12 +36,9 @@ interface ClubMembership {
 interface MyClubViewProps {
   // Updated to expect array of club memberships instead of single club
   userClubs: ClubMembership[];
-  user: User;
 }
 
-export function MyClubView({ userClubs, user }: MyClubViewProps) {
-  const [isLeaving, setIsLeaving] = useState<string | null>(null); // Track which club is being left
-
+export function MyClubView({ userClubs }: MyClubViewProps) {
   // Empty state - user is not in any clubs
   if (!userClubs || userClubs.length === 0) {
     return (
@@ -86,39 +62,6 @@ export function MyClubView({ userClubs, user }: MyClubViewProps) {
       </div>
     );
   }
-
-  const handleLeaveClub = async (
-    clubId: string,
-    clubName: string,
-    isLeader: boolean
-  ) => {
-    if (!user) return;
-
-    const confirmLeave = window.confirm(
-      isLeader
-        ? `Are you sure you want to leave "${clubName}"? As the leader, you'll need to transfer leadership or the club will be disbanded.`
-        : `Are you sure you want to leave "${clubName}"?`
-    );
-
-    if (!confirmLeave) return;
-
-    setIsLeaving(clubId);
-    try {
-      // In a real app, this would be an API call
-      console.log("Leaving club:", clubId);
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // For now, just refresh the page or redirect
-      window.location.reload();
-    } catch (error) {
-      console.error("Error leaving club:", error);
-      alert("Failed to leave club. Please try again.");
-    } finally {
-      setIsLeaving(null);
-    }
-  };
 
   const getClubTypeInfo = (type: string) => {
     switch (type) {
@@ -195,9 +138,6 @@ export function MyClubView({ userClubs, user }: MyClubViewProps) {
         {userClubs.map((membership) => {
           const { club, role, memberCount } = membership;
           const typeInfo = getClubTypeInfo(club.club_type);
-          const isClubLeader = role === "leader";
-          const canManage = role === "leader";
-          const canManageMembers = role === "leader" || role === "co-leader";
 
           return (
             <Link href={`/clubs/${club.id}?from=myclub`} key={club.id}>
@@ -291,67 +231,6 @@ export function MyClubView({ userClubs, user }: MyClubViewProps) {
                     >
                       View Details
                     </Button>
-                    {canManageMembers && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {canManage && (
-                            <DropdownMenuItem asChild>
-                              <Link href={`/clubs/edit/${club.id}?from=myclub`}>
-                                <Settings className="h-4 w-4 mr-2" />
-                                Club Settings
-                              </Link>
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem>
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Invite Members
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() =>
-                              handleLeaveClub(club.id, club.name, isClubLeader)
-                            }
-                            disabled={isLeaving === club.id}
-                          >
-                            <UserMinus className="h-4 w-4 mr-2" />
-                            {isLeaving === club.id
-                              ? "Leaving..."
-                              : "Leave Club"}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    {!canManageMembers && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleLeaveClub(club.id, club.name, false);
-                        }}
-                        disabled={isLeaving === club.id}
-                      >
-                        {isLeaving === club.id ? (
-                          "Leaving..."
-                        ) : (
-                          <UserMinus className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
                   </div>
                 </CardContent>
               </Card>

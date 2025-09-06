@@ -31,6 +31,7 @@ interface EditEventFormProps {
   uploadAction: (
     formData: FormData
   ) => Promise<{ url: string | null; error: string | null }>;
+  from?: string;
 }
 
 export function EditEventForm({
@@ -39,6 +40,7 @@ export function EditEventForm({
   updateAction,
   deleteAction,
   uploadAction,
+  from,
 }: EditEventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -159,7 +161,11 @@ export function EditEventForm({
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Link href={`/events/${event.id}`}>
+        <Link
+          href={
+            from === "my-events" ? "/events/my-events" : `/events/${event.id}`
+          }
+        >
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -263,7 +269,13 @@ export function EditEventForm({
           </Button>
 
           <div className="flex space-x-4">
-            <Link href={`/events/${event.id}`}>
+            <Link
+              href={
+                from === "my-events"
+                  ? "/events/my-events"
+                  : `/events/${event.id}`
+              }
+            >
               <Button type="button" variant="outline" disabled={isLoading}>
                 Cancel
               </Button>

@@ -6,8 +6,8 @@ CREATE TABLE public.car_likes (
     user_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT car_likes_pkey PRIMARY KEY (id),
-    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id),
+    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.cars (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -137,12 +137,11 @@ CREATE TABLE public.messages (
     receiver_id uuid NOT NULL,
     subject character varying,
     message text NOT NULL,
-    read boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT messages_pkey PRIMARY KEY (id),
-    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id),
-    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id)
+    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id),
+    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.user_follows (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -150,8 +149,8 @@ CREATE TABLE public.user_follows (
     following_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT user_follows_pkey PRIMARY KEY (id),
-    CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.users(id),
-    CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id)
+    CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id),
+    CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.users (
     id uuid NOT NULL,

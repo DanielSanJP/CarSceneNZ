@@ -59,12 +59,16 @@ interface EditClubFormProps {
   uploadAction: (
     formData: FormData
   ) => Promise<{ url: string | null; error: string | null }>;
+  updateAction: (
+    formData: FormData
+  ) => Promise<{ success: boolean; error: string | null }>;
 }
 
 export function EditClubForm({
   club,
   fromTab = "join",
   uploadAction,
+  updateAction,
 }: EditClubFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -160,23 +164,27 @@ export function EditClubForm({
     setIsLoading(true);
 
     try {
-      // In a real app, this would be an API call to update the club
-      const updatedClubData = {
-        ...formData,
-        id: club.id,
-        leader_id: club.leader_id,
-        updated_at: new Date().toISOString(),
-      };
+      // Create FormData for server action
+      const formDataForSubmit = new FormData();
+      formDataForSubmit.append("clubId", club.id);
+      formDataForSubmit.append("name", formData.name);
+      formDataForSubmit.append("description", formData.description);
+      formDataForSubmit.append("location", formData.location);
+      formDataForSubmit.append("club_type", formData.club_type);
+      formDataForSubmit.append("banner_image", formData.banner_image);
 
-      console.log("Updating club:", updatedClubData);
+      console.log("Updating club with data:", formData);
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const result = await updateAction(formDataForSubmit);
 
-      // Redirect back to the appropriate page
-      router.push(
-        fromTab === "myclub" ? "/clubs?tab=myclub" : `/clubs/${club.id}`
-      );
+      if (result.success) {
+        // Redirect back to the appropriate page
+        router.push(
+          fromTab === "myclub" ? "/clubs?tab=myclub" : `/clubs/${club.id}`
+        );
+      } else {
+        alert(result.error || "Failed to update club. Please try again.");
+      }
     } catch (error) {
       console.error("Error updating club:", error);
       alert("Failed to update club. Please try again.");

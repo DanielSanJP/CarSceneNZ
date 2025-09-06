@@ -216,7 +216,7 @@ export function MyEventsView({ events, attendeeCounts }: MyEventsViewProps) {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            window.location.href = `/events/edit/${event.id}`;
+                            window.location.href = `/events/edit/${event.id}?from=my-events`;
                           }}
                         >
                           <Edit3 className="h-4 w-4 mr-2" />

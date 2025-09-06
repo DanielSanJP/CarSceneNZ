@@ -20,13 +20,23 @@ import {
   Edit,
   UserPlus,
   UserMinus,
+  Mail,
 } from "lucide-react";
 import type { Club, ClubMember } from "@/types/club";
 import type { User } from "@/types/user";
+import { SendClubMail } from "@/components/inbox/send-club-mail";
+import { sendClubJoinRequest } from "@/lib/server/inbox";
+import { joinClub, leaveClub } from "@/lib/server/clubs";
 
 interface ClubDetailViewProps {
   club: Club;
-  members: ClubMember[];
+  members: (ClubMember & {
+    total_cars: number;
+    total_likes: number;
+    most_liked_car_brand?: string;
+    most_liked_car_model?: string;
+    most_liked_car_likes: number;
+  })[];
   memberCount: number;
   currentUser: User | null;
   isUserMember: boolean;
@@ -48,6 +58,7 @@ export function ClubDetailView({
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [joinRequestSent, setJoinRequestSent] = useState(false);
 
   const isLeader = userRole === "leader";
   const isCoLeader = userRole === "co-leader";
@@ -59,14 +70,26 @@ export function ClubDetailView({
 
     setIsJoining(true);
     try {
-      // In a real app, this would be an API call
-      console.log("Joining club:", club.id);
+      if (club.is_invite_only) {
+        // Send join request for invite-only clubs
+        const success = await sendClubJoinRequest(club.id, currentUser.id);
+        if (success) {
+          setJoinRequestSent(true);
+          alert("Join request sent to club leaders!");
+        } else {
+          alert("Failed to send join request. You may have already sent one.");
+        }
+      } else {
+        // Join immediately for public clubs
+        const result = await joinClub(club.id, currentUser.id);
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Reload page to reflect changes
-      window.location.reload();
+        if (result.success) {
+          // Reload page to reflect changes
+          window.location.reload();
+        } else {
+          alert("Failed to join club");
+        }
+      }
     } catch (error) {
       console.error("Error joining club:", error);
       alert("Failed to join club. Please try again.");
@@ -88,18 +111,18 @@ export function ClubDetailView({
 
     setIsLeaving(true);
     try {
-      // In a real app, this would be an API call
-      console.log("Leaving club:", club.id);
+      const result = await leaveClub(club.id, currentUser.id);
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (isLeader) {
-        // If leader is leaving, redirect to clubs page
-        window.location.href = "/clubs";
+      if (result.success) {
+        if (isLeader) {
+          // If leader is leaving, redirect to clubs page
+          window.location.href = "/clubs";
+        } else {
+          // Reload page to reflect changes
+          window.location.reload();
+        }
       } else {
-        // Reload page to reflect changes
-        window.location.reload();
+        alert(result.message || "Failed to leave club");
       }
     } catch (error) {
       console.error("Error leaving club:", error);
@@ -244,7 +267,7 @@ export function ClubDetailView({
                       {club.description || "No description available."}
                     </p>
                     {canManage && (
-                      <div className="pt-2">
+                      <div className="pt-2 flex flex-wrap gap-2">
                         <Link href={`/clubs/edit/${club.id}?from=${fromTab}`}>
                           <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4 mr-2" />
@@ -319,56 +342,84 @@ export function ClubDetailView({
           {/* Action Button Card */}
           <Card className="mb-8">
             <CardContent className="px-2">
-              <div className="flex justify-end px-4 py-0">
-                {isUserMember ? (
-                  <Button
-                    variant="destructive"
-                    onClick={handleLeaveClub}
-                    disabled={isLeaving}
-                    size="lg"
-                  >
-                    {isLeaving ? (
-                      "Leaving..."
-                    ) : (
-                      <>
-                        <UserMinus className="h-4 w-4 mr-2" />
-                        Leave Club
-                      </>
-                    )}
-                  </Button>
-                ) : canJoin ? (
-                  <Button
-                    onClick={handleJoinClub}
-                    disabled={isJoining}
-                    size="lg"
-                  >
-                    {isJoining ? (
-                      "Joining..."
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Join Club
-                      </>
-                    )}
-                  </Button>
-                ) : !currentUser ? (
-                  <Link href="/login">
-                    <Button size="lg">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Sign In to Join
+              <div className="flex justify-between items-center px-4 py-0">
+                {/* Left side - Send Club Mail for leaders */}
+                <div>
+                  {canManage && (
+                    <SendClubMail
+                      clubId={club.id}
+                      clubName={club.name}
+                      currentUserId={currentUser?.id || ""}
+                      trigger={
+                        <Button size="lg">
+                          <Mail className="h-4 w-4 mr-2" />
+                          Send Club Mail
+                        </Button>
+                      }
+                    />
+                  )}
+                </div>
+
+                {/* Right side - Join/Leave buttons */}
+                <div>
+                  {isUserMember ? (
+                    <Button
+                      variant="destructive"
+                      onClick={handleLeaveClub}
+                      disabled={isLeaving}
+                      size="lg"
+                    >
+                      {isLeaving ? (
+                        "Leaving..."
+                      ) : (
+                        <>
+                          <UserMinus className="h-4 w-4 mr-2" />
+                          Leave Club
+                        </>
+                      )}
                     </Button>
-                  </Link>
-                ) : club.club_type === "closed" ? (
-                  <Button disabled size="lg">
-                    <Lock className="h-4 w-4 mr-2" />
-                    Closed
-                  </Button>
-                ) : club.club_type === "invite" ? (
-                  <Button disabled size="lg">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Invite Only
-                  </Button>
-                ) : null}
+                  ) : canJoin ? (
+                    <Button
+                      onClick={handleJoinClub}
+                      disabled={isJoining || joinRequestSent}
+                      size="lg"
+                    >
+                      {isJoining ? (
+                        club.is_invite_only ? (
+                          "Sending Request..."
+                        ) : (
+                          "Joining..."
+                        )
+                      ) : joinRequestSent ? (
+                        "Request Sent"
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          {club.is_invite_only
+                            ? "Request to Join"
+                            : "Join Club"}
+                        </>
+                      )}
+                    </Button>
+                  ) : !currentUser ? (
+                    <Link href="/login">
+                      <Button size="lg">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Sign In to Join
+                      </Button>
+                    </Link>
+                  ) : club.club_type === "closed" ? (
+                    <Button disabled size="lg">
+                      <Lock className="h-4 w-4 mr-2" />
+                      Closed
+                    </Button>
+                  ) : club.club_type === "invite" ? (
+                    <Button disabled size="lg">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Invite Only
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -381,12 +432,6 @@ export function ClubDetailView({
                   <Users className="h-5 w-5" />
                   Members ({memberCount})
                 </div>
-                {canManage && (
-                  <Button variant="outline" size="sm">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invite Members
-                  </Button>
-                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -418,7 +463,7 @@ export function ClubDetailView({
                       <div className="flex-1 min-w-0">
                         <Link href={`/profile/${member.user?.username}`}>
                           <p className="font-medium hover:underline cursor-pointer">
-                            {member.user?.username}
+                            {member.user?.display_name || member.user?.username}
                           </p>
                         </Link>
                         <div className="text-sm text-muted-foreground">
@@ -427,7 +472,7 @@ export function ClubDetailView({
                       </div>
 
                       {/* Role Badge */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 capitalize">
                         {getRoleIcon(member.role || "member")}
                         <Badge
                           className={`text-xs ${getRoleBadgeColor(
@@ -443,7 +488,7 @@ export function ClubDetailView({
                         <div className="flex items-center gap-1 md:gap-2 justify-end mb-0.5 md:mb-1">
                           <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 fill-yellow-500" />
                           <span className="text-lg md:text-2xl font-bold text-primary">
-                            0
+                            {member.total_likes}
                           </span>
                         </div>
                       </div>

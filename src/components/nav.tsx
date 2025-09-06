@@ -24,9 +24,16 @@ import {
 import { SearchBar, MobileSearchButton } from "@/components/search-bar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeButton } from "@/components/theme-button";
+import { InboxUnreadBadge } from "@/components/inbox/inbox-unread-badge";
 import type { User as UserType } from "@/types/user";
 
-function ProfileDropdown({ user }: { user: UserType | null }) {
+function ProfileDropdown({
+  user,
+  unreadCount,
+}: {
+  user: UserType | null;
+  unreadCount: number;
+}) {
   const [imageError, setImageError] = React.useState(false);
 
   // Use user data from our combined auth context
@@ -119,9 +126,10 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/inbox" className="cursor-pointer">
+          <Link href="/inbox" className="cursor-pointer relative">
             <Mail className="mr-2 h-4 w-4" />
             <span>Inbox</span>
+            <InboxUnreadBadge unreadCount={unreadCount} />
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -134,7 +142,13 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
   );
 }
 
-export function Navigation({ user }: { user: UserType | null }) {
+export function Navigation({
+  user,
+  unreadCount,
+}: {
+  user: UserType | null;
+  unreadCount: number;
+}) {
   const pathname = usePathname();
 
   const isActivePath = (path: string) => {
@@ -262,11 +276,12 @@ export function Navigation({ user }: { user: UserType | null }) {
                       <NavigationMenuLink asChild>
                         <Link
                           href="/inbox"
-                          className="flex flex-row items-center gap-2"
+                          className="flex flex-row items-center gap-2 relative"
                           data-active={isActivePath("/inbox")}
                         >
                           <Mail className="h-4 w-4" />
                           <span>Inbox</span>
+                          <InboxUnreadBadge unreadCount={unreadCount} />
                         </Link>
                       </NavigationMenuLink>
                     </NavigationMenuItem>
@@ -286,7 +301,7 @@ export function Navigation({ user }: { user: UserType | null }) {
             <MobileSearchButton />
             <ThemeButton />
             {user ? (
-              <ProfileDropdown user={user} />
+              <ProfileDropdown user={user} unreadCount={unreadCount} />
             ) : (
               <div className="hidden lg:flex space-x-2">
                 <Link href="/login">

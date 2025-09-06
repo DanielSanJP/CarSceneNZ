@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
-import { getClubById } from "@/lib/server/clubs";
+import { getClubById, updateClub } from "@/lib/server/clubs";
 import { EditClubForm } from "@/components/clubs/edit-club-form";
 import { uploadClubImage } from "@/lib/server/image-upload";
 
@@ -29,6 +29,44 @@ async function uploadClubImageServerAction(formData: FormData) {
     return {
       url: null,
       error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
+}
+
+async function updateClubServerAction(formData: FormData) {
+  "use server";
+
+  try {
+    const clubId = formData.get("clubId") as string;
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    const location = formData.get("location") as string;
+    const club_type = formData.get("club_type") as string;
+    const banner_image = formData.get("banner_image") as string;
+
+    if (!clubId || !name || !description || !location || !club_type) {
+      return { success: false, error: "Missing required fields" };
+    }
+
+    const result = await updateClub({
+      id: clubId,
+      name,
+      description,
+      location,
+      club_type,
+      banner_image: banner_image || "",
+    });
+
+    if (result) {
+      return { success: true, error: null };
+    } else {
+      return { success: false, error: "Failed to update club" };
+    }
+  } catch (error) {
+    console.error("Update club error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Update failed",
     };
   }
 }
@@ -67,6 +105,7 @@ export default async function EditClubPage({
         club={club}
         fromTab={from}
         uploadAction={uploadClubImageServerAction}
+        updateAction={updateClubServerAction}
       />
     </Suspense>
   );

@@ -4,6 +4,7 @@ import {
   getUserProfile,
   getUserProfileByUsername,
 } from "@/lib/server/profile";
+import { getUserClubMemberships } from "@/lib/server/clubs";
 import { getUserOptional } from "@/lib/auth";
 import { UserProfileClient } from "@/components/profile/user-profile-client";
 import { createClient } from "@/lib/utils/supabase/server";
@@ -59,21 +60,24 @@ export default async function UserProfilePage({
         userCars={[]}
         followers={[]}
         following={[]}
+        userClubs={[]}
       />
     );
   }
 
   // Fetch user data in parallel
-  const [userCars, followers, following] = await Promise.allSettled([
+  const [userCars, followers, following, userClubs] = await Promise.allSettled([
     getCarsByOwner(profileUser.id),
     getUserFollowers(profileUser.id),
     getUserFollowing(profileUser.id),
+    getUserClubMemberships(profileUser.id),
   ]);
 
   // Extract data or use empty arrays on error
   const carsData = userCars.status === "fulfilled" ? userCars.value : [];
   const followersData = followers.status === "fulfilled" ? followers.value : [];
   const followingData = following.status === "fulfilled" ? following.value : [];
+  const clubsData = userClubs.status === "fulfilled" ? userClubs.value : [];
 
   return (
     <UserProfileClient
@@ -82,6 +86,7 @@ export default async function UserProfilePage({
       userCars={carsData}
       followers={followersData}
       following={followingData}
+      userClubs={clubsData}
     />
   );
 }

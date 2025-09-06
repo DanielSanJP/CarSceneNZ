@@ -7,6 +7,7 @@ export interface Club {
   location?: string;
   leader_id: string; // References User.id
   total_likes: number;
+  is_invite_only?: boolean;
   created_at: string;
   updated_at: string;
   leader?: {
@@ -26,6 +27,7 @@ export interface ClubMember {
   user?: {
     id: string;
     username: string;
+    display_name?: string;
     profile_image_url?: string;
   };
 }

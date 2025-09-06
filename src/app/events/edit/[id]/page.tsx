@@ -7,6 +7,7 @@ import { uploadEventImage } from "@/lib/server/image-upload";
 
 interface EditEventPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)
@@ -40,7 +41,11 @@ async function uploadEventImageServerAction(formData: FormData) {
   }
 }
 
-async function updateEventAction(eventId: string, formData: FormData) {
+async function updateEventAction(
+  eventId: string,
+  from: string | undefined,
+  formData: FormData
+) {
   "use server";
 
   // Extract form data
@@ -88,23 +93,37 @@ async function updateEventAction(eventId: string, formData: FormData) {
 
   revalidatePath("/events");
   revalidatePath(`/events/${eventId}`);
-  redirect(`/events/${eventId}`);
+
+  if (from === "my-events") {
+    redirect("/events/my-events");
+  } else {
+    redirect(`/events/${eventId}`);
+  }
 }
 
-async function deleteEventAction(eventId: string) {
+async function deleteEventAction(eventId: string, from: string | undefined) {
   "use server";
 
   await deleteEvent(eventId);
 
   revalidatePath("/events");
-  redirect("/events");
+
+  if (from === "my-events") {
+    redirect("/events/my-events");
+  } else {
+    redirect("/events");
+  }
 }
 
-export default async function EditEventPage({ params }: EditEventPageProps) {
+export default async function EditEventPage({
+  params,
+  searchParams,
+}: EditEventPageProps) {
   // Server-side auth check
   const user = await getUser();
 
   const { id: eventId } = await params;
+  const { from } = await searchParams;
 
   if (!eventId) {
     notFound();
@@ -120,8 +139,8 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
     redirect("/events");
   }
 
-  const updateAction = updateEventAction.bind(null, eventId);
-  const deleteAction = deleteEventAction.bind(null, eventId);
+  const updateAction = updateEventAction.bind(null, eventId, from);
+  const deleteAction = deleteEventAction.bind(null, eventId, from);
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,6 +151,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
           updateAction={updateAction}
           deleteAction={deleteAction}
           uploadAction={uploadEventImageServerAction}
+          from={from}
         />
       </div>
     </div>

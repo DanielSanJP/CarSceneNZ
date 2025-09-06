@@ -6,6 +6,7 @@ export interface User {
   profile_image_url?: string;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
+  last_seen_inbox?: string; // ISO date string - when user last visited inbox
 }
 
 export interface UserFollow {

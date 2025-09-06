@@ -5,7 +5,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Navigation } from "@/components/nav";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { getUserOptional } from "@/lib/auth";
+import { getUnreadMessageCount } from "@/lib/server/inbox";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +32,9 @@ export default async function RootLayout({
   // Get user on server side following Next.js 15 DAL pattern
   const user = await getUserOptional();
 
+  // Get unread message count for the user
+  const unreadCount = user ? await getUnreadMessageCount(user.id) : 0;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -42,12 +47,13 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <SidebarProvider defaultOpen={false}>
-            <AppSidebar user={user} />
+            <AppSidebar user={user} unreadCount={unreadCount} />
             <SidebarInset>
-              <Navigation user={user} />
+              <Navigation user={user} unreadCount={unreadCount} />
               <div className="flex-1 flex flex-col min-h-0">{children}</div>
             </SidebarInset>
           </SidebarProvider>
+          <Toaster position="top-center" />
         </ThemeProvider>
       </body>
     </html>

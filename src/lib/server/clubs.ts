@@ -467,37 +467,257 @@ export const getAllClubsWithStats = cache(async (filters?: {
   }
 })
 
+export async function updateClub(clubData: {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  club_type: string;
+  banner_image: string;
+}): Promise<Club | null> {
+  try {
+    console.log('=== updateClub function called ===');
+    console.log('Club data:', clubData);
+    
+    const supabase = await createClient()
+    console.log('Supabase client created');
+
+    // Update the club
+    const { data: clubUpdateData, error: clubError } = await supabase
+      .from('clubs')
+      .update({
+        name: clubData.name.trim(),
+        description: clubData.description.trim(),
+        location: clubData.location,
+        club_type: clubData.club_type,
+        banner_image_url: clubData.banner_image || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', clubData.id)
+      .select()
+      .single()
+
+    console.log('Club update result:', { data: clubUpdateData, error: clubError });
+
+    if (clubError || !clubUpdateData) {
+      console.error('Error updating club:', clubError)
+      return null
+    }
+
+    console.log('Club updated successfully, ID:', clubUpdateData.id);
+
+    // Return the updated club with leader info
+    console.log('Fetching complete updated club data...');
+    const result = await getClubById(clubUpdateData.id);
+    console.log('Final updated club result:', result ? 'Success' : 'Failed to fetch');
+    return result;
+  } catch (error) {
+    console.error('=== updateClub function error ===', error)
+    return null
+  }
+}
+
 export const getClubTotalLikes = cache(async (clubId: string): Promise<number> => {
   try {
     const supabase = await createClient()
-
-    // Calculate total likes from all cars owned by club members
+    
+    // Use the SQL function to calculate total likes
     const { data, error } = await supabase
-      .from('club_members')
-      .select(`
-        user_id,
-        cars!cars_owner_id_fkey (
-          total_likes
-        )
-      `)
-      .eq('club_id', clubId)
+      .rpc('calculate_club_total_likes', {
+        club_id_param: clubId
+      })
 
     if (error) {
       console.error('Error calculating club total likes:', error)
       return 0
     }
 
-    // Sum up all likes from member cars
-    const totalLikes = data?.reduce((total, member) => {
-      const memberCarLikes = member.cars?.reduce((carTotal, car) => {
-        return carTotal + (car.total_likes || 0)
-      }, 0) || 0
-      return total + memberCarLikes
-    }, 0) || 0
-
-    return totalLikes
+    return data || 0
   } catch (error) {
     console.error('Error calculating club total likes:', error)
     return 0
   }
 })
+
+// Update club total likes using the SQL function
+export async function updateClubTotalLikes(clubId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient()
+    
+    const { error } = await supabase
+      .rpc('update_club_total_likes', {
+        club_id_param: clubId
+      })
+
+    if (error) {
+      console.error('Error updating club total likes:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error updating club total likes:', error)
+    return false
+  }
+}
+
+// Get club members with their car statistics
+export const getClubMembersWithStats = cache(async (clubId: string): Promise<(ClubMember & {
+  total_cars: number;
+  total_likes: number;
+  most_liked_car_brand?: string;
+  most_liked_car_model?: string;
+  most_liked_car_likes: number;
+})[]> => {
+  try {
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .rpc('get_club_members_with_stats', {
+        club_id_param: clubId
+      })
+
+    if (error) {
+      console.error('Error getting club members with stats:', error)
+      return []
+    }
+
+    // Transform the data to match our expected format
+    return data?.map((row: {
+      member_id: string;
+      user_id: string;
+      username: string;
+      display_name: string;
+      profile_image_url: string;
+      role: string;
+      joined_at: string;
+      total_cars: number;
+      total_likes: number;
+      most_liked_car_brand?: string;
+      most_liked_car_model?: string;
+      most_liked_car_likes: number;
+    }) => ({
+      id: row.member_id,
+      club_id: clubId,
+      user_id: row.user_id,
+      role: row.role,
+      joined_at: row.joined_at,
+      user: {
+        id: row.user_id,
+        username: row.username,
+        display_name: row.display_name || row.username,
+        profile_image_url: row.profile_image_url,
+      },
+      total_cars: row.total_cars,
+      total_likes: row.total_likes,
+      most_liked_car_brand: row.most_liked_car_brand,
+      most_liked_car_model: row.most_liked_car_model,
+      most_liked_car_likes: row.most_liked_car_likes,
+    })) || []
+  } catch (error) {
+    console.error('Error getting club members with stats:', error)
+    return []
+  }
+})
+
+// Refresh all club total likes (useful for manual updates)
+export async function refreshAllClubTotalLikes(): Promise<boolean> {
+  try {
+    const supabase = await createClient()
+    
+    // Get all club IDs
+    const { data: clubs, error: clubsError } = await supabase
+      .from('clubs')
+      .select('id')
+
+    if (clubsError || !clubs) {
+      console.error('Error getting clubs for refresh:', clubsError)
+      return false
+    }
+
+    // Update each club's total likes
+    const updatePromises = clubs.map(club => updateClubTotalLikes(club.id))
+    await Promise.all(updatePromises)
+
+    return true
+  } catch (error) {
+    console.error('Error refreshing all club total likes:', error)
+    return false
+  }
+}
+
+export async function joinClub(clubId: string, userId: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const supabase = await createClient()
+
+    // Check if already a member
+    const { data: existingMember, error: checkError } = await supabase
+      .from('club_members')
+      .select('id')
+      .eq('club_id', clubId)
+      .eq('user_id', userId)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking existing membership:', checkError)
+      return { success: false, message: 'Failed to check membership status' }
+    }
+
+    if (existingMember) {
+      return { success: false, message: 'Already a member of this club' }
+    }
+
+    // Add user to club
+    const { error: insertError } = await supabase
+      .from('club_members')
+      .insert({
+        club_id: clubId,
+        user_id: userId,
+        role: 'member'
+      })
+
+    if (insertError) {
+      console.error('Error joining club:', insertError)
+      return { success: false, message: 'Failed to join club' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in joinClub:', error)
+    return { success: false, message: 'Failed to join club' }
+  }
+}
+
+export async function leaveClub(clubId: string, userId: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const supabase = await createClient()
+
+    // Don't allow leader to leave without transferring leadership
+    const { data: club } = await supabase
+      .from('clubs')
+      .select('leader_id')
+      .eq('id', clubId)
+      .single()
+
+    if (club?.leader_id === userId) {
+      return { success: false, message: 'Club leader must transfer leadership before leaving' }
+    }
+
+    // Remove user from club
+    const { error } = await supabase
+      .from('club_members')
+      .delete()
+      .eq('club_id', clubId)
+      .eq('user_id', userId)
+
+    if (error) {
+      console.error('Error leaving club:', error)
+      return { success: false, message: 'Failed to leave club' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in leaveClub:', error)
+    return { success: false, message: 'Failed to leave club' }
+  }
+}

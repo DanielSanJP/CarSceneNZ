@@ -11,11 +11,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Car, Star, Eye, ExternalLink, Edit } from "lucide-react";
+import { Car, Star, Eye, ExternalLink, Edit, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import type { User } from "@/types/user";
 import type { Car as CarType } from "@/types/car";
+import type { Club } from "@/types/club";
 
 interface UserProfileClientProps {
   profileUser: User | null;
@@ -23,6 +24,12 @@ interface UserProfileClientProps {
   userCars: CarType[];
   followers: User[];
   following: User[];
+  userClubs: Array<{
+    club: Club;
+    role: string;
+    joined_at: string;
+    memberCount: number;
+  }>;
 }
 
 export function UserProfileClient({
@@ -31,6 +38,7 @@ export function UserProfileClient({
   userCars,
   followers,
   following,
+  userClubs,
 }: UserProfileClientProps) {
   const router = useRouter();
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -79,8 +87,10 @@ export function UserProfileClient({
             {/* Profile Info */}
             <Card>
               <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-center space-x-4">
+                {/* Three Column Layout */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center justify-items-center">
+                  {/* Column 1: Profile Image, Display Name, Username, Edit Button */}
+                  <div className="flex items-start gap-4 w-full">
                     <div className="relative h-24 w-24 sm:h-32 sm:w-32 lg:h-48 lg:w-48 flex-shrink-0 rounded-full overflow-hidden bg-muted">
                       {profileUser.profile_image_url ? (
                         <Image
@@ -102,29 +112,102 @@ export function UserProfileClient({
                         </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                        <div>
-                          <h2 className="text-xl font-semibold">
-                            {profileUser.display_name || profileUser.username}
-                          </h2>
-                          <p className="text-muted-foreground">
-                            @{profileUser.username}
-                          </p>
+                    <div className="flex flex-col justify-center space-y-2 min-h-[96px] sm:min-h-[128px] lg:min-h-[192px]">
+                      <h2 className="text-xl font-semibold">
+                        {profileUser.display_name || profileUser.username}
+                      </h2>
+                      <p className="text-muted-foreground">
+                        @{profileUser.username}
+                      </p>
+                      {isOwnProfile && (
+                        <Link href="/profile/edit">
+                          <Button variant="outline" size="sm" className="w-fit">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Profile
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Column 2: Club Name and Image */}
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    {userClubs.length > 0 ? (
+                      <>
+                        {/* Club Name Title */}
+                        <Link
+                          href={`/clubs/${userClubs[0].club.id}`}
+                          className="text-lg font-bold text-center hover:text-primary transition-colors"
+                        >
+                          {userClubs[0].club.name}
+                          {userClubs.length > 1 && (
+                            <span className="text-sm text-muted-foreground ml-1">
+                              +{userClubs.length - 1}
+                            </span>
+                          )}
+                        </Link>
+
+                        {/* Club Image/Badge */}
+                        <Link
+                          href={`/clubs/${userClubs[0].club.id}`}
+                          className="relative h-24 w-24 sm:h-32 sm:w-32 lg:h-48 lg:w-48 flex-shrink-0 rounded-lg overflow-hidden bg-muted hover:scale-105 transition-transform"
+                        >
+                          {userClubs[0].club.banner_image_url ? (
+                            <Image
+                              src={userClubs[0].club.banner_image_url}
+                              alt={userClubs[0].club.name}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 96px, (max-width: 1024px) 128px, 192px"
+                              quality={100}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/60 flex items-center justify-center">
+                              <span className="text-lg sm:text-xl lg:text-3xl font-bold text-white">
+                                {userClubs[0].club.name.charAt(0)}
+                              </span>
+                            </div>
+                          )}
+                        </Link>
+
+                        {/* View Club Button */}
+                        <Link href={`/clubs/${userClubs[0].club.id}`}>
+                          <Button variant="outline" size="sm">
+                            <Users className="h-4 w-4 mr-2" />
+                            View Club
+                          </Button>
+                        </Link>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center space-y-3">
+                        <div className="text-muted-foreground">
+                          {isOwnProfile ? "No club yet" : "Not in a club"}
                         </div>
                         {isOwnProfile && (
-                          <Link href="/profile/edit">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-fit"
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Profile
+                          <Link href="/clubs">
+                            <Button variant="outline" size="sm">
+                              <Users className="h-4 w-4 mr-2" />
+                              Join a club
                             </Button>
                           </Link>
                         )}
                       </div>
+                    )}
+                  </div>
+
+                  {/* Column 3: Total Likes */}
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="text-lg font-semibold text-muted-foreground">
+                      Total Likes
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
+                      <span className="text-3xl font-bold text-primary">
+                        {userCars.reduce(
+                          (sum, car) => sum + (car.total_likes || 0),
+                          0
+                        )}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -132,8 +215,8 @@ export function UserProfileClient({
               <CardContent className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex flex-col gap-4">
-                    {/* Stats Grid - Mobile: 2x2, Desktop: 1x4 */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+                    {/* Stats Grid - Mobile: 2x2, Desktop: 1x3 */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
                       <Dialog
                         open={followingDialogOpen}
                         onOpenChange={setFollowingDialogOpen}
@@ -278,17 +361,6 @@ export function UserProfileClient({
                         <span className="text-sm">Cars</span>
                         <span className="font-semibold text-sm">
                           {userCars.length}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm">Total Likes</span>
-                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        <span className="font-semibold text-sm">
-                          {userCars.reduce(
-                            (sum, car) => sum + (car.total_likes || 0),
-                            0
-                          )}
                         </span>
                       </div>
                     </div>

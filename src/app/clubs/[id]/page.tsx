@@ -1,7 +1,12 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getUserOptional } from "@/lib/auth";
-import { getClubById, getClubMembers, isClubMember } from "@/lib/server/clubs";
+import {
+  getClubById,
+  getClubMembersWithStats,
+  isClubMember,
+  updateClubTotalLikes,
+} from "@/lib/server/clubs";
 import { ClubDetailView } from "@/components/clubs/display/club-detail-view";
 
 interface ClubDetailPageProps {
@@ -26,11 +31,14 @@ export default async function ClubDetailPage({
   }
 
   const [members, isUserMember] = await Promise.all([
-    getClubMembers(club.id),
+    getClubMembersWithStats(club.id),
     currentUser
       ? isClubMember(club.id, currentUser.id)
       : Promise.resolve(false),
   ]);
+
+  // Update club total likes (this will be automatic with triggers, but we can call it manually if needed)
+  await updateClubTotalLikes(club.id);
 
   const memberCount = members.length;
 
