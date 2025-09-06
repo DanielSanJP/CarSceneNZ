@@ -29,10 +29,15 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-import {
-  uploadClubImageForCreation,
-  generateTempClubId,
-} from "@/lib/utils/upload-club-images";
+// import {
+//   uploadClubImageForCreation,
+//   generateTempClubId,
+// } from "@/lib/utils/image-upload"; // TODO: Convert to server action
+
+// Simple temp ID generator for client-side use
+function generateTempClubId(): string {
+  return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
 
 interface ClubFormData {
   name: string;
@@ -64,6 +69,9 @@ interface CreateClubFormProps {
   action?: (formData: FormData) => Promise<void>;
   onSuccess?: () => void;
   embedded?: boolean;
+  uploadAction?: (
+    formData: FormData
+  ) => Promise<{ url: string | null; error: string | null }>;
 }
 
 export function CreateClubForm({
@@ -71,6 +79,7 @@ export function CreateClubForm({
   action,
   onSuccess,
   embedded = false,
+  uploadAction,
 }: CreateClubFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -133,17 +142,30 @@ export function CreateClubForm({
         setFormData((prev) => ({ ...prev, tempClubId: tempId }));
       }
 
-      const uploadedUrl = await uploadClubImageForCreation(file, tempId);
+      // TODO: Convert to server action
+      // const uploadedUrl = await uploadClubImageForCreation(file, tempId);
 
-      if (uploadedUrl) {
-        setImagePreview(uploadedUrl);
-        setFormData((prev: ClubFormData) => ({
-          ...prev,
-          banner_image: uploadedUrl,
-        }));
-        setImageError(false);
+      if (uploadAction) {
+        // Create FormData for server action
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", file);
+        uploadFormData.append("clubId", tempId);
+        uploadFormData.append("isTemp", "true");
+
+        const result = await uploadAction(uploadFormData);
+
+        if (result.url) {
+          setImagePreview(result.url);
+          setFormData((prev: ClubFormData) => ({
+            ...prev,
+            banner_image: result.url!,
+          }));
+          setImageError(false);
+        } else {
+          alert(result.error || "Failed to upload image. Please try again.");
+        }
       } else {
-        alert("Failed to upload image. Please try again.");
+        alert("Image upload is not available. Please try again later.");
       }
     } catch (error) {
       console.error("Error uploading image:", error);

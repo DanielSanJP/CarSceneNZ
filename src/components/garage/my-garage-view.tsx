@@ -86,7 +86,7 @@ export default function MyGarageView({ cars }: MyGarageViewProps) {
                       </CardTitle>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3" />
+                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                           {car.total_likes || 0}
                         </span>
                       </div>

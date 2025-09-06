@@ -156,9 +156,12 @@ interface CreateCarFormData {
 
 interface CreateCarFormProps {
   action: (formData: FormData) => Promise<void>;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ urls: string[]; error: string | null }>;
 }
 
-export function CreateCarForm({ action }: CreateCarFormProps) {
+export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<CreateCarFormData>({
@@ -328,6 +331,7 @@ export function CreateCarForm({ action }: CreateCarFormProps) {
           onTempCarIdChange={(tempCarId) =>
             setFormData((prev) => ({ ...prev, tempCarId }))
           }
+          uploadAction={uploadAction}
         />
 
         {/* Basic Car Info */}

@@ -3,10 +3,34 @@ import { notFound, redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getClubById } from "@/lib/server/clubs";
 import { EditClubForm } from "@/components/clubs/edit-club-form";
+import { uploadClubImage } from "@/lib/server/image-upload";
 
 interface EditClubPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string }>;
+}
+
+async function uploadClubImageServerAction(formData: FormData) {
+  "use server";
+
+  try {
+    const file = formData.get("file") as File;
+    const clubId = formData.get("clubId") as string;
+    const isTemp = formData.get("isTemp") === "true";
+
+    if (!file || !clubId) {
+      return { url: null, error: "Missing file or club ID" };
+    }
+
+    const url = await uploadClubImage(file, clubId, isTemp);
+    return { url, error: null };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return {
+      url: null,
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
 }
 
 export default async function EditClubPage({
@@ -39,7 +63,11 @@ export default async function EditClubPage({
         </div>
       }
     >
-      <EditClubForm club={club} fromTab={from} />
+      <EditClubForm
+        club={club}
+        fromTab={from}
+        uploadAction={uploadClubImageServerAction}
+      />
     </Suspense>
   );
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CreateEventForm } from "@/components/events/create-event-form";
 import { createEvent } from "@/lib/server/events";
+import { uploadEventImage } from "@/lib/server/image-upload";
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)
 function formatDateToLocal(date: Date): string {
@@ -10,6 +11,29 @@ function formatDateToLocal(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+async function uploadEventImageServerAction(formData: FormData) {
+  "use server";
+
+  try {
+    const file = formData.get("file") as File;
+    const eventId = formData.get("eventId") as string;
+    const isTemp = formData.get("isTemp") === "true";
+
+    if (!file || !eventId) {
+      return { url: null, error: "Missing file or event ID" };
+    }
+
+    const url = await uploadEventImage(file, eventId, isTemp);
+    return { url, error: null };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return {
+      url: null,
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
 }
 
 async function createEventAction(formData: FormData) {
@@ -75,7 +99,11 @@ export default async function CreateEventPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <CreateEventForm action={createEventAction} user={user} />
+        <CreateEventForm
+          action={createEventAction}
+          user={user}
+          uploadAction={uploadEventImageServerAction}
+        />
       </div>
     </div>
   );

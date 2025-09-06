@@ -1,4 +1,4 @@
-// import 'server-only';
+import 'server-only';
 import { cache } from 'react';
 import { createClient } from '@/lib/utils/supabase/server';
 import type { Message } from '@/types/message';

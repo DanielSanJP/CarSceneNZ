@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LikeButton } from "@/components/ui/like-button";
 import { ArrowLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,10 +29,24 @@ interface CarDetailViewProps {
     username: string;
     display_name?: string;
   } | null;
+  onLike?: (
+    carId: string,
+    userId: string
+  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
+  onUnlike?: (
+    carId: string,
+    userId: string
+  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
 }
 
-export function CarDetailView({ car, user }: CarDetailViewProps) {
+export function CarDetailView({
+  car,
+  user,
+  onLike,
+  onUnlike,
+}: CarDetailViewProps) {
   const router = useRouter();
+  const [likeCount, setLikeCount] = useState(car.total_likes);
 
   // Check if user owns this car
   const isOwner = user && car.owner_id === user.id;
@@ -61,14 +77,25 @@ export function CarDetailView({ car, user }: CarDetailViewProps) {
               </div>
             </div>
 
-            {isOwner && (
-              <Link href={`/garage/edit/${car.id}`}>
-                <Button className="md:px-4">
-                  <Edit3 className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Edit Car</span>
-                </Button>
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              <LikeButton
+                carId={car.id}
+                initialIsLiked={car.is_liked || false}
+                size="default"
+                user={user}
+                onLike={onLike}
+                onUnlike={onUnlike}
+                onLikeCountChange={setLikeCount}
+              />
+              {isOwner && (
+                <Link href={`/garage/edit/${car.id}`}>
+                  <Button className="md:px-4">
+                    <Edit3 className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Edit Car</span>
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-2">
@@ -107,7 +134,7 @@ export function CarDetailView({ car, user }: CarDetailViewProps) {
               <InteriorModifications car={car} />
 
               {/* Like Section */}
-              <CarStats car={car} />
+              <CarStats car={car} likeCount={likeCount} />
             </div>
           </div>
         </div>

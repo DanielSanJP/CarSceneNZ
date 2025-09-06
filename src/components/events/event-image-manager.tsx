@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, X, Camera } from "lucide-react";
 import Image from "next/image";
-import { uploadEventImageForCreation } from "@/lib/utils/upload-event-images";
+// import { uploadEventImageAction } from "@/lib/server/upload-actions"; // TODO: Convert to prop
 
 interface EventImageManagerProps {
   currentImage?: string;
@@ -14,6 +14,9 @@ interface EventImageManagerProps {
   onImageRemove: () => void;
   isLoading?: boolean;
   tempEventId?: string;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ url: string | null; error: string | null }>;
 }
 
 export function EventImageManager({
@@ -22,6 +25,7 @@ export function EventImageManager({
   onImageRemove,
   isLoading = false,
   tempEventId,
+  uploadAction,
 }: EventImageManagerProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -67,12 +71,20 @@ export function EventImageManager({
     try {
       // Always upload to Supabase storage - use a temp ID if none provided
       const eventId = tempEventId || `temp_${Date.now()}`;
-      const uploadedUrl = await uploadEventImageForCreation(file, eventId);
 
-      if (uploadedUrl) {
-        onImageChange(uploadedUrl);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("eventId", eventId);
+      formData.append("isTemp", "true");
+
+      // TODO: Convert to server action prop
+      // const result = await uploadEventImageAction(formData);
+      const result = await uploadAction(formData);
+
+      if (result.url) {
+        onImageChange(result.url);
       } else {
-        alert("Failed to upload image. Please try again.");
+        alert(result.error || "Failed to upload image. Please try again.");
       }
     } catch (error) {
       console.error("Error uploading image:", error);

@@ -282,8 +282,8 @@ export function UserProfileClient({
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="text-sm">Total Likes</span>
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="font-semibold text-sm">
                           {userCars.reduce(
                             (sum, car) => sum + (car.total_likes || 0),

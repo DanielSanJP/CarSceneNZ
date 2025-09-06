@@ -8,6 +8,7 @@ export interface Car {
   year: number;
   images?: string[];
   total_likes: number;
+  is_liked?: boolean; // Whether current user has liked this car
   created_at: string;
   updated_at: string;
 

@@ -6,7 +6,33 @@ import { createCarWithComponents } from "@/lib/server/cars";
 import {
   moveCarImagesFromTemp,
   deleteCarImages,
-} from "@/lib/utils/upload-car-images";
+  uploadCarImages,
+} from "@/lib/server/image-upload";
+
+async function uploadCarImagesServerAction(
+  formData: FormData
+): Promise<{ urls: string[]; error: string | null }> {
+  "use server";
+
+  try {
+    const files = formData.getAll("files") as File[];
+    const carId = formData.get("carId") as string;
+    const isTemp = formData.get("isTemp") === "true";
+
+    if (!files || files.length === 0 || !carId) {
+      return { urls: [], error: "Missing files or car ID" };
+    }
+
+    const urls = await uploadCarImages(files, carId, isTemp);
+    return { urls, error: null };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return {
+      urls: [],
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
+}
 
 async function createCarAction(formData: FormData) {
   "use server";
@@ -162,7 +188,10 @@ export default async function CreateCarPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <CreateCarForm action={createCarAction} />
+          <CreateCarForm
+            action={createCarAction}
+            uploadAction={uploadCarImagesServerAction}
+          />
         </div>
       </div>
     </div>

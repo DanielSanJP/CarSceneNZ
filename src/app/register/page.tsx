@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/utils/supabase/server";
-import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
+import { uploadProfileImage } from "@/lib/server/image-upload";
 
 async function signupAction(formData: FormData) {
   "use server";
@@ -50,11 +50,17 @@ async function signupAction(formData: FormData) {
     // Upload profile image if provided
     if (profileImage && profileImage.size > 0) {
       try {
-        profileImageUrl = await uploadProfileImage(
+        const uploadedUrl = await uploadProfileImage(
           profileImage,
           authData.user.id
         );
-        console.log("Profile image uploaded successfully:", profileImageUrl);
+
+        if (uploadedUrl) {
+          profileImageUrl = uploadedUrl;
+          console.log("Profile image uploaded successfully:", profileImageUrl);
+        } else {
+          console.error("Profile image upload failed: No URL returned");
+        }
       } catch (imageError) {
         console.error("Profile image upload failed:", imageError);
         // Don't throw here - user creation should still succeed

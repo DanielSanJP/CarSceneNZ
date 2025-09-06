@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, GripVertical } from "lucide-react";
 import Image from "next/image";
-import {
-  uploadCarImages,
-  preUploadCarImages,
-  generateTempCarId,
-} from "@/lib/utils/upload-car-images";
+
+// Simple temp ID generator for client-side use
+function generateTempId(): string {
+  return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
 
 interface CarImageManagerProps {
   images: string[];
@@ -20,6 +20,9 @@ interface CarImageManagerProps {
   carId?: string; // Optional - only provided for existing cars
   tempCarId?: string; // For new cars - temp ID for pre-upload
   onTempCarIdChange?: (tempCarId: string) => void; // Callback to set temp car ID
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ urls: string[]; error: string | null }>;
 }
 
 export default function CarImageManager({
@@ -29,6 +32,7 @@ export default function CarImageManager({
   carId,
   tempCarId,
   onTempCarIdChange,
+  uploadAction,
 }: CarImageManagerProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -69,9 +73,16 @@ export default function CarImageManager({
       // For existing cars, upload immediately to Supabase
       setIsUploading(true);
       try {
-        const uploadedUrls = await uploadCarImages(filesToProcess, carId);
-        if (uploadedUrls.length > 0) {
-          onChange([...images, ...uploadedUrls]);
+        const formData = new FormData();
+        filesToProcess.forEach((file) => formData.append("files", file));
+        formData.append("carId", carId);
+        formData.append("isTemp", "false");
+
+        const result = await uploadAction(formData);
+        if (result.urls.length > 0) {
+          onChange([...images, ...result.urls]);
+        } else if (result.error) {
+          throw new Error(result.error);
         }
       } catch (error) {
         console.error("Error uploading images:", error);
@@ -86,16 +97,20 @@ export default function CarImageManager({
         // Generate temp car ID if not provided
         let currentTempId = tempCarId;
         if (!currentTempId) {
-          currentTempId = generateTempCarId();
+          currentTempId = generateTempId();
           onTempCarIdChange?.(currentTempId);
         }
 
-        const uploadedUrls = await preUploadCarImages(
-          filesToProcess,
-          currentTempId
-        );
-        if (uploadedUrls.length > 0) {
-          onChange([...images, ...uploadedUrls]);
+        const formData = new FormData();
+        filesToProcess.forEach((file) => formData.append("files", file));
+        formData.append("carId", currentTempId);
+        formData.append("isTemp", "true");
+
+        const result = await uploadAction(formData);
+        if (result.urls.length > 0) {
+          onChange([...images, ...result.urls]);
+        } else if (result.error) {
+          throw new Error(result.error);
         }
       } catch (error) {
         console.error("Error pre-uploading images:", error);

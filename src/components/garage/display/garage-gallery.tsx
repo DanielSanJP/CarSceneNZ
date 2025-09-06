@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LikeButton } from "@/components/ui/like-button";
 import {
   Select,
   SelectContent,
@@ -22,10 +23,33 @@ interface GarageGalleryProps {
     username: string;
     display_name?: string;
   } | null;
+  onLike?: (
+    carId: string,
+    userId: string
+  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
+  onUnlike?: (
+    carId: string,
+    userId: string
+  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
 }
 
-export function GarageGallery({ cars, user }: GarageGalleryProps) {
+export function GarageGallery({
+  cars,
+  user,
+  onLike,
+  onUnlike,
+}: GarageGalleryProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [carLikeCounts, setCarLikeCounts] = useState<Record<string, number>>(
+    () => {
+      // Initialize with current like counts
+      const counts: Record<string, number> = {};
+      cars.forEach((car) => {
+        counts[car.id] = car.total_likes;
+      });
+      return counts;
+    }
+  );
 
   // Filter states
   const [brandFilter, setBrandFilter] = useState<string>("all");
@@ -35,6 +59,13 @@ export function GarageGallery({ cars, user }: GarageGalleryProps) {
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
+  };
+
+  const handleLikeCountChange = (carId: string, newCount: number) => {
+    setCarLikeCounts((prev) => ({
+      ...prev,
+      [carId]: newCount,
+    }));
   };
 
   // Get unique brands from cars
@@ -94,18 +125,35 @@ export function GarageGallery({ cars, user }: GarageGalleryProps) {
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
     } else if (sortOrder === "most_liked") {
-      filtered.sort((a, b) => (b.total_likes || 0) - (a.total_likes || 0));
+      filtered.sort(
+        (a, b) =>
+          (carLikeCounts[b.id] ?? b.total_likes) -
+          (carLikeCounts[a.id] ?? a.total_likes)
+      );
     } else if (sortOrder === "least_liked") {
-      filtered.sort((a, b) => (a.total_likes || 0) - (b.total_likes || 0));
+      filtered.sort(
+        (a, b) =>
+          (carLikeCounts[a.id] ?? a.total_likes) -
+          (carLikeCounts[b.id] ?? b.total_likes)
+      );
     }
 
     return filtered;
-  }, [cars, brandFilter, modelFilter, yearFilter, sortOrder]);
+  }, [cars, brandFilter, modelFilter, yearFilter, sortOrder, carLikeCounts]);
 
   // Reset model filter when brand changes
   useEffect(() => {
     setModelFilter("all");
   }, [brandFilter]);
+
+  // Update like counts when cars prop changes
+  useEffect(() => {
+    const counts: Record<string, number> = {};
+    cars.forEach((car) => {
+      counts[car.id] = car.total_likes;
+    });
+    setCarLikeCounts(counts);
+  }, [cars]);
 
   return (
     <div className="space-y-8">
@@ -254,6 +302,22 @@ export function GarageGallery({ cars, user }: GarageGalleryProps) {
                       onError={() => handleImageError(car.id)}
                     />
                   )}
+
+                  {/* Like Button - Top Right */}
+                  <div className="absolute top-2 right-2">
+                    <LikeButton
+                      carId={car.id}
+                      initialIsLiked={car.is_liked || false}
+                      variant="floating"
+                      size="xl"
+                      user={user}
+                      onLike={onLike}
+                      onUnlike={onUnlike}
+                      onLikeCountChange={(newCount) =>
+                        handleLikeCountChange(car.id, newCount)
+                      }
+                    />
+                  </div>
                 </div>
 
                 <CardHeader className="pb-3">
@@ -262,8 +326,8 @@ export function GarageGallery({ cars, user }: GarageGalleryProps) {
                   </CardTitle>
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3" />
-                      {car.total_likes} likes
+                      <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                      {carLikeCounts[car.id] ?? car.total_likes} likes
                     </span>
                     {car.owner && (
                       <span className="flex items-center gap-1">

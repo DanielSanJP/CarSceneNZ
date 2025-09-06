@@ -210,6 +210,7 @@ export function MyEventsView({ events, attendeeCounts }: MyEventsViewProps) {
                           View
                         </Button>
                         <Button
+                          variant="outline"
                           size="sm"
                           className="w-full flex-1"
                           onClick={(e) => {

@@ -2,6 +2,29 @@ import { getUser } from "@/lib/auth";
 import { updateUserProfile } from "@/lib/server/profile";
 import { revalidatePath } from "next/cache";
 import { EditProfileClient } from "@/components/profile/edit-profile-client";
+import { uploadProfileImage } from "@/lib/server/image-upload";
+
+async function uploadProfileImageServerAction(formData: FormData) {
+  "use server";
+
+  try {
+    const file = formData.get("file") as File;
+    const userId = formData.get("userId") as string;
+
+    if (!file || !userId) {
+      return { url: null, error: "Missing file or user ID" };
+    }
+
+    const url = await uploadProfileImage(file, userId);
+    return { url, error: null };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return {
+      url: null,
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
+}
 
 async function updateProfileAction(formData: FormData) {
   "use server";
@@ -66,5 +89,11 @@ export default async function EditProfilePage() {
   // Require authentication on the server
   const user = await getUser();
 
-  return <EditProfileClient user={user} action={updateProfileAction} />;
+  return (
+    <EditProfileClient
+      user={user}
+      action={updateProfileAction}
+      uploadAction={uploadProfileImageServerAction}
+    />
+  );
 }

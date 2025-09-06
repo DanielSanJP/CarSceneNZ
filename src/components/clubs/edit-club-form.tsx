@@ -27,7 +27,7 @@ import {
   Users,
 } from "lucide-react";
 import type { Club } from "@/types/club";
-import { uploadClubImage } from "@/lib/utils/upload-club-images";
+// import { uploadClubImage } from "@/lib/utils/image-upload"; // TODO: Convert to server action
 
 interface ClubFormData {
   name: string;
@@ -56,9 +56,16 @@ const NZ_LOCATIONS = [
 interface EditClubFormProps {
   club: Club;
   fromTab?: string;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ url: string | null; error: string | null }>;
 }
 
-export function EditClubForm({ club, fromTab = "join" }: EditClubFormProps) {
+export function EditClubForm({
+  club,
+  fromTab = "join",
+  uploadAction,
+}: EditClubFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>(
@@ -101,17 +108,23 @@ export function EditClubForm({ club, fromTab = "join" }: EditClubFormProps) {
     setImageUploading(true);
 
     try {
-      const uploadedUrl = await uploadClubImage(file, club.id);
+      // Create FormData for server action
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("clubId", club.id);
+      formData.append("isTemp", "false");
 
-      if (uploadedUrl) {
-        setImagePreview(uploadedUrl);
+      const result = await uploadAction(formData);
+
+      if (result.url) {
+        setImagePreview(result.url);
         setFormData((prev: ClubFormData) => ({
           ...prev,
-          banner_image: uploadedUrl,
+          banner_image: result.url!,
         }));
         setImageError(false);
       } else {
-        alert("Failed to upload image. Please try again.");
+        alert(result.error || "Failed to upload image. Please try again.");
       }
     } catch (error) {
       console.error("Error uploading image:", error);

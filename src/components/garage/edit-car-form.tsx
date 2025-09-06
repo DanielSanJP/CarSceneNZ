@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
+import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import type { Car } from "@/types/car";
 
 // Import all garage components
@@ -157,10 +158,21 @@ interface CompleteEditCarFormData {
 interface EditCarFormProps {
   car: Car;
   action: (formData: FormData) => Promise<void>;
+  onDelete?: () => Promise<void>;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ urls: string[]; error: string | null }>;
 }
 
-export function EditCarForm({ car, action }: EditCarFormProps) {
+export function EditCarForm({
+  car,
+  action,
+  onDelete,
+  uploadAction,
+}: EditCarFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [formData, setFormData] = useState<CompleteEditCarFormData>({
     brand: car.brand || "",
@@ -365,6 +377,34 @@ export function EditCarForm({ car, action }: EditCarFormProps) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!onDelete) {
+      alert("Delete function not available");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete();
+    } catch (error) {
+      console.error("Error deleting car:", error);
+      alert("Failed to delete car. Please try again.");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  const handleCancel = () => {
+    const hasUnsavedChanges = window.confirm(
+      "Are you sure you want to cancel? Any unsaved changes will be lost."
+    );
+
+    if (hasUnsavedChanges) {
+      handleBackClick();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -385,7 +425,6 @@ export function EditCarForm({ car, action }: EditCarFormProps) {
 
             <div className="flex items-center gap-2">
               <Button onClick={handleSubmit} disabled={isLoading}>
-                <Save className="h-4 w-4 mr-2" />
                 {isLoading ? "Saving..." : "Save Changes"}
               </Button>
               <InformationModal />
@@ -401,6 +440,7 @@ export function EditCarForm({ car, action }: EditCarFormProps) {
                 setFormData((prev) => ({ ...prev, images }))
               }
               carId={car.id}
+              uploadAction={uploadAction}
             />
 
             {/* Basic Car Info */}
@@ -782,17 +822,46 @@ export function EditCarForm({ car, action }: EditCarFormProps) {
           </div>
 
           {/* Bottom Save Button */}
-          <div className="mt-12 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <Button onClick={handleSubmit} disabled={isLoading}>
-                <Save className="h-4 w-4 mr-2" />
-                {isLoading ? "Saving..." : "Save Changes"}
+          <div className="mt-6 text-center">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isDeleting || isLoading}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {isDeleting ? "Deleting..." : "Delete Car"}
               </Button>
-              <InformationModal />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={isLoading || isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isLoading || isDeleting}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDelete}
+        title="Delete Car"
+        description="Are you sure you want to delete this car? This action cannot be undone."
+        itemName={`${car.brand} ${car.model} (${car.year})`}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

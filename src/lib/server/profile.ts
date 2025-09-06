@@ -1,4 +1,4 @@
-// import 'server-only';
+import 'server-only';
 import { createClient } from '@/lib/utils/supabase/server';
 import type { User } from '@/types/user';
 
@@ -15,8 +15,9 @@ export interface UserProfile extends User {
  */
 /**
  * Get user by ID - no caching for profile data since it changes frequently
+ * Internal function for profile operations
  */
-export const getUserById = async (userId: string): Promise<User | null> => {
+const getUserByIdInternal = async (userId: string): Promise<User | null> => {
   try {
     const supabase = await createClient();
 
@@ -85,7 +86,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     const supabase = await createClient();
     
     // Get user basic info
-    const user = await getUserById(userId);
+    const user = await getUserByIdInternal(userId);
     if (!user) return null;
 
     // Get counts in parallel

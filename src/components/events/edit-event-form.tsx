@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,9 @@ interface EditEventFormProps {
   user: User;
   updateAction: (formData: FormData) => Promise<void>;
   deleteAction: () => Promise<void>;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ url: string | null; error: string | null }>;
 }
 
 export function EditEventForm({
@@ -34,8 +38,10 @@ export function EditEventForm({
   user,
   updateAction,
   deleteAction,
+  uploadAction,
 }: EditEventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [formData, setFormData] = useState(() => {
     // Initialize form data from the event prop
@@ -126,14 +132,6 @@ export function EditEventForm({
   const handleDelete = async () => {
     if (!user || !event) return;
 
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this event? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
     setIsLoading(true);
     try {
       // Call the server action
@@ -152,6 +150,8 @@ export function EditEventForm({
       console.error("Error deleting event:", error);
       alert("An error occurred while deleting the event.");
       setIsLoading(false);
+    } finally {
+      setShowDeleteDialog(false);
     }
   };
 
@@ -189,6 +189,7 @@ export function EditEventForm({
               }
               isLoading={isLoading}
               tempEventId={event.id}
+              uploadAction={uploadAction}
             />
           </CardContent>
         </Card>
@@ -254,7 +255,7 @@ export function EditEventForm({
           <Button
             type="button"
             variant="destructive"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteDialog(true)}
             disabled={isLoading}
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -273,6 +274,16 @@ export function EditEventForm({
           </div>
         </div>
       </form>
+
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDelete}
+        title="Delete Event"
+        description="Are you sure you want to delete this event? This action cannot be undone."
+        itemName={event.title}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, UserIcon, Upload, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { uploadProfileImage } from "@/lib/utils/upload-profile-image";
 import type { User } from "@/types/user";
 import { useRouter } from "next/navigation";
 
@@ -17,9 +16,16 @@ interface EditProfileClientProps {
   action: (
     formData: FormData
   ) => Promise<{ success: boolean; error?: string; user?: User } | void>;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ url: string | null; error: string | null }>;
 }
 
-export function EditProfileClient({ user, action }: EditProfileClientProps) {
+export function EditProfileClient({
+  user,
+  action,
+  uploadAction,
+}: EditProfileClientProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -106,15 +112,21 @@ export function EditProfileClient({ user, action }: EditProfileClientProps) {
         setUploadingImage(true);
         console.log("Starting profile image upload...");
 
-        const imageUrl = await uploadProfileImage(profileImageFile, user.id);
-        console.log("Image upload completed, result:", imageUrl);
+        const formData = new FormData();
+        formData.append("file", profileImageFile);
+        formData.append("userId", user.id);
 
-        if (imageUrl) {
-          finalImageUrl = imageUrl;
+        const uploadResult = await uploadAction(formData);
+        console.log("Image upload completed, result:", uploadResult);
+
+        if (uploadResult.url) {
+          finalImageUrl = uploadResult.url;
           console.log("Final image URL set to:", finalImageUrl);
         } else {
-          console.error("Image upload failed - no URL returned");
-          setError("Failed to upload image. Please try again.");
+          console.error("Image upload failed:", uploadResult.error);
+          setError(
+            uploadResult.error || "Failed to upload image. Please try again."
+          );
           setUploadingImage(false);
           setSaving(false);
           return;

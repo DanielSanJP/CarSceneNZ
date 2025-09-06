@@ -29,6 +29,9 @@ interface ClubTabNavigationProps {
     itemsPerPage: number;
   };
   createClubAction: (formData: FormData) => Promise<void>;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ url: string | null; error: string | null }>;
 }
 
 function ClubTabNavigationContent({
@@ -38,6 +41,7 @@ function ClubTabNavigationContent({
   userClubIds,
   pagination,
   createClubAction,
+  uploadAction,
 }: ClubTabNavigationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -158,6 +162,7 @@ function ClubTabNavigationContent({
                 action={createClubAction}
                 embedded={true}
                 onSuccess={() => handleTabChange("myclub")}
+                uploadAction={uploadAction}
               />
             ) : (
               <div className="text-center py-8">
@@ -178,6 +183,7 @@ export function ClubTabNavigation({
   userMemberships,
   userClubIds,
   createClubAction,
+  uploadAction,
 }: ClubTabNavigationProps) {
   return (
     <Suspense
@@ -200,6 +206,7 @@ export function ClubTabNavigation({
         userMemberships={userMemberships}
         userClubIds={userClubIds}
         createClubAction={createClubAction}
+        uploadAction={uploadAction}
       />
     </Suspense>
   );

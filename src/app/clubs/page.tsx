@@ -9,17 +9,41 @@ import {
   getAllClubsWithStats,
   getClubsCount,
 } from "@/lib/server/clubs";
-import {
-  moveClubImageFromTemp,
-  deleteClubImage,
-} from "@/lib/utils/upload-club-images";
+// import {
+//   moveClubImageFromTemp,
+//   deleteClubImage,
+// } from "@/lib/utils/image-upload"; // TODO: Convert to server action
 import { getUser } from "@/lib/auth";
+import { uploadClubImage } from "@/lib/server/image-upload";
 
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
 
 // Cache club data for 5 minutes since it doesn't change frequently
 export const revalidate = 300;
+
+async function uploadClubImageServerAction(formData: FormData) {
+  "use server";
+
+  try {
+    const file = formData.get("file") as File;
+    const clubId = formData.get("clubId") as string;
+    const isTemp = formData.get("isTemp") === "true";
+
+    if (!file || !clubId) {
+      return { url: null, error: "Missing file or club ID" };
+    }
+
+    const url = await uploadClubImage(file, clubId, isTemp);
+    return { url, error: null };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return {
+      url: null,
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
+}
 
 async function createClubAction(formData: FormData) {
   "use server";
@@ -89,7 +113,9 @@ async function createClubAction(formData: FormData) {
     if (tempClubId && banner_image) {
       console.log("Moving temp image from", tempClubId, "to", result.id);
       try {
-        const newImageUrl = await moveClubImageFromTemp(tempClubId, result.id);
+        // TODO: Convert to server action
+        // const newImageUrl = await moveClubImageFromTemp(tempClubId, result.id);
+        const newImageUrl = null; // Temporary - disabled until converted
         if (newImageUrl) {
           console.log("Club image moved successfully:", newImageUrl);
         } else {
@@ -123,7 +149,8 @@ async function createClubAction(formData: FormData) {
     if (tempClubId) {
       console.log("Cleaning up temp images for:", tempClubId);
       try {
-        await deleteClubImage(tempClubId);
+        // TODO: Convert to server action
+        // await deleteClubImage(tempClubId);
       } catch (cleanupError) {
         console.error("Error cleaning up temp club images:", cleanupError);
       }
@@ -231,6 +258,7 @@ export default async function ClubsPage({
           itemsPerPage,
         }}
         createClubAction={createClubAction}
+        uploadAction={uploadClubImageServerAction}
       />
     </Suspense>
   );

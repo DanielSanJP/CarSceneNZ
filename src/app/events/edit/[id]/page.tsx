@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { EditEventForm } from "@/components/events/edit-event-form";
 import { getUser } from "@/lib/auth";
 import { getEventById, updateEvent, deleteEvent } from "@/lib/server/events";
+import { uploadEventImage } from "@/lib/server/image-upload";
 
 interface EditEventPageProps {
   params: Promise<{ id: string }>;
@@ -14,6 +15,29 @@ function formatDateToLocal(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+async function uploadEventImageServerAction(formData: FormData) {
+  "use server";
+
+  try {
+    const file = formData.get("file") as File;
+    const eventId = formData.get("eventId") as string;
+    const isTemp = formData.get("isTemp") === "true";
+
+    if (!file || !eventId) {
+      return { url: null, error: "Missing file or event ID" };
+    }
+
+    const url = await uploadEventImage(file, eventId, isTemp);
+    return { url, error: null };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return {
+      url: null,
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
 }
 
 async function updateEventAction(eventId: string, formData: FormData) {
@@ -107,6 +131,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
           user={user}
           updateAction={updateAction}
           deleteAction={deleteAction}
+          uploadAction={uploadEventImageServerAction}
         />
       </div>
     </div>

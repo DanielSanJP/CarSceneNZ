@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/utils/supabase/server';
 import { cache } from 'react';
+import { revalidatePath } from 'next/cache';
 import type { Car } from '@/types/car';
 
 // Helper function to get car by ID for server actions
@@ -300,38 +301,29 @@ export async function deleteCar(carId: string): Promise<boolean> {
 }
 
 /**
- * Like/Unlike functions
+ * Like/Unlike functions - Using car_likes table as single source of truth
  */
 export async function likeCar(carId: string, userId: string): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const { data: existingLike } = await supabase
-      .from('car_likes')
-      .select('id')
-      .eq('car_id', carId)
-      .eq('user_id', userId)
-      .single();
-
-    if (existingLike) {
-      return true; // Already liked
-    }
-
+    
+    // Use upsert to prevent duplicate likes (safer than checking then inserting)
     const { error: likeError } = await supabase
       .from('car_likes')
-      .insert({
-        car_id: carId,
-        user_id: userId,
-      });
+      .upsert(
+        {
+          car_id: carId,
+          user_id: userId,
+        },
+        {
+          onConflict: 'car_id,user_id',
+          ignoreDuplicates: true
+        }
+      );
 
     if (likeError) {
       console.error('Error liking car:', likeError);
       return false;
-    }
-
-    // Update car likes count
-    const { error: updateError } = await supabase.rpc('increment_car_likes', { car_id: carId });
-    if (updateError) {
-      console.error('Error updating car likes count:', updateError);
     }
 
     return true;
@@ -344,6 +336,8 @@ export async function likeCar(carId: string, userId: string): Promise<boolean> {
 export async function unlikeCar(carId: string, userId: string): Promise<boolean> {
   try {
     const supabase = await createClient();
+    
+    // Delete the like - trigger will automatically update car.total_likes
     const { error: unlikeError } = await supabase
       .from('car_likes')
       .delete()
@@ -353,12 +347,6 @@ export async function unlikeCar(carId: string, userId: string): Promise<boolean>
     if (unlikeError) {
       console.error('Error unliking car:', unlikeError);
       return false;
-    }
-
-    // Update car likes count
-    const { error: updateError } = await supabase.rpc('decrement_car_likes', { car_id: carId });
-    if (updateError) {
-      console.error('Error updating car likes count:', updateError);
     }
 
     return true;
@@ -381,5 +369,66 @@ export async function isCarLiked(carId: string, userId: string): Promise<boolean
   } catch (error) {
     console.error('Error checking car like status:', error);
     return false;
+  }
+}
+
+export async function getCarLikeCount(carId: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from('car_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('car_id', carId);
+
+    return count || 0;
+  } catch (error) {
+    console.error('Error getting car like count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Server action to like a car
+ */
+export async function likeCarAction(carId: string, userId: string): Promise<{ success: boolean; newLikeCount?: number; error?: string }> {
+  try {
+    const success = await likeCar(carId, userId);
+    if (success) {
+      // Get the count directly from car_likes table (more reliable than waiting for trigger)
+      const newLikeCount = await getCarLikeCount(carId);
+      
+      // Revalidate pages that show car data to sync like state
+      revalidatePath('/garage');
+      revalidatePath(`/garage/${carId}`);
+      
+      return { success: true, newLikeCount };
+    }
+    return { success: false, error: 'Failed to like car' };
+  } catch (error) {
+    console.error('Error in likeCarAction:', error);
+    return { success: false, error: 'Failed to like car' };
+  }
+}
+
+/**
+ * Server action to unlike a car
+ */
+export async function unlikeCarAction(carId: string, userId: string): Promise<{ success: boolean; newLikeCount?: number; error?: string }> {
+  try {
+    const success = await unlikeCar(carId, userId);
+    if (success) {
+      // Get the count directly from car_likes table (more reliable than waiting for trigger)
+      const newLikeCount = await getCarLikeCount(carId);
+      
+      // Revalidate pages that show car data to sync like state
+      revalidatePath('/garage');
+      revalidatePath(`/garage/${carId}`);
+      
+      return { success: true, newLikeCount };
+    }
+    return { success: false, error: 'Failed to unlike car' };
+  } catch (error) {
+    console.error('Error in unlikeCarAction:', error);
+    return { success: false, error: 'Failed to unlike car' };
   }
 }

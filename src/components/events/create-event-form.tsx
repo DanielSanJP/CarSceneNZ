@@ -16,6 +16,9 @@ import type { User } from "@/types/user";
 interface CreateEventFormProps {
   action: (formData: FormData) => Promise<void>;
   user: User;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ url: string | null; error: string | null }>;
 }
 
 interface EventFormData {
@@ -31,7 +34,11 @@ interface EventFormData {
   }>;
 }
 
-export function CreateEventForm({ action, user }: CreateEventFormProps) {
+export function CreateEventForm({
+  action,
+  user,
+  uploadAction,
+}: CreateEventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const locationInputRef = useRef<HTMLInputElement>(null);
@@ -171,6 +178,7 @@ export function CreateEventForm({ action, user }: CreateEventFormProps) {
               }
               isLoading={isLoading}
               tempEventId={tempEventId}
+              uploadAction={uploadAction}
             />
           </CardContent>
         </Card>

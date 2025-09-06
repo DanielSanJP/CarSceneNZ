@@ -1,11 +1,41 @@
 import { getUser } from "@/lib/auth";
-import { updateCarWithComponents, getCarById } from "@/lib/server/cars";
+import {
+  updateCarWithComponents,
+  getCarById,
+  deleteCar,
+} from "@/lib/server/cars";
 import { revalidatePath } from "next/cache";
 import { redirect, notFound } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
+import { uploadCarImages } from "@/lib/server/image-upload";
 
 interface EditCarPageProps {
   params: { id: string };
+}
+
+async function uploadCarImagesServerAction(
+  formData: FormData
+): Promise<{ urls: string[]; error: string | null }> {
+  "use server";
+
+  try {
+    const files = formData.getAll("files") as File[];
+    const carId = formData.get("carId") as string;
+    const isTemp = formData.get("isTemp") === "true";
+
+    if (!files || files.length === 0 || !carId) {
+      return { urls: [], error: "Missing files or car ID" };
+    }
+
+    const urls = await uploadCarImages(files, carId, isTemp);
+    return { urls, error: null };
+  } catch (error) {
+    console.error("Upload error:", error);
+    return {
+      urls: [],
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
 }
 
 async function updateCarAction(carId: string, formData: FormData) {
@@ -121,6 +151,27 @@ async function updateCarAction(carId: string, formData: FormData) {
   redirect(`/garage/${carId}`);
 }
 
+async function deleteCarAction(carId: string) {
+  "use server";
+
+  const user = await getUser();
+  const car = await getCarById(carId);
+
+  if (!car || car.owner_id !== user.id) {
+    throw new Error("Car not found or unauthorized");
+  }
+
+  const success = await deleteCar(carId);
+
+  if (!success) {
+    throw new Error("Failed to delete car");
+  }
+
+  revalidatePath("/garage");
+  revalidatePath("/garage/my-garage");
+  redirect("/garage");
+}
+
 export default async function EditCarPage({ params }: EditCarPageProps) {
   const { id } = await params;
   const [user, car] = await Promise.all([getUser(), getCarById(id)]);
@@ -135,6 +186,14 @@ export default async function EditCarPage({ params }: EditCarPageProps) {
   }
 
   const updateAction = updateCarAction.bind(null, id);
+  const deleteAction = deleteCarAction.bind(null, id);
 
-  return <EditCarForm car={car} action={updateAction} />;
+  return (
+    <EditCarForm
+      car={car}
+      action={updateAction}
+      onDelete={deleteAction}
+      uploadAction={uploadCarImagesServerAction}
+    />
+  );
 }
