@@ -1,7 +1,7 @@
 'use server'
 
 import { cache } from 'react'
-import { revalidatePath } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/utils/supabase/server'
 import { getUser } from '@/lib/auth'
 import type { InboxMessage, ClubMailData } from '@/types/inbox'
@@ -124,8 +124,8 @@ METADATA:CLUB_JOIN_REQUEST:${JSON.stringify({
       return { success: false, error: 'Failed to send join request' }
     }
 
-    // Revalidate layout to update unread count for the club leader
-    revalidatePath('/', 'layout')
+    // Revalidate unread count specifically for the club leader
+    revalidateTag(`unread-messages-${club.leader_id}`)
 
     return { success: true }
   } catch (error) {
@@ -212,8 +212,8 @@ export async function handleJoinRequestAction(
     //   .update({ read: true })
     //   .eq('id', messageId)
 
-    // Revalidate layout to update unread count for affected users
-    revalidatePath('/', 'layout')
+    // Revalidate unread count specifically for the user who submitted the request
+    revalidateTag(`unread-messages-${userId}`)
 
     return { success: true }
   } catch (error) {
@@ -280,8 +280,10 @@ export async function sendClubMail(mailData: ClubMailData): Promise<{ success: b
       return { success: false, error: 'Failed to send messages' }
     }
 
-    // Revalidate layout to update unread counts for all users
-    revalidatePath('/', 'layout')
+    // Revalidate unread count for all club members who received messages
+    members.forEach(member => {
+      revalidateTag(`unread-messages-${member.user_id}`)
+    })
 
     return { success: true }
   } catch (error) {
@@ -444,9 +446,61 @@ export async function markInboxAsRead(userId?: string): Promise<{ success: boole
       return { success: false }
     }
 
+    // No revalidation during render - Next.js 15 doesn't allow it
+    // The badge will update on next navigation when cache refreshes
     return { success: true }
   } catch (error) {
     console.error('Error in markInboxAsRead:', error)
     return { success: false }
   }
+}
+
+/**
+ * Version that can be used inside after() callback without cookies
+ * Requires userId to be passed explicitly
+ */
+export async function markInboxAsReadWithUserId(userId: string): Promise<{ success: boolean }> {
+  try {
+    // Create a simple client that doesn't use cookies (for after() callback)
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+    )
+
+    const { error } = await supabase
+      .from('users')
+      .update({ last_seen_inbox: new Date().toISOString() })
+      .eq('id', userId)
+
+    if (error) {
+      console.error('Error updating last_seen_inbox:', error)
+      return { success: false }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in markInboxAsReadWithUserId:', error)
+    return { success: false }
+  }
+}
+
+/**
+ * Server Action wrapper that can safely call revalidateTag
+ * Use this instead of markInboxAsRead from server components
+ */
+export async function markInboxAsReadAction(): Promise<{ success: boolean }> {
+  'use server'
+  
+  const result = await markInboxAsRead()
+  
+  if (result.success) {
+    const currentUser = await getUser()
+    if (currentUser) {
+      // This is safe to call from a server action
+      revalidateTag(`unread-messages-${currentUser.id}`)
+    }
+  }
+  
+  return result
 }

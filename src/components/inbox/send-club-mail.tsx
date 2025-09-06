@@ -14,13 +14,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, Send } from "lucide-react";
-import { sendClubMail } from "@/lib/server/inbox";
+
+interface ClubMailData {
+  subject: string;
+  message: string;
+  club_id: string;
+  sender_id: string;
+}
 
 interface SendClubMailProps {
   clubId: string;
   clubName: string;
   currentUserId: string;
   trigger?: React.ReactNode;
+  sendClubMailAction: (
+    mailData: ClubMailData
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function SendClubMail({
@@ -28,6 +37,7 @@ export function SendClubMail({
   clubName,
   currentUserId,
   trigger,
+  sendClubMailAction,
 }: SendClubMailProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [subject, setSubject] = useState("");
@@ -45,7 +55,7 @@ export function SendClubMail({
     setError(null);
 
     try {
-      const result = await sendClubMail({
+      const result = await sendClubMailAction({
         subject: subject.trim(),
         message: message.trim(),
         club_id: clubId,

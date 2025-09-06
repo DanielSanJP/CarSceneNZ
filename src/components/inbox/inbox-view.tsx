@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,57 +9,65 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Check, X, Clock, Users } from "lucide-react";
 import Link from "next/link";
 import type { InboxMessage } from "@/types/inbox";
-import { handleJoinRequestAction } from "@/lib/server/inbox";
 
 interface InboxViewProps {
   messages: InboxMessage[];
-  markInboxAsRead: (userId?: string) => Promise<{ success: boolean }>;
+  revalidateBadgeAction: () => Promise<void>;
+  handleJoinRequestAction?: (
+    messageId: string,
+    action: "approve" | "reject",
+    clubId: string,
+    senderId: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function InboxView({ messages, markInboxAsRead }: InboxViewProps) {
+export function InboxView({
+  messages,
+  revalidateBadgeAction,
+  handleJoinRequestAction,
+}: InboxViewProps) {
   const [processingRequest, setProcessingRequest] = useState<string | null>(
     null
   );
-  const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
-  const router = useRouter();
 
-  // Mark inbox as read when component mounts (only once)
+  // Optimistic update - trigger badge revalidation when component mounts
   useEffect(() => {
-    if (hasMarkedAsRead) return;
-
     const markAsRead = async () => {
+      // Call the server action to revalidate the unread count
       try {
-        const result = await markInboxAsRead();
-        if (result.success) {
-          setHasMarkedAsRead(true);
-          // Refresh the router to update the layout and badges
-          router.refresh();
-        }
+        await revalidateBadgeAction();
       } catch (error) {
-        console.error("Error marking inbox as read:", error);
+        console.error("Error revalidating badge:", error);
       }
     };
 
     markAsRead();
-  }, [markInboxAsRead, router, hasMarkedAsRead]);
+  }, [revalidateBadgeAction]);
 
   const handleJoinRequest = async (
     msg: InboxMessage,
     action: "approve" | "reject"
   ) => {
+    if (!handleJoinRequestAction) {
+      console.error("handleJoinRequestAction not provided");
+      return;
+    }
+
     setProcessingRequest(msg.id);
     try {
-      const success = await handleJoinRequestAction(
+      const result = await handleJoinRequestAction(
         msg.id,
         action,
         msg.club_id || "",
         msg.sender_id
       );
-      if (success) {
+      if (result.success) {
         // Refresh the page to show updated messages
         window.location.reload();
       } else {
-        alert(`Failed to ${action} join request`);
+        alert(
+          `Failed to ${action} join request: ${result.error || "Unknown error"}`
+        );
       }
     } catch (error) {
       console.error(`Error ${action}ing join request:`, error);
