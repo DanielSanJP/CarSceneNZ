@@ -6,8 +6,10 @@ import {
 } from "@/lib/server/profile";
 import { getUserClubMemberships } from "@/lib/server/clubs";
 import { getUserOptional } from "@/lib/auth";
+import { getUserLeaderClubs, sendClubInvitation } from "@/lib/server/inbox";
 import { UserProfileClient } from "@/components/profile/user-profile-client";
 import { createClient } from "@/lib/utils/supabase/server";
+import { revalidatePath } from "next/cache";
 import type { Car } from "@/types/car";
 
 const getCarsByOwner = async (ownerId: string): Promise<Car[]> => {
@@ -28,6 +30,22 @@ const getCarsByOwner = async (ownerId: string): Promise<Car[]> => {
 
 interface UserProfilePageProps {
   params: Promise<{ id: string }>;
+}
+
+// Server action for sending club invitation
+async function sendClubInvitationAction(
+  targetUserId: string,
+  clubId: string,
+  message?: string
+) {
+  "use server";
+
+  const result = await sendClubInvitation(targetUserId, clubId, message);
+
+  // Force revalidation of the profile page
+  revalidatePath(`/profile/${targetUserId}`);
+
+  return result;
 }
 
 export default async function UserProfilePage({
@@ -61,9 +79,28 @@ export default async function UserProfilePage({
         followers={[]}
         following={[]}
         userClubs={[]}
+        leaderClubs={[]}
+        sendClubInvitationAction={sendClubInvitationAction}
       />
     );
   }
+
+  // Get leader clubs for current user (for invitation functionality)
+  const leaderClubsRaw = currentUser
+    ? await getUserLeaderClubs(currentUser.id)
+    : [];
+  console.log("Leader clubs raw:", leaderClubsRaw);
+  const leaderClubs = leaderClubsRaw.map((club) =>
+    club
+      ? {
+          id: club.id,
+          name: club.name,
+          description: club.description || "",
+          image_url: club.banner_image_url || null,
+          memberCount: club.memberCount,
+        }
+      : null
+  );
 
   // Fetch user data in parallel
   const [userCars, followers, following, userClubs] = await Promise.allSettled([
@@ -87,6 +124,8 @@ export default async function UserProfilePage({
       followers={followersData}
       following={followingData}
       userClubs={clubsData}
+      leaderClubs={leaderClubs}
+      sendClubInvitationAction={sendClubInvitationAction}
     />
   );
 }

@@ -1,7 +1,7 @@
 import type { Message } from './message';
 
 export interface InboxMessage extends Message {
-  message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'system';
+  message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'club_invitation' | 'system';
   club_id?: string;
   club_name?: string;
   metadata?: {
@@ -15,6 +15,14 @@ export interface InboxMessage extends Message {
     club_announcement?: {
       club_id: string;
       club_name: string;
+    };
+    club_invitation?: {
+      club_id: string;
+      club_name: string;
+      inviter_id: string;
+      inviter_username: string;
+      target_user_id: string;
+      status: 'pending' | 'accepted' | 'rejected';
     };
   };
 }

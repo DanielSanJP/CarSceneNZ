@@ -6,12 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Check, X, Clock, Users } from "lucide-react";
+import { Check, X, Clock, Users, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import type { InboxMessage } from "@/types/inbox";
+import { useInboxRealtime } from "@/hooks/use-inbox-realtime";
 
 interface InboxViewProps {
-  messages: InboxMessage[];
+  userId: string;
+  initialMessages: InboxMessage[];
+  refreshMessages: () => Promise<void>;
   revalidateBadgeAction: () => Promise<void>;
   handleJoinRequestAction?: (
     messageId: string,
@@ -19,16 +22,32 @@ interface InboxViewProps {
     clubId: string,
     senderId: string
   ) => Promise<{ success: boolean; error?: string }>;
+  handleClubInvitationAction?: (
+    messageId: string,
+    action: "accept" | "reject",
+    clubId: string,
+    inviterId: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function InboxView({
-  messages,
+  userId,
+  initialMessages,
+  refreshMessages,
   revalidateBadgeAction,
   handleJoinRequestAction,
+  handleClubInvitationAction,
 }: InboxViewProps) {
   const [processingRequest, setProcessingRequest] = useState<string | null>(
     null
   );
+
+  // Use Supabase real-time inbox updates
+  const { messages, isConnected, error, isRefreshing } = useInboxRealtime({
+    userId,
+    initialMessages,
+    refreshMessages,
+  });
 
   // Optimistic update - trigger badge revalidation when component mounts
   useEffect(() => {
@@ -47,9 +66,10 @@ export function InboxView({
 
   // Function to clean message content by removing metadata
   const getCleanMessage = (message: string): string => {
-    // Remove HTML comment metadata
+    // Remove HTML comment metadata for both join requests and invitations
     return message
       .replace(/<!-- METADATA:CLUB_JOIN_REQUEST:.*? -->/g, "")
+      .replace(/<!-- METADATA:CLUB_INVITATION:.*? -->/g, "")
       .trim();
   };
 
@@ -86,6 +106,41 @@ export function InboxView({
     }
   };
 
+  const handleClubInvitation = async (
+    msg: InboxMessage,
+    action: "accept" | "reject"
+  ) => {
+    if (!handleClubInvitationAction) {
+      console.error("handleClubInvitationAction not provided");
+      return;
+    }
+
+    setProcessingRequest(msg.id);
+    try {
+      const result = await handleClubInvitationAction(
+        msg.id,
+        action,
+        msg.club_id || "",
+        msg.sender_id
+      );
+      if (result.success) {
+        // Server action will handle revalidation, no need for manual reload
+        console.log(`Successfully ${action}ed club invitation`);
+      } else {
+        alert(
+          `Failed to ${action} club invitation: ${
+            result.error || "Unknown error"
+          }`
+        );
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing club invitation:`, error);
+      alert(`Failed to ${action} club invitation`);
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -94,6 +149,40 @@ export function InboxView({
         <p className="text-muted-foreground mt-2">
           Stay connected with your car community
         </p>
+
+        {/* Connection Status */}
+        <div className="flex items-center gap-2 mt-3">
+          <div
+            className={`flex items-center gap-1 text-sm ${
+              isConnected ? "text-green-600" : "text-orange-600"
+            }`}
+          >
+            {isConnected ? (
+              <>
+                <Wifi size={14} />
+                <span>Live updates enabled</span>
+              </>
+            ) : (
+              <>
+                <WifiOff size={14} />
+                <span>Connecting...</span>
+              </>
+            )}
+          </div>
+
+          {isRefreshing && (
+            <div className="flex items-center gap-1 text-sm text-blue-600">
+              <Clock size={14} className="animate-spin" />
+              <span>Refreshing...</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2">
+              <span className="text-red-600 text-sm">{error}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -103,7 +192,7 @@ export function InboxView({
             No messages yet
           </div>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg: InboxMessage) => (
             <Card key={msg.id}>
               <CardContent className="p-4">
                 <div className="grid grid-cols-12 gap-4">
@@ -148,6 +237,12 @@ export function InboxView({
                             <Badge variant="secondary" className="text-xs">
                               <Users className="h-3 w-3 mr-1" />
                               Join Request
+                            </Badge>
+                          )}
+                          {msg.message_type === "club_invitation" && (
+                            <Badge variant="default" className="text-xs">
+                              <Users className="h-3 w-3 mr-1" />
+                              Club Invitation
                             </Badge>
                           )}
                           {msg.message_type === "club_announcement" && (
@@ -201,9 +296,9 @@ export function InboxView({
                       <div className="flex gap-2 pt-2">
                         <Button
                           size="sm"
+                          variant="success"
                           onClick={() => handleJoinRequest(msg, "approve")}
                           disabled={processingRequest === msg.id}
-                          className="bg-green-600 hover:bg-green-700"
                         >
                           {processingRequest === msg.id ? (
                             <Clock className="h-4 w-4 mr-1" />
@@ -214,10 +309,41 @@ export function InboxView({
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="destructive"
                           onClick={() => handleJoinRequest(msg, "reject")}
                           disabled={processingRequest === msg.id}
-                          className="border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          {processingRequest === msg.id ? (
+                            <Clock className="h-4 w-4 mr-1" />
+                          ) : (
+                            <X className="h-4 w-4 mr-1" />
+                          )}
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Club Invitation Actions - Show for all club invitations */}
+                    {msg.message_type === "club_invitation" && (
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="success"
+                          onClick={() => handleClubInvitation(msg, "accept")}
+                          disabled={processingRequest === msg.id}
+                        >
+                          {processingRequest === msg.id ? (
+                            <Clock className="h-4 w-4 mr-1" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-1" />
+                          )}
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleClubInvitation(msg, "reject")}
+                          disabled={processingRequest === msg.id}
                         >
                           {processingRequest === msg.id ? (
                             <Clock className="h-4 w-4 mr-1" />

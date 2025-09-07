@@ -45,9 +45,9 @@ export const getUserInboxMessages = cache(async (userId?: string): Promise<Inbox
       ...msg,
       // Use the new message_type column directly from database
       message_type: msg.message_type || 'general',
-      // Parse metadata from subject/message if it exists
-      club_id: extractClubIdFromMessage(msg),
-      club_name: extractClubNameFromMessage(msg),
+      // Parse metadata from subject/message if it exists - handle both join requests and invitations
+      club_id: extractClubIdFromMessage(msg) || extractClubInvitationMetadata(msg)?.club_id,
+      club_name: extractClubNameFromMessage(msg) || extractClubInvitationMetadata(msg)?.club_name,
       metadata: parseMessageMetadata(msg)
     })) || []
   } catch (error) {
@@ -147,76 +147,47 @@ export async function handleJoinRequestAction(
     }
 
     if (action === 'approve') {
-      // Add user to club
-      const { error: memberError } = await supabase
-        .from('club_members')
-        .insert({
-          club_id: clubId,
-          user_id: userId,
-          role: 'member'
-        })
-
-      if (memberError) {
-        console.error('Error adding club member:', memberError)
-        return { success: false, error: 'Failed to add member to club' }
+      // Add user to club using helper function
+      const addResult = await addMemberToClub(supabase, clubId, userId)
+      if (!addResult.success) {
+        return addResult
       }
+
+      // Get club name for notifications
+      const { data: clubData } = await supabase
+        .from('clubs')
+        .select('name')
+        .eq('id', clubId)
+        .single()
 
       // Send confirmation message to the user
-      const { data: clubData } = await supabase
-        .from('clubs')
-        .select('name')
-        .eq('id', clubId)
-        .single()
-
-      await supabase
-        .from('messages')
-        .insert({
-          sender_id: currentUser.id,
-          receiver_id: userId,
-          subject: `Welcome to ${clubData?.name}!`,
-          message: `Congratulations! Your request to join ${clubData?.name} has been approved. Welcome to the club!`,
-          message_type: 'club_announcement'
-        })
-
-      // Delete the original join request message from the database (since it's been processed)
-      const { error: deleteError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', messageId)
-
-      if (deleteError) {
-        console.error('Error deleting join request message:', deleteError)
-        // Don't return error here since the main action (approval) succeeded
-      }
+      await sendClubNotification(
+        supabase,
+        currentUser.id,
+        userId,
+        `Welcome to ${clubData?.name}!`,
+        `Congratulations! Your request to join ${clubData?.name} has been approved. Welcome to the club!`
+      )
     } else {
-      // Send rejection message to the user
+      // Get club name for rejection message
       const { data: clubData } = await supabase
         .from('clubs')
         .select('name')
         .eq('id', clubId)
         .single()
 
-      await supabase
-        .from('messages')
-        .insert({
-          sender_id: currentUser.id,
-          receiver_id: userId,
-          subject: `${clubData?.name} - Join Request Update`,
-          message: `Thank you for your interest in ${clubData?.name}. Unfortunately, we cannot accept your membership request at this time.`,
-          message_type: 'club_announcement'
-        })
-
-      // Delete the original join request message from the database
-      const { error: deleteError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', messageId)
-
-      if (deleteError) {
-        console.error('Error deleting join request message:', deleteError)
-        // Don't return error here since the main action (rejection) succeeded
-      }
+      // Send rejection message to the user
+      await sendClubNotification(
+        supabase,
+        currentUser.id,
+        userId,
+        `${clubData?.name} - Join Request Update`,
+        `Thank you for your interest in ${clubData?.name}. Unfortunately, we cannot accept your membership request at this time.`
+      )
     }
+
+    // Delete the original join request message
+    await deleteProcessedMessage(supabase, messageId, 'join request')
 
     // Mark the original request message as read - Remove this since read column doesn't exist
     // await supabase
@@ -370,19 +341,101 @@ interface ClubJoinRequestMetadata {
   status: string;
 }
 
-function parseMessageMetadata(msg: Message): { club_join_request?: ClubJoinRequestMetadata } | undefined {
-  const metadataMatch = msg.message.match(/<!-- METADATA:CLUB_JOIN_REQUEST:({.*?}) -->/)
+interface ClubInvitationMetadata {
+  club_id: string;
+  club_name: string;
+  inviter_id: string;
+  inviter_username: string;
+  target_user_id: string;
+  status: string;
+}
+
+function parseMessageMetadata(msg: Message): { club_join_request?: ClubJoinRequestMetadata; club_invitation?: ClubInvitationMetadata } | undefined {
+  const joinRequestMatch = msg.message.match(/<!-- METADATA:CLUB_JOIN_REQUEST:({.*?}) -->/)
+  const invitationMatch = msg.message.match(/<!-- METADATA:CLUB_INVITATION:({.*?}) -->/)
+  
+  const result: { club_join_request?: ClubJoinRequestMetadata; club_invitation?: ClubInvitationMetadata } = {}
+  
+  if (joinRequestMatch) {
+    try {
+      const metadata = JSON.parse(joinRequestMatch[1])
+      result.club_join_request = metadata
+    } catch {
+      // Ignore parse errors
+    }
+  }
+  
+  if (invitationMatch) {
+    try {
+      const metadata = JSON.parse(invitationMatch[1])
+      result.club_invitation = metadata
+    } catch {
+      // Ignore parse errors
+    }
+  }
+  
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
+function extractClubInvitationMetadata(msg: Message): ClubInvitationMetadata | undefined {
+  const metadataMatch = msg.message.match(/<!-- METADATA:CLUB_INVITATION:({.*?}) -->/)
   if (metadataMatch) {
     try {
       const metadata = JSON.parse(metadataMatch[1])
-      return {
-        club_join_request: metadata
-      }
+      return metadata
     } catch {
       return undefined
     }
   }
   return undefined
+}
+
+// Common helper functions to reduce duplication  
+async function deleteProcessedMessage(supabase: Awaited<ReturnType<typeof createClient>>, messageId: string, messageType: string): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('messages')
+    .delete()
+    .eq('id', messageId)
+
+  if (deleteError) {
+    console.error(`Error deleting ${messageType} message:`, deleteError)
+    // Don't throw error here since the main action succeeded
+  }
+}
+
+async function sendClubNotification(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  senderId: string,
+  receiverId: string,
+  subject: string,
+  message: string
+): Promise<void> {
+  await supabase
+    .from('messages')
+    .insert({
+      sender_id: senderId,
+      receiver_id: receiverId,
+      subject,
+      message,
+      message_type: 'club_announcement'
+    })
+}
+
+async function addMemberToClub(supabase: Awaited<ReturnType<typeof createClient>>, clubId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+  const { error: memberError } = await supabase
+    .from('club_members')
+    .insert({
+      club_id: clubId,
+      user_id: userId,
+      role: 'member'
+    })
+
+  if (memberError) {
+    console.error('Error adding club member:', memberError)
+    return { success: false, error: 'Failed to add member to club' }
+  }
+
+  return { success: true }
 }
 
 /**
@@ -512,4 +565,263 @@ export async function markInboxAsReadAction(): Promise<{ success: boolean }> {
   }
   
   return result
+}
+
+/**
+ * Get clubs where user is a leader (for inviting others)
+ */
+export const getUserLeaderClubs = cache(async (userId?: string) => {
+  try {
+    const supabase = await createClient()
+    const currentUser = userId ? { id: userId } : await getUser()
+
+    if (!currentUser?.id) {
+      return []
+    }
+
+    // Get leader memberships with club data
+    const { data: memberships, error } = await supabase
+      .from('club_members')
+      .select(`
+        club_id,
+        role,
+        clubs (
+          id,
+          name,
+          description,
+          banner_image_url,
+          club_type,
+          location,
+          created_at
+        )
+      `)
+      .eq('user_id', currentUser.id)
+      .eq('role', 'leader')
+
+    if (error) {
+      console.error('Error getting user leader clubs:', error)
+      return []
+    }
+
+    if (!memberships || memberships.length === 0) {
+      return []
+    }
+
+    // Get member counts for each club
+    const clubsWithMemberCount = await Promise.all(
+      (memberships || []).map(async (membership: { club_id: string; role: string; clubs: unknown }) => {
+        // Handle both single object and array response from Supabase
+        const club = Array.isArray(membership.clubs) 
+          ? membership.clubs[0] 
+          : membership.clubs
+        
+        if (!club) {
+          return null
+        }
+
+        const { count } = await supabase
+          .from('club_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('club_id', club.id)
+
+        return {
+          id: club.id,
+          name: club.name,
+          description: club.description,
+          banner_image_url: club.banner_image_url,
+          club_type: club.club_type,
+          location: club.location,
+          created_at: club.created_at,
+          memberCount: count || 0
+        }
+      })
+    )
+
+    return clubsWithMemberCount.filter(Boolean)
+  } catch (error) {
+    console.error('Error getting user leader clubs:', error)
+    return []
+  }
+})
+
+/**
+ * Send club invitation to a user
+ */
+export async function sendClubInvitation(
+  targetUserId: string,
+  clubId: string,
+  message?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const currentUser = await getUser()
+
+    // Verify the current user is a leader of the club
+    const { data: membership, error: membershipError } = await supabase
+      .from('club_members')
+      .select('role')
+      .eq('club_id', clubId)
+      .eq('user_id', currentUser.id)
+      .single()
+
+    if (membershipError || !membership || membership.role !== 'leader') {
+      return { success: false, error: 'You are not authorized to send invitations for this club' }
+    }
+
+    // Get club details
+    const { data: club, error: clubError } = await supabase
+      .from('clubs')
+      .select('name')
+      .eq('id', clubId)
+      .single()
+
+    if (clubError || !club) {
+      return { success: false, error: 'Club not found' }
+    }
+
+    // Check if user is already a member
+    const { data: existingMember } = await supabase
+      .from('club_members')
+      .select('id')
+      .eq('club_id', clubId)
+      .eq('user_id', targetUserId)
+      .single()
+
+    if (existingMember) {
+      return { success: false, error: 'User is already a member of this club' }
+    }
+
+    // Check for existing pending invitation
+    const { data: existingInvitation } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('sender_id', currentUser.id)
+      .eq('receiver_id', targetUserId)
+      .eq('message_type', 'club_invitation')
+      .ilike('message', `%${clubId}%`)
+      .single()
+
+    if (existingInvitation) {
+      return { success: false, error: 'An invitation to this club has already been sent to this user' }
+    }
+
+    // Create metadata for the invitation
+    const metadata = {
+      club_id: clubId,
+      club_name: club.name,
+      inviter_id: currentUser.id,
+      inviter_username: currentUser.username,
+      target_user_id: targetUserId,
+      status: 'pending'
+    }
+
+    const messageWithMetadata = `${message || `You've been invited to join ${club.name}!`}\n\n<!-- METADATA:CLUB_INVITATION:${JSON.stringify(metadata)} -->`
+
+    // Send the invitation message
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: currentUser.id,
+        receiver_id: targetUserId,
+        subject: `Invitation to join ${club.name}`,
+        message: messageWithMetadata,
+        message_type: 'club_invitation'
+      })
+
+    if (messageError) {
+      console.error('Error sending club invitation:', messageError)
+      return { success: false, error: 'Failed to send invitation' }
+    }
+
+    // Revalidate unread count for the target user
+    revalidateTag(`unread-messages-${targetUserId}`)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error sending club invitation:', error)
+    return { success: false, error: 'Failed to send invitation' }
+  }
+}
+
+/**
+ * Handle club invitation response (accept/reject)
+ */
+export async function handleClubInvitation(
+  messageId: string,
+  action: 'accept' | 'reject',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _clubId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _inviterId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const currentUser = await getUser()
+
+    // Verify the message exists and belongs to the current user
+    const { data: message, error: messageError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('id', messageId)
+      .eq('receiver_id', currentUser.id)
+      .eq('message_type', 'club_invitation')
+      .single()
+
+    if (messageError || !message) {
+      return { success: false, error: 'Invitation not found' }
+    }
+
+    // Extract metadata from the message
+    const metadata = extractClubInvitationMetadata(message)
+    if (!metadata) {
+      return { success: false, error: 'Invalid invitation format' }
+    }
+
+    // Use the club ID from metadata instead of the parameter
+    const actualClubId = metadata.club_id
+    const actualInviterId = metadata.inviter_id
+
+    // Get club details
+    const { data: club, error: clubError } = await supabase
+      .from('clubs')
+      .select('name')
+      .eq('id', actualClubId)
+      .single()
+
+    if (clubError || !club) {
+      console.error('Club query error:', clubError)
+      return { success: false, error: 'Club not found' }
+    }
+
+    if (action === 'accept') {
+      // Add user to club using helper function
+      const addResult = await addMemberToClub(supabase, actualClubId, currentUser.id)
+      if (!addResult.success) {
+        return addResult
+      }
+
+      // Send confirmation message to the inviter
+      await sendClubNotification(
+        supabase,
+        currentUser.id,
+        actualInviterId,
+        `${currentUser.username} joined ${club.name}`,
+        `Great news! ${currentUser.username} has accepted your invitation and joined ${club.name}.`
+      )
+    }
+    // For reject: Just delete the invitation silently (like Clash of Clans)
+    // No notification sent to the inviter
+
+    // Delete the original invitation message
+    await deleteProcessedMessage(supabase, messageId, 'club invitation')
+
+    // Revalidate relevant caches
+    revalidateTag(`unread-messages-${currentUser.id}`)
+    revalidateTag(`unread-messages-${actualInviterId}`)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error handling club invitation:', error)
+    return { success: false, error: 'Failed to process invitation' }
+  }
 }

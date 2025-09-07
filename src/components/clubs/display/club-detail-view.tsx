@@ -24,8 +24,8 @@ import {
 } from "lucide-react";
 import type { Club, ClubMember } from "@/types/club";
 import type { User } from "@/types/user";
-import { SendClubMail } from "@/components/inbox/send-club-mail";
-import { RequestToJoin } from "@/components/inbox/request-to-join";
+import { SendClubMail } from "@/components/clubs/send-club-mail";
+import { RequestToJoin } from "@/components/clubs/request-to-join";
 import type { ClubMailData } from "@/types/inbox";
 
 interface ClubDetailViewProps {

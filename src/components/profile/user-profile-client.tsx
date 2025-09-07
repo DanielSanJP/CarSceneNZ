@@ -14,6 +14,7 @@ import {
 import { Car, Star, Eye, ExternalLink, Edit, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { InviteToClub } from "@/components/clubs/invite-to-club";
 import type { User } from "@/types/user";
 import type { Car as CarType } from "@/types/car";
 import type { Club } from "@/types/club";
@@ -30,6 +31,21 @@ interface UserProfileClientProps {
     joined_at: string;
     memberCount: number;
   }>;
+  leaderClubs: Array<{
+    id: string;
+    name: string;
+    description: string;
+    image_url: string | null;
+    memberCount: number;
+  } | null>;
+  sendClubInvitationAction: (
+    targetUserId: string,
+    clubId: string,
+    message?: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
 }
 
 export function UserProfileClient({
@@ -39,6 +55,8 @@ export function UserProfileClient({
   followers,
   following,
   userClubs,
+  leaderClubs,
+  sendClubInvitationAction,
 }: UserProfileClientProps) {
   const router = useRouter();
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -127,6 +145,31 @@ export function UserProfileClient({
                           </Button>
                         </Link>
                       )}
+                      {!isOwnProfile &&
+                        currentUser &&
+                        leaderClubs.length > 0 && (
+                          <InviteToClub
+                            targetUserId={profileUser.id}
+                            targetUsername={profileUser.username}
+                            leaderClubs={leaderClubs
+                              .filter(
+                                (club): club is NonNullable<typeof club> =>
+                                  club !== null
+                              )
+                              .map((club) => ({
+                                id: club.id,
+                                name: club.name,
+                                description: club.description || "",
+                                banner_image_url: club.image_url || undefined,
+                                created_at: "",
+                                updated_at: "",
+                                leader_id: currentUser.id,
+                                total_likes: 0,
+                                memberCount: club.memberCount,
+                              }))}
+                            sendClubInvitationAction={sendClubInvitationAction}
+                          />
+                        )}
                     </div>
                   </div>
 

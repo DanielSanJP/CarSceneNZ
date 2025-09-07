@@ -27,7 +27,7 @@ import { useRouter } from "next/navigation";
 import type { Club } from "@/types/club";
 import type { User } from "@/types/user";
 import { Pagination, PaginationInfo } from "@/components/ui/pagination";
-import { RequestToJoin } from "@/components/inbox/request-to-join";
+import { RequestToJoin } from "@/components/clubs/request-to-join";
 
 interface ClubGalleryProps {
   clubs: (Club & { memberCount: number })[];
