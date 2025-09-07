@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Event } from "@/types/event";
+import { toast } from "sonner";
 
 // Match the AttendeeData interface from the server component
 interface AttendeeData {
@@ -86,8 +87,8 @@ export function EventDetailView({
           const status = await getUserEventStatusAction(event.id, user.id);
           setUserStatus(status);
         }
-      } catch (error) {
-        console.error("Error fetching event data:", error);
+      } catch {
+        // Error fetching event data - user status will remain null
       }
     };
 
@@ -139,10 +140,10 @@ export function EventDetailView({
       // Refresh attendee data only on success
       const updatedAttendees = await getEventAttendeesAction(event.id);
       setAttendees(updatedAttendees);
-    } catch (error) {
-      console.error("Error updating attendance:", error);
+    } catch {
       // Revert optimistic update on error
       setUserStatus(originalStatus);
+      toast.error("Failed to update attendance. Please try again.");
     }
   };
 
@@ -169,17 +170,14 @@ export function EventDetailView({
       } else {
         // Fallback to clipboard copy
         await navigator.clipboard.writeText(shareUrl);
-        // You could add a toast notification here to inform the user
-        alert("Event link copied to clipboard!");
+        toast.success("Event link copied to clipboard!");
       }
-    } catch (error) {
-      console.error("Error sharing:", error);
+    } catch {
       // Final fallback - just copy URL
       try {
         await navigator.clipboard.writeText(shareUrl);
-        alert("Event link copied to clipboard!");
-      } catch (clipboardError) {
-        console.error("Clipboard access failed:", clipboardError);
+        toast.success("Event link copied to clipboard!");
+      } catch {
         // Last resort - show the URL
         prompt("Copy this link to share the event:", shareUrl);
       }

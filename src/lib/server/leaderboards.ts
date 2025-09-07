@@ -25,10 +25,7 @@ export const getTopCars = cache(async (limit: number = 10): Promise<CarRanking[]
         )
       `)
       .order('total_likes', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error getting top cars:', error);
+      .limit(limit);    if (error) {
       return [];
     }
 
@@ -53,11 +50,9 @@ export const getTopCars = cache(async (limit: number = 10): Promise<CarRanking[]
       },
       rank: index + 1,
       likes: car.total_likes || 0,
-    })) || [];
-  } catch (error) {
-    console.error('Error getting top cars:', error);
-    return [];
-  }
+    })) || [];    } catch {
+      return [];
+    }
 });
 
 /**
@@ -93,9 +88,7 @@ export const getTopOwners = cache(async (limit: number = 10): Promise<OwnerRanki
     }
 
     // Fallback: calculate manually
-    return await getTopOwnersManual(limit);
-  } catch (error) {
-    console.error('Error getting top owners:', error);
+    return await getTopOwnersManual(limit);  } catch {
     return [];
   }
 });
@@ -119,10 +112,7 @@ async function getTopOwnersManual(limit: number): Promise<OwnerRanking[]> {
           display_name,
           profile_image_url
         )
-      `);
-
-    if (error || !cars) {
-      console.error('Error getting cars for owner ranking:', error);
+      `);    if (error || !cars) {
       return [];
     }
 
@@ -166,9 +156,7 @@ async function getTopOwnersManual(limit: number): Promise<OwnerRanking[]> {
       rank: index + 1,
       totalLikes: stats.totalLikes,
       carCount: stats.carCount,
-    }));
-  } catch (error) {
-    console.error('Error in manual top owners calculation:', error);
+    }));  } catch {
     return [];
   }
 }
@@ -192,10 +180,7 @@ export const getTopClubs = cache(async (limit: number = 10): Promise<ClubRanking
         )
       `)
       .order('total_likes', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error getting top clubs:', error);
+      .limit(limit);    if (error) {
       return [];
     }
 
@@ -234,9 +219,7 @@ export const getTopClubs = cache(async (limit: number = 10): Promise<ClubRanking
       })
     );
 
-    return clubsWithCounts;
-  } catch (error) {
-    console.error('Error getting top clubs:', error);
+    return clubsWithCounts;  } catch {
     return [];
   }
 });
@@ -277,9 +260,7 @@ export const getLeaderboardStats = cache(async (): Promise<{
       totalClubs: totalClubs || 0,
       totalEvents: totalEvents || 0,
       totalLikes,
-    };
-  } catch (error) {
-    console.error('Error getting leaderboard stats:', error);
+    };  } catch {
     return {
       totalCars: 0,
       totalUsers: 0,

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, X, Camera } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 // import { uploadEventImageAction } from "@/lib/server/upload-actions"; // TODO: Convert to prop
 
 interface EventImageManagerProps {
@@ -49,11 +50,9 @@ export function EventImageManager({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0];
-
-    // Validate file type
+    const file = files[0]; // Validate file type
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file.");
+      toast.error("Please select a valid image file.");
       e.target.value = "";
       return;
     }
@@ -61,7 +60,7 @@ export function EventImageManager({
     // Validate file size (5MB limit)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert("Image size should be less than 5MB.");
+      toast.error("Image size should be less than 5MB.");
       e.target.value = "";
       return;
     }
@@ -80,15 +79,15 @@ export function EventImageManager({
       // TODO: Convert to server action prop
       // const result = await uploadEventImageAction(formData);
       const result = await uploadAction(formData);
-
       if (result.url) {
         onImageChange(result.url);
       } else {
-        alert(result.error || "Failed to upload image. Please try again.");
+        toast.error(
+          result.error || "Failed to upload image. Please try again."
+        );
       }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      alert("Failed to upload image. Please try again.");
+    } catch {
+      toast.error("Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
       e.target.value = "";

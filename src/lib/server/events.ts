@@ -22,16 +22,11 @@ export const getEventById = cache(async (eventId: string): Promise<Event | null>
         )
       `)
       .eq('id', eventId)
-      .single();
-
-    if (error || !data) {
-      console.error('Error getting event by id:', error);
+      .single();    if (error || !data) {
       return null;
     }
 
-    return data;
-  } catch (error) {
-    console.error('Error getting event by id:', error);
+    return data;  } catch {
     return null;
   }
 });
@@ -52,9 +47,7 @@ export const getEventAttendees = cache(async (eventId: string) => {
       )
     `)
     .eq('event_id', eventId);
-
   if (error) {
-    console.error('Error fetching event attendees:', error);
     return [];
   }
 
@@ -77,9 +70,7 @@ export const getEventsByHost = cache(async (hostId: string) => {
     `)
     .eq('host_id', hostId)
     .order('created_at', { ascending: false });
-
   if (error) {
-    console.error('Error fetching events by host:', error);
     return [];
   }
 
@@ -110,9 +101,7 @@ export async function attendEvent(eventId: string, userId: string, status: 'inte
       .eq('event_id', eventId)
       .eq('user_id', userId)
       .select();
-      
-    if (error) {
-      console.error('Error updating event attendance:', error);
+        if (error) {
       throw error;
     }
     result = data;
@@ -126,11 +115,9 @@ export async function attendEvent(eventId: string, userId: string, status: 'inte
         status: status,
       })
       .select();
-      
-    if (error) {
-      console.error('Error creating event attendance:', error);
-      throw error;
-    }
+      if (error) {
+        throw error;
+      }
     result = data;
   }
 
@@ -145,9 +132,7 @@ export async function unattendEvent(eventId: string, userId: string) {
     .delete()
     .eq('event_id', eventId)
     .eq('user_id', userId);
-
   if (error) {
-    console.error('Error removing event attendance:', error);
     throw error;
   }
 }
@@ -162,12 +147,10 @@ export const getUserEventStatus = cache(async (eventId: string, userId: string) 
     .eq('user_id', userId)
     .single();
 
-  if (error) {
-    if (error.code === 'PGRST116') {
+  if (error) {    if (error.code === 'PGRST116') {
       // No record found, user hasn't responded
       return null;
     }
-    console.error('Error fetching user event status:', error);
     return null;
   }
 
@@ -182,9 +165,7 @@ export async function createEvent(eventData: Partial<Event>) {
     .insert(eventData)
     .select()
     .single();
-
   if (error) {
-    console.error('Error creating event:', error);
     throw error;
   }
 
@@ -200,9 +181,7 @@ export async function updateEvent(id: string, eventData: Partial<Event>) {
     .eq('id', id)
     .select()
     .single();
-
   if (error) {
-    console.error('Error updating event:', error);
     throw error;
   }
 
@@ -216,9 +195,7 @@ export async function deleteEvent(id: string) {
     .from('events')
     .delete()
     .eq('id', id);
-
   if (error) {
-    console.error('Error deleting event:', error);
     throw error;
   }
 }
@@ -236,9 +213,7 @@ export const getEventAttendeeCounts = cache(async (eventIds: string[]) => {
     .from("event_attendees")
     .select("event_id, status")
     .in("event_id", eventIds);
-    
-  if (error) {
-    console.error("Error fetching attendee counts:", error);
+      if (error) {
     return {};
   }
   
@@ -277,9 +252,7 @@ export const getUserEventStatuses = cache(async (eventIds: string[], userId: str
     .select("event_id, status")
     .eq("user_id", userId)
     .in("event_id", eventIds);
-    
-  if (error) {
-    console.error("Error fetching user event statuses:", error);
+      if (error) {
     return {};
   }
   
@@ -343,9 +316,7 @@ export async function getEventAttendeesDetailed(eventId: string): Promise<Attend
     `
     )
     .eq("event_id", eventId);
-
   if (error) {
-    console.error("Error fetching event attendees:", error);
     return [];
   }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import type { Car } from "@/types/car";
+import { toast } from "sonner";
 
 // Import all garage components
 import {
@@ -264,7 +265,7 @@ export function EditCarForm({
 
   const handleSubmit = async () => {
     if (!formData.brand || !formData.model || !formData.year) {
-      alert("Please fill in all required fields (Brand, Model, Year)");
+      toast.error("Please fill in all required fields (Brand, Model, Year)");
       return;
     }
 
@@ -370,25 +371,22 @@ export function EditCarForm({
         return;
       }
 
-      console.error("Error updating car:", error);
-      alert("Failed to update car. Please try again.");
+      toast.error("Failed to update car. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleDelete = async () => {
     if (!onDelete) {
-      alert("Delete function not available");
+      toast.error("Delete function not available");
       return;
     }
 
     setIsDeleting(true);
     try {
       await onDelete();
-    } catch (error) {
-      console.error("Error deleting car:", error);
-      alert("Failed to delete car. Please try again.");
+    } catch {
+      toast.error("Failed to delete car. Please try again.");
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);

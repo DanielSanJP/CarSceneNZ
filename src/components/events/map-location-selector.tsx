@@ -67,8 +67,7 @@ export function MapLocationSelector({
 
       const data = await response.json();
       setMapSearchResults(data);
-    } catch (error) {
-      console.error("Error searching map locations:", error);
+    } catch {
       setMapSearchResults([]);
     }
   }, []);
@@ -106,8 +105,7 @@ export function MapLocationSelector({
       if (data && data.display_name) {
         setSelectedMapLocation(data.display_name);
       }
-    } catch (error) {
-      console.error("Error reverse geocoding:", error);
+    } catch {
       setSelectedMapLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
     }
   };

@@ -21,16 +21,11 @@ export const getAllMessages = cache(async (): Promise<Message[]> => {
           profile_image_url
         )
       `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error getting all messages:', error);
+      .order('created_at', { ascending: false });    if (error) {
       return [];
     }
 
-    return data || [];
-  } catch (error) {
-    console.error('Error getting all messages:', error);
+    return data || [];  } catch {
     return [];
   }
 });

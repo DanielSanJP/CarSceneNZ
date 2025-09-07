@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Camera, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { useState, useRef } from "react";
 
 export function RegisterForm({
@@ -35,13 +36,13 @@ export function RegisterForm({
     if (file) {
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image must be less than 5MB");
+        toast.error("Image must be less than 5MB");
         return;
       }
 
       // Validate file type
       if (!file.type.startsWith("image/")) {
-        alert("Please select an image file");
+        toast.error("Please select an image file");
         return;
       }
 
@@ -85,7 +86,6 @@ export function RegisterForm({
         return;
       }
 
-      console.error("Registration error:", error);
       setError(
         error instanceof Error
           ? error.message

@@ -10,6 +10,7 @@ import { Check, X, Clock, Users, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import type { InboxMessage } from "@/types/inbox";
 import { useInboxRealtime } from "@/hooks/use-inbox-realtime";
+import { toast } from "sonner";
 
 interface InboxViewProps {
   userId: string;
@@ -55,8 +56,8 @@ export function InboxView({
       // Call the server action to revalidate the unread count
       try {
         await revalidateBadgeAction();
-      } catch (error) {
-        console.error("Error revalidating badge:", error);
+      } catch {
+        // Error revalidating badge - not critical
       }
     };
 
@@ -72,13 +73,12 @@ export function InboxView({
       .replace(/<!-- METADATA:CLUB_INVITATION:.*? -->/g, "")
       .trim();
   };
-
   const handleJoinRequest = async (
     msg: InboxMessage,
     action: "approve" | "reject"
   ) => {
     if (!handleJoinRequestAction) {
-      console.error("handleJoinRequestAction not provided");
+      toast.error("Join request action not available");
       return;
     }
 
@@ -92,26 +92,24 @@ export function InboxView({
       );
       if (result.success) {
         // Server action will handle revalidation, no need for manual reload
-        console.log(`Successfully ${action}ed join request`);
+        toast.success(`Successfully ${action}ed join request`);
       } else {
-        alert(
+        toast.error(
           `Failed to ${action} join request: ${result.error || "Unknown error"}`
         );
       }
-    } catch (error) {
-      console.error(`Error ${action}ing join request:`, error);
-      alert(`Failed to ${action} join request`);
+    } catch {
+      toast.error(`Failed to ${action} join request`);
     } finally {
       setProcessingRequest(null);
     }
   };
-
   const handleClubInvitation = async (
     msg: InboxMessage,
     action: "accept" | "reject"
   ) => {
     if (!handleClubInvitationAction) {
-      console.error("handleClubInvitationAction not provided");
+      toast.error("Club invitation action not available");
       return;
     }
 
@@ -125,17 +123,16 @@ export function InboxView({
       );
       if (result.success) {
         // Server action will handle revalidation, no need for manual reload
-        console.log(`Successfully ${action}ed club invitation`);
+        toast.success(`Successfully ${action}ed club invitation`);
       } else {
-        alert(
+        toast.error(
           `Failed to ${action} club invitation: ${
             result.error || "Unknown error"
           }`
         );
       }
-    } catch (error) {
-      console.error(`Error ${action}ing club invitation:`, error);
-      alert(`Failed to ${action} club invitation`);
+    } catch {
+      toast.error(`Failed to ${action} club invitation`);
     } finally {
       setProcessingRequest(null);
     }

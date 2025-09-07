@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, GripVertical } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 // Simple temp ID generator for client-side use
 function generateTempId(): string {
@@ -54,17 +55,15 @@ export default function CarImageManager({
     const currentImageCount = images.length;
     const maxImages = 10;
     const remainingSlots = maxImages - currentImageCount;
-
     if (remainingSlots <= 0) {
-      alert(`You can only upload a maximum of ${maxImages} images.`);
+      toast.error(`You can only upload a maximum of ${maxImages} images.`);
       e.target.value = "";
       return;
     }
 
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
-
     if (files.length > remainingSlots) {
-      alert(
+      toast.warning(
         `You can only add ${remainingSlots} more image(s). Only the first ${remainingSlots} image(s) will be uploaded.`
       );
     }
@@ -84,9 +83,8 @@ export default function CarImageManager({
         } else if (result.error) {
           throw new Error(result.error);
         }
-      } catch (error) {
-        console.error("Error uploading images:", error);
-        alert("Failed to upload images. Please try again.");
+      } catch {
+        toast.error("Failed to upload images. Please try again.");
       } finally {
         setIsUploading(false);
       }
@@ -112,9 +110,8 @@ export default function CarImageManager({
         } else if (result.error) {
           throw new Error(result.error);
         }
-      } catch (error) {
-        console.error("Error pre-uploading images:", error);
-        alert("Failed to upload images. Please try again.");
+      } catch {
+        toast.error("Failed to upload images. Please try again.");
       } finally {
         setIsUploading(false);
       }

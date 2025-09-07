@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,25 +41,17 @@ function ProfileDropdown({
   const displayName = user?.display_name || user?.username || "User";
   const username = user?.username || "user";
   const avatarUrl = user?.profile_image_url;
-
   // Reset image error when avatarUrl changes
   React.useEffect(() => {
     setImageError(false);
-    console.log("ProfileDropdown - User data:", {
-      user,
-      avatarUrl,
-      displayName,
-      username,
-    });
   }, [avatarUrl, user, displayName, username]);
 
   if (!user) return null;
-
   const handleLogout = async () => {
     try {
       await signOut();
-    } catch (error) {
-      console.error("Error signing out:", error);
+    } catch {
+      toast.error("Error signing out. Please try again.");
     }
   };
 
@@ -79,11 +72,10 @@ function ProfileDropdown({
               sizes="128px"
               priority
               onError={() => {
-                console.error("Failed to load profile image:", avatarUrl);
                 setImageError(true);
               }}
               onLoad={() => {
-                console.log("Profile image loaded successfully:", avatarUrl);
+                // Image loaded successfully
               }}
             />
           ) : (

@@ -14,6 +14,7 @@ import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
 import type { Event } from "@/types/event";
 import type { User } from "@/types/user";
+import { toast } from "sonner";
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)
 function formatDateToLocal(date: Date): string {
@@ -83,7 +84,7 @@ export function EditEventForm({
     try {
       // Validate
       if (!formData.title.trim()) {
-        alert("Event title is required.");
+        toast.error("Event title is required.");
         return;
       }
 
@@ -91,7 +92,7 @@ export function EditEventForm({
         (item) => item.date
       );
       if (validScheduleItems.length === 0) {
-        alert("At least one event date is required.");
+        toast.error("At least one event date is required.");
         return;
       }
 
@@ -125,8 +126,7 @@ export function EditEventForm({
         return;
       }
 
-      console.error("Error updating event:", error);
-      alert("An error occurred while updating the event.");
+      toast.error("An error occurred while updating the event.");
       setIsLoading(false);
     }
   };
@@ -149,8 +149,7 @@ export function EditEventForm({
         return;
       }
 
-      console.error("Error deleting event:", error);
-      alert("An error occurred while deleting the event.");
+      toast.error("An error occurred while deleting the event.");
       setIsLoading(false);
     } finally {
       setShowDeleteDialog(false);

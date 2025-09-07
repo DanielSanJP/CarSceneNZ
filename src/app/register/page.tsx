@@ -32,19 +32,11 @@ async function signupAction(formData: FormData) {
   };
 
   const { data: authData, error } = await supabase.auth.signUp(data);
-
   if (error) {
-    console.error("Auth signup error:", error);
     throw new Error(error.message || "Registration failed");
   }
 
   if (authData.user) {
-    console.log("User created successfully:", {
-      id: authData.user.id,
-      email: authData.user.email,
-      display_name: authData.user.user_metadata?.display_name,
-    });
-
     let profileImageUrl = null;
 
     // Upload profile image if provided
@@ -57,12 +49,8 @@ async function signupAction(formData: FormData) {
 
         if (uploadedUrl) {
           profileImageUrl = uploadedUrl;
-          console.log("Profile image uploaded successfully:", profileImageUrl);
-        } else {
-          console.error("Profile image upload failed: No URL returned");
         }
-      } catch (imageError) {
-        console.error("Profile image upload failed:", imageError);
+      } catch {
         // Don't throw here - user creation should still succeed
       }
     }
@@ -73,18 +61,12 @@ async function signupAction(formData: FormData) {
       username: username,
       profile_image_url: profileImageUrl,
     };
-
-    console.log("Inserting user profile:", userData);
-
     const { error: profileError } = await supabase
       .from("users")
       .insert(userData);
 
     if (profileError) {
-      console.error("Profile creation error:", profileError);
       throw new Error("Failed to create user profile");
-    } else {
-      console.log("User profile created successfully");
     }
   }
 

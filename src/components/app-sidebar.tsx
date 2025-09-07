@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth";
+import { toast } from "sonner";
 
 import {
   Sidebar,
@@ -112,13 +113,12 @@ export function AppSidebar({ user, unreadCount }: AppSidebarProps) {
     // For other paths, use exact match or direct sub-path
     return pathname.startsWith(path + "/") || pathname === path;
   };
-
   const handleLogout = async () => {
     try {
       await signOut();
       setOpenMobile(false);
-    } catch (error) {
-      console.error("Error signing out:", error);
+    } catch {
+      toast.error("Error signing out. Please try again.");
     }
   };
 

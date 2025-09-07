@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
+import { toast } from "sonner";
 
 // Import all garage components
 import {
@@ -235,7 +236,7 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
 
   const handleSubmit = async () => {
     if (!formData.brand || !formData.model || !formData.year) {
-      alert("Please fill in all required fields (Brand, Model, Year)");
+      toast.error("Please fill in all required fields (Brand, Model, Year)");
       return;
     }
 
@@ -291,8 +292,7 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
         return;
       }
 
-      console.error("Error creating car:", error);
-      alert("Failed to create car. Please try again.");
+      toast.error("Failed to create car. Please try again.");
     } finally {
       setIsLoading(false);
     }

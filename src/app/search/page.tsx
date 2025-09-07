@@ -12,9 +12,7 @@ const getAllCars = cache(async (): Promise<Car[]> => {
     .from("cars")
     .select("*")
     .order("created_at", { ascending: false });
-
   if (error) {
-    console.error("Error fetching all cars:", error);
     return [];
   }
 
@@ -27,9 +25,7 @@ const getAllEvents = cache(async (): Promise<Event[]> => {
     .from("events")
     .select("*")
     .order("created_at", { ascending: false });
-
   if (error) {
-    console.error("Error fetching all events:", error);
     return [];
   }
 
@@ -42,9 +38,7 @@ const getAllUsers = cache(async (): Promise<User[]> => {
     .from("users")
     .select("*")
     .order("created_at", { ascending: false });
-
   if (error) {
-    console.error("Error fetching all users:", error);
     return [];
   }
 
@@ -57,9 +51,7 @@ const getAllClubs = cache(async (): Promise<Club[]> => {
     .from("clubs")
     .select("*")
     .order("created_at", { ascending: false });
-
   if (error) {
-    console.error("Error fetching all clubs:", error);
     return [];
   }
 
