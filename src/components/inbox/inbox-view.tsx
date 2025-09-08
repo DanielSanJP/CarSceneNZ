@@ -6,10 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Check, X, Clock, Users, Wifi, WifiOff } from "lucide-react";
+import { Check, X, Clock, Users } from "lucide-react";
 import Link from "next/link";
 import type { InboxMessage } from "@/types/inbox";
 import { useInboxRealtime } from "@/hooks/use-inbox-realtime";
+import { useInboxPageActive } from "@/hooks/use-inbox-page-active";
 import { toast } from "sonner";
 
 interface InboxViewProps {
@@ -44,24 +45,29 @@ export function InboxView({
   );
 
   // Use Supabase real-time inbox updates
-  const { messages, isConnected, error, isRefreshing } = useInboxRealtime({
+  const { messages } = useInboxRealtime({
     userId,
     initialMessages,
     refreshMessages,
   });
 
-  // Optimistic update - trigger badge revalidation when component mounts
+  // Use the inbox page active hook for automatic read state management
+  const { markAsRead } = useInboxPageActive();
+
+  // Mark messages as read when component mounts
   useEffect(() => {
-    const markAsRead = async () => {
-      // Call the server action to revalidate the unread count
+    const markInboxAsRead = async () => {
       try {
+        // Use the global context method to mark as read
+        await markAsRead();
+        // Also call the server action for additional revalidation if needed
         await revalidateBadgeAction();
-      } catch {
-        // Error revalidating badge - not critical
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
       }
     };
 
-    markAsRead();
+    markInboxAsRead();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run once on mount
 
@@ -146,40 +152,6 @@ export function InboxView({
         <p className="text-muted-foreground mt-2">
           Stay connected with your car community
         </p>
-
-        {/* Connection Status */}
-        <div className="flex items-center gap-2 mt-3">
-          <div
-            className={`flex items-center gap-1 text-sm ${
-              isConnected ? "text-green-600" : "text-orange-600"
-            }`}
-          >
-            {isConnected ? (
-              <>
-                <Wifi size={14} />
-                <span>Live updates enabled</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={14} />
-                <span>Connecting...</span>
-              </>
-            )}
-          </div>
-
-          {isRefreshing && (
-            <div className="flex items-center gap-1 text-sm text-blue-600">
-              <Clock size={14} className="animate-spin" />
-              <span>Refreshing...</span>
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-center gap-2">
-              <span className="text-red-600 text-sm">{error}</span>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Messages */}

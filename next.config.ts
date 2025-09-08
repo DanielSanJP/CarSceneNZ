@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Remove console logs in production builds
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   images: {
     // Use modern formats for better compression and quality
     formats: ['image/webp', 'image/avif'],

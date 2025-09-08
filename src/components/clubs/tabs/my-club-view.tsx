@@ -238,25 +238,6 @@ export function MyClubView({ userClubs }: MyClubViewProps) {
           );
         })}
       </div>
-
-      {/* Add new club card */}
-      <Card className="border-dashed border-2 border-muted-foreground/25 hover:border-primary/50 transition-colors">
-        <CardContent className="p-8">
-          <div className="text-center">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Join Another Club</h3>
-            <p className="text-muted-foreground mb-4">
-              Discover more communities and expand your network
-            </p>
-            <Link href="/clubs?tab=join">
-              <Button>
-                <Users className="h-4 w-4 mr-2" />
-                Browse Clubs
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

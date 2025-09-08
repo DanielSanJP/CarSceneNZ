@@ -6,6 +6,7 @@ import { Navigation } from "@/components/nav";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { InboxProvider } from "@/contexts/inbox-context";
 import { getUserOptional } from "@/lib/auth";
 import { getUnreadMessageCount } from "@/lib/server/inbox";
 
@@ -47,13 +48,18 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider defaultOpen={false}>
-            <AppSidebar user={user} unreadCount={unreadCount} />
-            <SidebarInset>
-              <Navigation user={user} unreadCount={unreadCount} />
-              <div className="flex-1 flex flex-col min-h-0">{children}</div>
-            </SidebarInset>
-          </SidebarProvider>
+          <InboxProvider
+            userId={user?.id || null}
+            initialUnreadCount={unreadCount}
+          >
+            <SidebarProvider defaultOpen={false}>
+              <AppSidebar user={user} unreadCount={unreadCount} />
+              <SidebarInset>
+                <Navigation user={user} unreadCount={unreadCount} />
+                <div className="flex-1 flex flex-col min-h-0">{children}</div>
+              </SidebarInset>
+            </SidebarProvider>
+          </InboxProvider>
           <Toaster position="top-center" />
         </ThemeProvider>
       </body>
