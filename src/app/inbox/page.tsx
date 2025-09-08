@@ -6,20 +6,13 @@ import {
 } from "@/lib/server/inbox";
 import { InboxView } from "@/components/inbox/inbox-view";
 import { getUser } from "@/lib/auth";
-import { revalidateTag, revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
 
-// Server action to revalidate badge count
-async function revalidateBadgeAction() {
-  "use server";
-
-  const user = await getUser();
-  if (user) {
-    revalidateTag(`unread-messages-${user.id}`);
-  }
-}
+// Cache for 1 minute since messages can change frequently
+export const revalidate = 60;
 
 // Server action to refresh messages - this is what realtime will call
 async function refreshMessagesAction() {
@@ -101,7 +94,6 @@ export default async function InboxPage() {
             userId={user.id}
             initialMessages={initialMessages}
             refreshMessages={refreshMessagesAction}
-            revalidateBadgeAction={revalidateBadgeAction}
             handleJoinRequestAction={handleJoinRequestServerAction}
             handleClubInvitationAction={handleClubInvitationServerAction}
           />

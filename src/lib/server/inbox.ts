@@ -8,6 +8,43 @@ import type { InboxMessage, ClubMailData } from '@/types/inbox'
 import type { Message } from '@/types/message'
 
 /**
+ * Send real-time broadcast for new message
+ */
+async function broadcastNewMessage(messageId: string, receiverId: string) {
+  try {
+    const supabase = await createClient();
+    
+    // Send message broadcast for real-time updates
+    const messageChannel = supabase.channel(`inbox-messages-${receiverId}`);
+    await messageChannel.send({
+      type: 'broadcast',
+      event: 'new_message',
+      payload: {
+        id: messageId,
+        receiver_id: receiverId,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    // Send badge broadcast for unread count updates
+    const badgeChannel = supabase.channel(`inbox-badges-${receiverId}`);
+    await badgeChannel.send({
+      type: 'broadcast',
+      event: 'new_message_badge',
+      payload: {
+        receiver_id: receiverId,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    console.log(`✅ Broadcast sent for new message ${messageId} to user ${receiverId}`);
+  } catch (error) {
+    console.error('Error sending broadcast for new message:', error);
+    // Don't throw - broadcast failure shouldn't break message creation
+  }
+}
+
+/**
  * Get user's inbox messages with enhanced club context
  */
 export const getUserInboxMessages = cache(async (userId?: string): Promise<InboxMessage[]> => {
@@ -15,17 +52,19 @@ export const getUserInboxMessages = cache(async (userId?: string): Promise<Inbox
     const supabase = await createClient()
     const currentUser = userId ? { id: userId } : await getUser()
 
+    // Optimized query - removed receiver JOIN (redundant), selected only needed fields
     const { data, error } = await supabase
       .from('messages')
       .select(`
-        *,
+        id,
+        sender_id,
+        receiver_id,
+        subject,
+        message,
+        message_type,
+        created_at,
+        updated_at,
         sender:users!messages_sender_id_fkey (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        ),
-        receiver:users!messages_receiver_id_fkey (
           id,
           username,
           display_name,
@@ -34,6 +73,7 @@ export const getUserInboxMessages = cache(async (userId?: string): Promise<Inbox
       `)
       .eq('receiver_id', currentUser.id)
       .order('created_at', { ascending: false })
+      .limit(50)
 
     if (error) {
       console.error('Error getting inbox messages:', error)
@@ -41,15 +81,29 @@ export const getUserInboxMessages = cache(async (userId?: string): Promise<Inbox
     }
 
     // Transform basic messages to inbox messages with enhanced context
-    return data?.map((msg): InboxMessage => ({
-      ...msg,
-      // Use the new message_type column directly from database
-      message_type: msg.message_type || 'general',
-      // Parse metadata from subject/message if it exists - handle both join requests and invitations
-      club_id: extractClubIdFromMessage(msg) || extractClubInvitationMetadata(msg)?.club_id,
-      club_name: extractClubNameFromMessage(msg) || extractClubInvitationMetadata(msg)?.club_name,
-      metadata: parseMessageMetadata(msg)
-    })) || []
+    return data?.map((msg): InboxMessage => {
+      // Handle sender array (Supabase returns array even for single JOIN)
+      const sender = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender
+      
+      // Create a properly typed message object for helper functions
+      const typedMessage = {
+        ...msg,
+        sender,
+        receiver: undefined // Not needed anymore since we removed the JOIN
+      }
+      
+      return {
+        ...msg,
+        sender,
+        receiver: undefined, // Not needed for inbox view
+        // Use the new message_type column directly from database
+        message_type: msg.message_type || 'general',
+        // Parse metadata from subject/message if it exists - handle both join requests and invitations
+        club_id: extractClubIdFromMessage(typedMessage) || extractClubInvitationMetadata(typedMessage)?.club_id,
+        club_name: extractClubNameFromMessage(typedMessage) || extractClubInvitationMetadata(typedMessage)?.club_name,
+        metadata: parseMessageMetadata(typedMessage) as InboxMessage['metadata'] // Type assertion to handle the metadata mismatch
+      }
+    }) || []
   } catch (error) {
     console.error('Error getting inbox messages:', error)
     return []
@@ -97,7 +151,7 @@ export async function sendClubJoinRequest(
   status: 'pending'
 })} -->`
 
-      const { error: messageError } = await supabase
+      const { data: insertedMessage, error: messageError } = await supabase
         .from('messages')
         .insert({
           sender_id: user.id,
@@ -106,10 +160,17 @@ export async function sendClubJoinRequest(
           message: messageWithMetadata,
           message_type: 'club_join_request'
         })
+        .select('id')
+        .single()
 
     if (messageError) {
       console.error('Error sending join request:', messageError)
       return { success: false, error: 'Failed to send join request' }
+    }
+
+    // Send real-time broadcast for the new message
+    if (insertedMessage?.id) {
+      await broadcastNewMessage(insertedMessage.id, club.leader_id);
     }
 
     // Revalidate unread count specifically for the club leader
@@ -251,13 +312,21 @@ export async function sendClubMail(mailData: ClubMailData): Promise<{ success: b
       message_type: 'club_announcement'
     }))
 
-    const { error: sendError } = await supabase
+    const { data: insertedMessages, error: sendError } = await supabase
       .from('messages')
       .insert(messages)
+      .select('id, receiver_id')
 
     if (sendError) {
       console.error('Error sending club mail:', sendError)
       return { success: false, error: 'Failed to send messages' }
+    }
+
+    // Send real-time broadcasts for all new messages
+    if (insertedMessages && insertedMessages.length > 0) {
+      for (const message of insertedMessages) {
+        await broadcastNewMessage(message.id, message.receiver_id);
+      }
     }
 
     // Revalidate unread count for all club members who received messages
@@ -518,36 +587,6 @@ export async function markInboxAsRead(userId?: string): Promise<{ success: boole
 }
 
 /**
- * Version that can be used inside after() callback without cookies
- * Requires userId to be passed explicitly
- */
-export async function markInboxAsReadWithUserId(userId: string): Promise<{ success: boolean }> {
-  try {
-    // Create a simple client that doesn't use cookies (for after() callback)
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
-    )
-
-    const { error } = await supabase
-      .from('users')
-      .update({ last_seen_inbox: new Date().toISOString() })
-      .eq('id', userId)
-
-    if (error) {
-      console.error('Error updating last_seen_inbox:', error)
-      return { success: false }
-    }
-
-    return { success: true }
-  } catch (error) {
-    console.error('Error in markInboxAsReadWithUserId:', error)
-    return { success: false }
-  }
-}
-
-/**
  * Server Action wrapper that can safely call revalidateTag
  * Use this instead of markInboxAsRead from server components
  */
@@ -718,7 +757,7 @@ export async function sendClubInvitation(
     const messageWithMetadata = `${message || `You've been invited to join ${club.name}!`}\n\n<!-- METADATA:CLUB_INVITATION:${JSON.stringify(metadata)} -->`
 
     // Send the invitation message
-    const { error: messageError } = await supabase
+    const { data: insertedMessage, error: messageError } = await supabase
       .from('messages')
       .insert({
         sender_id: currentUser.id,
@@ -727,10 +766,17 @@ export async function sendClubInvitation(
         message: messageWithMetadata,
         message_type: 'club_invitation'
       })
+      .select('id')
+      .single()
 
     if (messageError) {
       console.error('Error sending club invitation:', messageError)
       return { success: false, error: 'Failed to send invitation' }
+    }
+
+    // Send real-time broadcast for the new invitation
+    if (insertedMessage?.id) {
+      await broadcastNewMessage(insertedMessage.id, targetUserId);
     }
 
     // Revalidate unread count for the target user

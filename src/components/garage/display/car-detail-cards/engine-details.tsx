@@ -1,3 +1,4 @@
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CarEngine } from "@/types/car";
 
@@ -5,7 +6,9 @@ interface EngineDetailsProps {
   engine: CarEngine | undefined;
 }
 
-export function EngineDetails({ engine }: EngineDetailsProps) {
+export const EngineDetails = React.memo(function EngineDetails({
+  engine,
+}: EngineDetailsProps) {
   if (!engine) {
     return (
       <Card>
@@ -66,4 +69,4 @@ export function EngineDetails({ engine }: EngineDetailsProps) {
       </CardContent>
     </Card>
   );
-}
+});

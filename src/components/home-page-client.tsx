@@ -146,17 +146,21 @@ export function HomePageClient({
           {upcomingEvents.length > 0 ? (
             upcomingEvents.map((event: Event) => (
               <Link key={event.id} href={`/events/${event.id}`}>
-                <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
-                  <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                    <Image
-                      src={
-                        event.poster_image_url || "/events/default-event.jpg"
-                      }
-                      alt={event.title}
-                      width={400}
-                      height={225}
-                      className="w-full h-full object-cover"
-                    />
+                <Card className="overflow-hidden pt-0 text-center hover:shadow-lg transition-shadow cursor-pointer">
+                  <div className="relative aspect-square overflow-hidden">
+                    {event.poster_image_url ? (
+                      <Image
+                        src={event.poster_image_url}
+                        alt={event.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div className="aspect-square bg-muted flex items-center justify-center">
+                        <Calendar className="h-12 w-12 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
                   <CardHeader>
                     <CardTitle>{event.title}</CardTitle>
@@ -206,15 +210,21 @@ export function HomePageClient({
           {featuredCars.length > 0 ? (
             featuredCars.map((car) => (
               <Link key={car.id} href={`/garage/${car.id}`}>
-                <Card className="text-center pt-0 hover:shadow-lg transition-shadow cursor-pointer">
-                  <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                    <Image
-                      src={car.images?.[0] || "/cars/default.jpg"}
-                      alt={`${car.brand} ${car.model}`}
-                      width={400}
-                      height={225}
-                      className="w-full h-full object-cover"
-                    />
+                <Card className="overflow-hidden pt-0 text-center hover:shadow-lg transition-shadow cursor-pointer">
+                  <div className="relative aspect-square overflow-hidden">
+                    {car.images?.[0] ? (
+                      <Image
+                        src={car.images[0]}
+                        alt={`${car.brand} ${car.model}`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div className="aspect-square bg-muted flex items-center justify-center">
+                        <CarIcon className="h-16 w-16 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
                   <CardHeader>
                     <CardTitle>

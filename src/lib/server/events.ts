@@ -77,6 +77,34 @@ export const getEventsByHost = cache(async (hostId: string) => {
   return data;
 });
 
+// Optimized function for my-events page with only required fields
+export const getUserEvents = cache(async (hostId: string) => {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('events')
+    .select(`
+      id,
+      host_id,
+      title,
+      description,
+      poster_image_url,
+      location,
+      daily_schedule,
+      created_at,
+      updated_at
+    `)
+    .eq('host_id', hostId)
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error('Error fetching user events:', error);
+    return [];
+  }
+
+  return data || [];
+});
+
 export async function attendEvent(eventId: string, userId: string, status: 'interested' | 'going' | 'approved') {
   const supabase = await createClient();
   
@@ -201,9 +229,86 @@ export async function deleteEvent(id: string) {
 }
 
 /**
- * Get attendee counts for multiple events
- * Returns a record with event IDs as keys and count objects as values
+ * Get paginated events with attendee data - optimized for listing page
  */
+export const getEventsPaginated = cache(async (options: {
+  page?: number;
+  limit?: number;
+  includeHost?: boolean;
+} = {}): Promise<Event[]> => {
+  const { page = 1, limit = 12, includeHost = true } = options;
+  const offset = (page - 1) * limit;
+
+  try {
+    const supabase = await createClient();
+
+    if (includeHost) {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          host:users!events_host_id_fkey (
+            id,
+            username,
+            display_name,
+            profile_image_url
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Error fetching paginated events:', error);
+        return [];
+      }
+
+      return (data || []).map(event => ({
+        ...event,
+        host: Array.isArray(event.host) ? event.host[0] : event.host
+      })) as Event[];
+    } else {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Error fetching paginated events:', error);
+        return [];
+      }
+
+      return data || [];
+    }
+  } catch (error) {
+    console.error('Error fetching paginated events:', error);
+    return [];
+  }
+});
+
+/**
+ * Get events count for pagination
+ */
+export const getEventsCount = cache(async (): Promise<number> => {
+  try {
+    const supabase = await createClient();
+    
+    const { count, error } = await supabase
+      .from('events')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) {
+      console.error('Error getting events count:', error);
+      return 0;
+    }
+
+    return count || 0;
+  } catch (error) {
+    console.error('Error getting events count:', error);
+    return 0;
+  }
+});
+
 export const getEventAttendeeCounts = cache(async (eventIds: string[]) => {
   if (eventIds.length === 0) return {};
   

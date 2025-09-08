@@ -1,32 +1,19 @@
 import MyGarageView from "@/components/garage/my-garage-view";
 import { getUser } from "@/lib/auth";
-import { createClient } from "@/lib/utils/supabase/server";
+import { getUserCars } from "@/lib/server/cars";
+
+// Force dynamic rendering for authentication
+export const dynamic = "force-dynamic";
+
+// Cache for 2 minutes since user's garage doesn't change frequently
+export const revalidate = 120;
 
 export default async function MyGaragePage() {
-  // Server-side auth check
+  // Server-side auth check - this will redirect if not authenticated
   const user = await getUser();
 
-  // Fetch user's cars directly from database
-  const supabase = await createClient();
-  const { data: userCars, error } = await supabase
-    .from("cars")
-    .select(
-      `
-      *,
-      owner:users!owner_id (
-        id,
-        username,
-        display_name,
-        profile_image_url
-      )
-    `
-    )
-    .eq("owner_id", user.id)
-    .order("created_at", { ascending: false });
+  // Fetch user's cars using optimized cached function
+  const userCars = await getUserCars(user.id);
 
-  if (error) {
-    console.error("Error fetching user cars:", error);
-  }
-
-  return <MyGarageView cars={userCars || []} />;
+  return <MyGarageView cars={userCars} />;
 }

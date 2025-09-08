@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, memo, useCallback } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,13 @@ import Link from "next/link";
 import type { InboxMessage } from "@/types/inbox";
 import { useInboxRealtime } from "@/hooks/use-inbox-realtime";
 import { useInboxPageActive } from "@/hooks/use-inbox-page-active";
+import { useInboxSafe } from "@/hooks/use-inbox-safe";
 import { toast } from "sonner";
 
 interface InboxViewProps {
   userId: string;
   initialMessages: InboxMessage[];
   refreshMessages: () => Promise<void>;
-  revalidateBadgeAction: () => Promise<void>;
   handleJoinRequestAction?: (
     messageId: string,
     action: "approve" | "reject",
@@ -32,11 +32,10 @@ interface InboxViewProps {
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function InboxView({
+function InboxViewComponent({
   userId,
   initialMessages,
   refreshMessages,
-  revalidateBadgeAction,
   handleJoinRequestAction,
   handleClubInvitationAction,
 }: InboxViewProps) {
@@ -44,32 +43,28 @@ export function InboxView({
     null
   );
 
-  // Use Supabase real-time inbox updates
+  // Use the inbox page active hook for automatic read state management
+  useInboxPageActive();
+
+  // Get inbox context for badge coordination
+  const { refreshUnreadCount } = useInboxSafe();
+
+  // Handle new message coordination between realtime and badge counting
+  const handleNewMessage = useCallback((newMessage: InboxMessage) => {
+    console.log("New message received in inbox view:", newMessage);
+
+    // The useInboxPageActive hook and context will handle auto-read behavior
+    // We just need to ensure the message appears in the list (which it will)
+  }, []);
+
+  // Use Supabase real-time inbox updates with coordination callback
   const { messages } = useInboxRealtime({
     userId,
     initialMessages,
     refreshMessages,
+    onNewMessage: handleNewMessage,
+    refreshUnreadCount,
   });
-
-  // Use the inbox page active hook for automatic read state management
-  const { markAsRead } = useInboxPageActive();
-
-  // Mark messages as read when component mounts
-  useEffect(() => {
-    const markInboxAsRead = async () => {
-      try {
-        // Use the global context method to mark as read
-        await markAsRead();
-        // Also call the server action for additional revalidation if needed
-        await revalidateBadgeAction();
-      } catch (error) {
-        console.error("Error marking messages as read:", error);
-      }
-    };
-
-    markInboxAsRead();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - only run once on mount
 
   // Function to clean message content by removing metadata
   const getCleanMessage = (message: string): string => {
@@ -333,3 +328,6 @@ export function InboxView({
     </div>
   );
 }
+
+// Export memoized component for performance
+export const InboxView = memo(InboxViewComponent);

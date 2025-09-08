@@ -1,3 +1,4 @@
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car as CarIcon } from "lucide-react";
 import type { Car } from "@/types/car";
@@ -6,7 +7,9 @@ interface BasicCarInfoProps {
   car: Car;
 }
 
-export function BasicCarInfo({ car }: BasicCarInfoProps) {
+export const BasicCarInfo = React.memo(function BasicCarInfo({
+  car,
+}: BasicCarInfoProps) {
   return (
     <Card>
       <CardHeader>
@@ -34,4 +37,4 @@ export function BasicCarInfo({ car }: BasicCarInfoProps) {
       </CardContent>
     </Card>
   );
-}
+});

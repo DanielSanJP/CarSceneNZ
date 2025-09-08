@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Plus, Car as CarIcon, Edit3, Eye, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, memo } from "react";
 import type { Car } from "@/types/car";
 
 interface MyGarageViewProps {
   cars: Car[];
 }
 
-export default function MyGarageView({ cars }: MyGarageViewProps) {
+function MyGarageView({ cars }: MyGarageViewProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handleImageError = (carId: string) => {
@@ -72,7 +72,7 @@ export default function MyGarageView({ cars }: MyGarageViewProps) {
                           src={car.images[0]}
                           alt={`${car.brand} ${car.model}`}
                           fill
-                          quality={100}
+                          quality={75}
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           onError={() => handleImageError(car.id)}
@@ -133,3 +133,6 @@ export default function MyGarageView({ cars }: MyGarageViewProps) {
     </div>
   );
 }
+
+// Export memoized component for performance
+export default memo(MyGarageView);

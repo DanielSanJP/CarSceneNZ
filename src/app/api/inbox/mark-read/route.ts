@@ -22,6 +22,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to mark messages as read' }, { status: 500 });
     }
 
+    // Send broadcast to clear badge count immediately
+    try {
+      await supabase.channel(`inbox-badges-${userId}`).send({
+        type: 'broadcast',
+        event: 'messages_marked_read',
+        payload: {
+          user_id: userId,
+          timestamp: new Date().toISOString()
+        }
+      });
+      console.log(`✅ Badge clear broadcast sent for user ${userId}`);
+    } catch (broadcastError) {
+      console.error('Error sending badge clear broadcast:', broadcastError);
+      // Don't fail the request if broadcast fails
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Unexpected error in mark-read API:', error);

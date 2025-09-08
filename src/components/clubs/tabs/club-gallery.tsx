@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,7 @@ interface ClubGalleryProps {
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function ClubGallery({
+export const ClubGallery = memo(function ClubGallery({
   clubs: propClubs,
   currentUser,
   userClubIds,
@@ -520,4 +520,4 @@ export function ClubGallery({
       )}
     </div>
   );
-}
+});

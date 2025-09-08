@@ -53,7 +53,7 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
               fill
               className="object-cover"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, (max-width: 1536px) 60vw, 50vw"
-              quality={100}
+              quality={75}
               priority={true}
               unoptimized={false}
               onError={() => handleImageError(currentImageIndex)}
@@ -86,7 +86,7 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
                     fill
                     className="object-cover"
                     sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 15vw"
-                    quality={100}
+                    quality={75}
                     priority={index < 4}
                     unoptimized={false}
                     onError={() => handleImageError(index)}
@@ -118,9 +118,9 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
                   fill
                   className="object-contain"
                   sizes="100vw"
-                  quality={100}
+                  quality={75}
                   priority={true}
-                  unoptimized={true}
+                  unoptimized={false}
                 />
               )}
 

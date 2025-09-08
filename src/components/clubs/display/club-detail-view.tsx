@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +60,7 @@ interface ClubDetailViewProps {
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function ClubDetailView({
+export const ClubDetailView = memo(function ClubDetailView({
   club,
   members,
   memberCount,
@@ -245,7 +245,7 @@ export function ClubDetailView({
                         alt={`${club.name} banner`}
                         fill
                         className="object-cover"
-                        quality={100}
+                        quality={75}
                         priority
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onError={() => setImageError(true)}
@@ -527,4 +527,4 @@ export function ClubDetailView({
       </div>
     </div>
   );
-}
+});

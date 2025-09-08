@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/utils/supabase/server";
 import { EventsGallery } from "@/components/events";
 import { getUserOptional } from "@/lib/auth";
 import {
@@ -6,6 +5,7 @@ import {
   getUserEventStatuses,
   attendEvent,
   unattendEvent,
+  getEventsPaginated,
 } from "@/lib/server/events";
 import { revalidatePath } from "next/cache";
 
@@ -43,33 +43,27 @@ async function unattendEventAction(eventId: string, userId: string) {
   }
 }
 
-export default async function EventsPage() {
-  // Fetch events directly from database
-  const supabase = await createClient();
-  const { data: events, error } = await supabase
-    .from("events")
-    .select(
-      `
-      *,
-      host:users!events_host_id_fkey (
-        id,
-        username,
-        display_name,
-        profile_image_url
-      )
-    `
-    )
-    .order("created_at", { ascending: false });
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; limit?: string }>;
+}) {
+  const params = await searchParams;
+  const page = parseInt(params.page || "1");
+  const limit = parseInt(params.limit || "12"); // Default 12 events per page
 
-  if (error) {
-    console.error("Error fetching events:", error);
-  }
+  // Use optimized cached events fetching
+  const events = await getEventsPaginated({
+    page,
+    limit,
+    includeHost: true,
+  });
 
   // Get user (optional)
   const user = await getUserOptional();
 
   // Get attendee counts and user statuses for all events
-  const eventIds = (events || []).map((event) => event.id);
+  const eventIds = events.map((event) => event.id);
   const [attendeeCounts, userEventStatuses] = await Promise.all([
     eventIds.length > 0
       ? getEventAttendeeCounts(eventIds)
@@ -83,7 +77,7 @@ export default async function EventsPage() {
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <EventsGallery
-          events={events || []}
+          events={events}
           user={user}
           attendeeCounts={attendeeCounts}
           userEventStatuses={userEventStatuses}

@@ -9,15 +9,16 @@ import { LeaderboardsView } from "@/components/leaderboard/leaderboards-view";
 export default async function LeaderboardsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
   const params = await searchParams;
+  const itemsPerPage = 200; // Show top 200 in each category
 
-  // Fetch all leaderboard data on server
+  // Fetch all leaderboard data on server with increased limit
   const [ownersData, clubsData, carsData] = await Promise.all([
-    getTopOwners(),
-    getTopClubs(),
-    getTopCars(),
+    getTopOwners(itemsPerPage),
+    getTopClubs(itemsPerPage),
+    getTopCars(itemsPerPage),
   ]);
 
   return (

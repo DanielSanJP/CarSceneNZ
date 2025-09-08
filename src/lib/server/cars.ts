@@ -18,6 +18,49 @@ export const getCarById = cache(async (id: string): Promise<Car | null> => {
   return data as Car;
 });
 
+// Optimized function to get car by ID with user like status for detail pages
+export const getCarByIdWithLikeStatus = cache(async (id: string, userId?: string): Promise<(Car & { is_liked: boolean }) | null> => {
+  const supabase = await createClient();
+  
+  // For now, use SELECT * to ensure we get all fields (we can optimize field selection later)
+  const { data: car, error } = await supabase
+    .from("cars")
+    .select(`
+      *,
+      owner:users!owner_id (
+        id,
+        username,
+        display_name,
+        profile_image_url
+      )
+    `)
+    .eq("id", id)
+    .single();
+
+  if (error || !car) {
+    console.error("Error fetching car:", error);
+    return null;
+  }
+
+  // Check if user has liked this car (separate query for now to avoid complex typing)
+  let isLiked = false;
+  if (userId) {
+    const { data: likeData } = await supabase
+      .from("car_likes")
+      .select("id")
+      .eq("car_id", id)
+      .eq("user_id", userId)
+      .single();
+    
+    isLiked = !!likeData;
+  }
+  
+  return {
+    ...(car as unknown as Car),
+    is_liked: isLiked
+  };
+});
+
 // Form data interface for complete car updates
 export interface CompleteCarUpdateData {
   // Basic car info
@@ -432,3 +475,149 @@ export async function unlikeCarAction(carId: string, userId: string): Promise<{ 
     return { success: false, error: 'Failed to unlike car' };
   }
 }
+
+// Gallery interface for optimized car listing
+interface CarGalleryItem {
+  id: string;
+  brand: string;
+  model: string;
+  year: number;
+  images: string[];
+  total_likes: number;
+  created_at: string;
+  owner_id: string;
+  is_liked?: boolean;
+  owner: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  };
+}
+
+/**
+ * Get paginated cars for garage gallery with optimized field selection
+ */
+export const getCarsPaginated = cache(async (
+  page: number = 1,
+  limit: number = 12,
+  userId?: string
+): Promise<{ cars: CarGalleryItem[]; total: number }> => {
+  try {
+    const supabase = await createClient();
+    const offset = (page - 1) * limit;
+
+    // Get cars with only the fields needed for gallery display
+    const { data: cars, error: carsError } = await supabase
+      .from("cars")
+      .select(`
+        id,
+        brand,
+        model,
+        year,
+        images,
+        total_likes,
+        created_at,
+        owner_id,
+        owner:users!owner_id (
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (carsError) {
+      console.error("Error fetching cars:", carsError);
+      return { cars: [], total: 0 };
+    }
+
+    // Get total count for pagination
+    const { count } = await supabase
+      .from("cars")
+      .select("*", { count: "exact", head: true });
+
+    let carsWithLikeStatus: CarGalleryItem[] = (cars || []).map(car => ({
+      ...car,
+      owner: Array.isArray(car.owner) ? car.owner[0] : car.owner
+    })) as CarGalleryItem[];
+
+    // If user is provided, get their liked cars in a single query
+    if (userId && cars && cars.length > 0) {
+      const carIds = cars.map(car => car.id);
+      const { data: likedCars } = await supabase
+        .from("car_likes")
+        .select("car_id")
+        .eq("user_id", userId)
+        .in("car_id", carIds);
+
+      const likedCarIds = new Set(likedCars?.map(like => like.car_id) || []);
+      
+      carsWithLikeStatus = carsWithLikeStatus.map(car => ({
+        ...car,
+        is_liked: likedCarIds.has(car.id)
+      }));
+    }
+
+    return {
+      cars: carsWithLikeStatus,
+      total: count || 0
+    };
+  } catch (error) {
+    console.error("Error in getCarsPaginated:", error);
+    return { cars: [], total: 0 };
+  }
+});
+
+// Optimized function to get user's cars for my-garage page
+export const getUserCars = cache(async (userId: string): Promise<Car[]> => {
+  try {
+    const supabase = await createClient();
+    
+    // Select only essential fields for my-garage view performance
+    const { data: cars, error } = await supabase
+      .from("cars")
+      .select(`
+        id,
+        owner_id,
+        brand,
+        model,
+        year,
+        images,
+        total_likes,
+        created_at,
+        updated_at
+      `)
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching user cars:", error);
+      return [];
+    }
+
+    return cars || [];
+  } catch (error) {
+    console.error("Error in getUserCars:", error);
+    return [];
+  }
+});
+
+/**
+ * Get total count of cars for pagination
+ */
+export const getCarsCount = cache(async (): Promise<number> => {
+  try {
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from("cars")
+      .select("*", { count: "exact", head: true });
+
+    return count || 0;
+  } catch (error) {
+    console.error("Error getting cars count:", error);
+    return 0;
+  }
+});

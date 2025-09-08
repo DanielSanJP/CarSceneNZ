@@ -1,3 +1,4 @@
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Car } from "@/types/car";
 
@@ -5,7 +6,9 @@ interface WheelsTiresProps {
   car: Car;
 }
 
-export function WheelsTires({ car }: WheelsTiresProps) {
+export const WheelsTires = React.memo(function WheelsTires({
+  car,
+}: WheelsTiresProps) {
   // Helper function to get wheels by position
   const getWheelsByPosition = (position: "front" | "rear") => {
     return car.wheels?.[position];
@@ -66,4 +69,4 @@ export function WheelsTires({ car }: WheelsTiresProps) {
       </CardContent>
     </Card>
   );
-}
+});

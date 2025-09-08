@@ -16,7 +16,15 @@ export const getTopCars = cache(async (limit: number = 10): Promise<CarRanking[]
     const { data, error } = await supabase
       .from('cars')
       .select(`
-        *,
+        id,
+        owner_id,
+        brand,
+        model,
+        year,
+        images,
+        total_likes,
+        created_at,
+        updated_at,
         users!cars_owner_id_fkey (
           id,
           username,
@@ -100,7 +108,7 @@ async function getTopOwnersManual(limit: number): Promise<OwnerRanking[]> {
   try {
     const supabase = await createClient();
 
-    // Get all cars grouped by owner
+    // Get only required car fields grouped by owner
     const { data: cars, error } = await supabase
       .from('cars')
       .select(`
@@ -112,7 +120,9 @@ async function getTopOwnersManual(limit: number): Promise<OwnerRanking[]> {
           display_name,
           profile_image_url
         )
-      `);    if (error || !cars) {
+      `)
+      .not('total_likes', 'is', null)
+      .order('total_likes', { ascending: false });    if (error || !cars) {
       return [];
     }
 
@@ -168,10 +178,20 @@ export const getTopClubs = cache(async (limit: number = 10): Promise<ClubRanking
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    // Get clubs with member counts in a single query using RPC or aggregation
+    const { data: clubsData, error } = await supabase
       .from('clubs')
       .select(`
-        *,
+        id,
+        name,
+        description,
+        banner_image_url,
+        club_type,
+        location,
+        leader_id,
+        total_likes,
+        created_at,
+        updated_at,
         users!clubs_leader_id_fkey (
           id,
           username,
@@ -180,46 +200,54 @@ export const getTopClubs = cache(async (limit: number = 10): Promise<ClubRanking
         )
       `)
       .order('total_likes', { ascending: false })
-      .limit(limit);    if (error) {
+      .limit(limit);
+
+    if (error || !clubsData) {
       return [];
     }
 
-    // Get member counts for each club
-    const clubsWithCounts = await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (data as any[]).map(async (club, index) => {
-        const { count } = await supabase
-          .from('club_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('club_id', club.id);
+    // Get member counts for all clubs in a single query
+    const clubIds = clubsData.map(club => club.id);
+    const { data: memberCounts, error: memberError } = await supabase
+      .from('club_members')
+      .select('club_id')
+      .in('club_id', clubIds);
 
-        return {
-          club: {
-            id: club.id,
-            name: club.name,
-            description: club.description,
-            banner_image_url: club.banner_image_url,
-            club_type: club.club_type,
-            location: club.location,
-            leader_id: club.leader_id,
-            total_likes: club.total_likes || 0,
-            created_at: club.created_at,
-            updated_at: club.updated_at,
-            leader: {
-              id: club.users.id,
-              username: club.users.username,
-              display_name: club.users.display_name || club.users.username,
-              profile_image_url: club.users.profile_image_url,
-            }
-          },
-          rank: index + 1,
-          likes: club.total_likes || 0,
-          memberCount: count || 0,
-        };
-      })
-    );
+    if (memberError) {
+      return [];
+    }
 
-    return clubsWithCounts;  } catch {
+    // Count members per club
+    const memberCountMap = new Map<string, number>();
+    memberCounts?.forEach(member => {
+      const count = memberCountMap.get(member.club_id) || 0;
+      memberCountMap.set(member.club_id, count + 1);
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (clubsData as any[]).map((club, index) => ({
+      club: {
+        id: club.id,
+        name: club.name,
+        description: club.description,
+        banner_image_url: club.banner_image_url,
+        club_type: club.club_type,
+        location: club.location,
+        leader_id: club.leader_id,
+        total_likes: club.total_likes || 0,
+        created_at: club.created_at,
+        updated_at: club.updated_at,
+        leader: {
+          id: club.users.id,
+          username: club.users.username,
+          display_name: club.users.display_name || club.users.username,
+          profile_image_url: club.users.profile_image_url,
+        }
+      },
+      rank: index + 1,
+      likes: club.total_likes || 0,
+      memberCount: memberCountMap.get(club.id) || 0,
+    }));  } catch {
     return [];
   }
 });
@@ -248,10 +276,10 @@ export const getLeaderboardStats = cache(async (): Promise<{
       supabase.from('users').select('*', { count: 'exact', head: true }),
       supabase.from('clubs').select('*', { count: 'exact', head: true }),
       supabase.from('events').select('*', { count: 'exact', head: true }),
-      supabase.from('cars').select('total_likes')
+      supabase.from('cars').select('total_likes').not('total_likes', 'is', null)
     ]);
 
-    // Calculate total likes across all cars
+    // Calculate total likes across all cars more efficiently
     const totalLikes = (likesData || []).reduce((sum, car) => sum + (car.total_likes || 0), 0);
 
     return {

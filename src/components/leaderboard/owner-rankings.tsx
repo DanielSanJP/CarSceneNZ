@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { memo } from "react";
 import type { OwnerRanking } from "@/types/leaderboard";
 
 interface OwnerRankingsProps {
   data: OwnerRanking[];
 }
 
-export function OwnerRankings({ data }: OwnerRankingsProps) {
+export const OwnerRankings = memo(function OwnerRankings({
+  data,
+}: OwnerRankingsProps) {
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
     if (rank === 2) return <Medal className="h-5 w-5 text-gray-400" />;
@@ -41,7 +44,7 @@ export function OwnerRankings({ data }: OwnerRankingsProps) {
         </Card>
       ) : (
         <div className="space-y-2 md:space-y-3">
-          {data.slice(0, 100).map((entry, index) => {
+          {data.slice(0, 200).map((entry, index) => {
             const rank = index + 1;
             return (
               <Link
@@ -71,8 +74,8 @@ export function OwnerRankings({ data }: OwnerRankingsProps) {
                             fill
                             className="object-cover"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            quality={25}
-                            priority={true}
+                            quality={75}
+                            priority={index < 20}
                             unoptimized={false}
                           />
                         ) : (
@@ -138,4 +141,4 @@ export function OwnerRankings({ data }: OwnerRankingsProps) {
       )}
     </div>
   );
-}
+});

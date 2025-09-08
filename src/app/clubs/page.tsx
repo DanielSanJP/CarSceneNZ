@@ -19,8 +19,8 @@ import { uploadClubImage } from "@/lib/server/image-upload";
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
 
-// Cache club data for 5 minutes since it doesn't change frequently
-export const revalidate = 300;
+// Cache club data for 1 minute since it changes frequently with member actions
+export const revalidate = 60;
 
 async function uploadClubImageServerAction(formData: FormData) {
   "use server";
@@ -184,11 +184,19 @@ export default async function ClubsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  // Parse search parameters first
+  const params = await searchParams;
+  const tab = params.tab;
+
   // Get user (optional)
   const currentUser = await getUserOptional();
 
-  // Parse search parameters
-  const params = await searchParams;
+  // Early return for guest users trying to access myclub
+  if (tab === "myclub" && !currentUser) {
+    redirect("/clubs?tab=gallery");
+  }
+
+  // Parse remaining search parameters
   const search = typeof params.search === "string" ? params.search : undefined;
   const location =
     typeof params.location === "string" ? params.location : undefined;
@@ -197,16 +205,11 @@ export default async function ClubsPage({
   const sortBy = typeof params.sortBy === "string" ? params.sortBy : undefined;
   const page = typeof params.page === "string" ? parseInt(params.page, 10) : 1;
 
-  const itemsPerPage = 12; // Show 12 clubs per page
+  const itemsPerPage = 12; // Back to 12 for better UX
   const offset = (page - 1) * itemsPerPage;
 
-  // Fetch user's club memberships if authenticated
-  const userMemberships = currentUser
-    ? await getUserClubMemberships(currentUser.id)
-    : [];
-
-  // Fetch clubs with stats and total count in parallel
-  const [clubsWithStats, totalCount] = await Promise.all([
+  // Parallel data fetching - only fetch memberships if user is authenticated
+  const [clubsWithStats, totalCount, userMemberships] = await Promise.all([
     getAllClubsWithStats({
       search,
       location,
@@ -220,6 +223,7 @@ export default async function ClubsPage({
       location,
       club_type,
     }),
+    currentUser ? getUserClubMemberships(currentUser.id) : Promise.resolve([]),
   ]);
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);

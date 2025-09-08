@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { LikeButton } from "@/components/ui/like-button";
 import { ArrowLeft, Edit3 } from "lucide-react";
@@ -39,7 +40,7 @@ interface CarDetailViewProps {
   ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
 }
 
-export function CarDetailView({
+export const CarDetailView = React.memo(function CarDetailView({
   car,
   user,
   onLike,
@@ -51,6 +52,9 @@ export function CarDetailView({
   // Check if user owns this car
   const isOwner = user && car.owner_id === user.id;
   const owner = car.owner;
+
+  // Memoize the engine data to avoid recalculation on each render
+  const engineData = useMemo(() => getEngineData(car), [car]);
 
   const handleBackClick = () => {
     if (window.history.length > 1) {
@@ -113,7 +117,7 @@ export function CarDetailView({
               <BasicCarInfo car={car} />
 
               {/* Engine Details */}
-              <EngineDetails engine={getEngineData(car)} />
+              <EngineDetails engine={engineData} />
 
               {/* Engine Modifications */}
               <EngineModifications car={car} />
@@ -141,4 +145,4 @@ export function CarDetailView({
       </div>
     </div>
   );
-}
+});

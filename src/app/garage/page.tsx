@@ -1,48 +1,35 @@
-import { createClient } from "@/lib/utils/supabase/server";
 import { GarageGallery } from "@/components/garage";
 import { getUserOptional } from "@/lib/auth";
-import { likeCarAction, unlikeCarAction } from "@/lib/server/cars";
+import {
+  getCarsPaginated,
+  likeCarAction,
+  unlikeCarAction,
+} from "@/lib/server/cars";
 
-export default async function GaragePage() {
+interface GaragePageProps {
+  searchParams: { page?: string };
+}
+
+export default async function GaragePage({ searchParams }: GaragePageProps) {
   // Get authenticated user with profile (cached per request) - null if not logged in
   const user = await getUserOptional();
 
-  // Fetch cars directly from database
-  const supabase = await createClient();
-  const { data: cars, error } = await supabase
-    .from("cars")
-    .select(
-      `
-      *,
-      owner:users!owner_id (
-        id,
-        username,
-        display_name,
-        profile_image_url
-      )
-    `
-    )
-    .order("created_at", { ascending: false });
+  // Await searchParams before accessing properties (Next.js 15 requirement)
+  const resolvedSearchParams = await searchParams;
 
-  if (error) {
-    console.error("Error fetching cars:", error);
-  }
+  // Get page from search params, default to 1
+  const page = Number(resolvedSearchParams.page) || 1;
+  const limit = 12; // Show 12 cars per page
 
-  // If user is logged in, fetch their liked cars
-  let carsWithLikedState = cars || [];
-  if (user && cars) {
-    const { data: likedCars } = await supabase
-      .from("car_likes")
-      .select("car_id")
-      .eq("user_id", user.id);
+  // Fetch paginated cars with optimized cached function
+  const { cars: carsWithLikedState, total } = await getCarsPaginated(
+    page,
+    limit,
+    user?.id
+  );
 
-    const likedCarIds = new Set(likedCars?.map((like) => like.car_id) || []);
-
-    carsWithLikedState = cars.map((car) => ({
-      ...car,
-      is_liked: likedCarIds.has(car.id),
-    }));
-  }
+  // Calculate pagination info
+  const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,6 +40,9 @@ export default async function GaragePage() {
             user={user}
             onLike={likeCarAction}
             onUnlike={unlikeCarAction}
+            currentPage={page}
+            totalPages={totalPages}
+            totalCars={total}
           />
         </div>
       </div>

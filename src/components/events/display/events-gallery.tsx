@@ -1,5 +1,10 @@
 "use client";
 
+import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import type { Event } from "@/types/event";
 import {
   Card,
   CardContent,
@@ -27,11 +32,6 @@ import {
   Star,
   Check,
 } from "lucide-react";
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
-import type { Event } from "@/types/event";
 
 interface EventsGalleryProps {
   events: Event[];
@@ -54,7 +54,195 @@ interface EventsGalleryProps {
     eventId: string,
     userId: string
   ) => Promise<{ success: boolean; error?: string }>;
+  totalPages?: number;
+  currentPage?: number;
 }
+
+// Memoized individual event card component
+const EventCard = React.memo(
+  ({
+    event,
+    user,
+    attendeeCounts,
+    userEventStatuses,
+    localUserStatuses,
+    onAttendanceAction,
+    onImageError,
+    failedImages,
+  }: {
+    event: Event;
+    user?: { id: string; username: string; display_name?: string } | null;
+    attendeeCounts?: Record<
+      string,
+      { interested: number; going: number; total: number }
+    >;
+    userEventStatuses?: Record<string, string>;
+    localUserStatuses: Record<string, string | null>;
+    onAttendanceAction: (
+      eventId: string,
+      status: "interested" | "going"
+    ) => void;
+    onImageError: (eventId: string) => void;
+    failedImages: Set<string>;
+  }) => {
+    // Memoize expensive date calculations
+    const dateInfo = useMemo(() => {
+      if (!event.daily_schedule || event.daily_schedule.length === 0) {
+        return { day: "", date: "", time: "", full: "" };
+      }
+
+      const firstDay = event.daily_schedule[0];
+      const startDate = new Date(
+        `${firstDay.date}T${firstDay.start_time || "00:00"}`
+      );
+
+      return {
+        day: startDate.toLocaleDateString("en-NZ", { weekday: "short" }),
+        date: startDate.toLocaleDateString("en-NZ", {
+          month: "short",
+          day: "numeric",
+        }),
+        time: firstDay.start_time
+          ? new Date(`1970-01-01T${firstDay.start_time}`).toLocaleTimeString(
+              "en-NZ",
+              {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              }
+            )
+          : "",
+        full: startDate.toLocaleDateString("en-NZ", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+      };
+    }, [event.daily_schedule]);
+
+    const attendeeCount = attendeeCounts?.[event.id]?.going || 0;
+    const interestedCount = attendeeCounts?.[event.id]?.interested || 0;
+    const userStatus =
+      localUserStatuses[event.id] ?? userEventStatuses?.[event.id];
+    const hostName =
+      event.host?.display_name || event.host?.username || "Unknown";
+
+    return (
+      <Card
+        key={event.id}
+        className="overflow-hidden hover:shadow-lg transition-shadow"
+      >
+        {/* Card content here - keeping existing structure but optimized */}
+        <div className="aspect-video relative overflow-hidden">
+          {event.poster_image_url && !failedImages.has(event.id) ? (
+            <Image
+              src={event.poster_image_url}
+              alt={event.title}
+              fill
+              className="object-cover transition-transform hover:scale-105"
+              onError={() => onImageError(event.id)}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          ) : (
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <ImageIcon className="h-12 w-12 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+
+        <CardHeader className="space-y-2">
+          <div className="flex items-start justify-between">
+            <CardTitle className="text-lg font-semibold line-clamp-2 flex-1">
+              <Link
+                href={`/events/${event.id}`}
+                className="hover:text-primary transition-colors"
+              >
+                {event.title}
+              </Link>
+            </CardTitle>
+          </div>
+
+          <CardDescription className="line-clamp-2">
+            {event.description || "No description available"}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Date and time info */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>
+              {dateInfo.date} {dateInfo.time && `at ${dateInfo.time}`}
+            </span>
+          </div>
+
+          {/* Location */}
+          {event.location && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              <span className="line-clamp-1">{event.location}</span>
+            </div>
+          )}
+
+          {/* Host info */}
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarFallback className="text-xs">
+                {hostName.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-medium">{hostName}</span>
+          </div>
+
+          {/* Attendance info and actions */}
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>{attendeeCount} going</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Star className="h-4 w-4" />
+                <span>{interestedCount} interested</span>
+              </div>
+            </div>
+
+            {user && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={userStatus === "interested" ? "default" : "outline"}
+                  onClick={() => onAttendanceAction(event.id, "interested")}
+                  className="h-8 px-3 text-xs"
+                >
+                  <Star className="h-3 w-3 mr-1" />
+                  {userStatus === "interested" ? "Interested" : "Interest"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={
+                    userStatus === "going" || userStatus === "approved"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() => onAttendanceAction(event.id, "going")}
+                  className="h-8 px-3 text-xs"
+                >
+                  <Check className="h-3 w-3 mr-1" />
+                  {userStatus === "going" || userStatus === "approved"
+                    ? "Going"
+                    : "Attend"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+);
+
+EventCard.displayName = "EventCard";
 
 export function EventsGallery({
   events,
@@ -66,9 +254,11 @@ export function EventsGallery({
 }: EventsGalleryProps) {
   const router = useRouter();
 
-  // State for filters
-  const [locationFilter, setLocationFilter] = useState<string>("all");
-  const [sortOrder, setSortOrder] = useState<string>("nearest");
+  // State for filters - combined into single object to reduce re-renders
+  const [filters, setFilters] = useState({
+    location: "all",
+    sortOrder: "nearest",
+  });
 
   // State for tracking failed image loads
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -78,56 +268,47 @@ export function EventsGallery({
     Record<string, string | null>
   >({});
 
-  // Handle image error
-  const handleImageError = (eventId: string) => {
+  // Memoized image error handler
+  const handleImageError = React.useCallback((eventId: string) => {
     setFailedImages((prev) => new Set(prev).add(eventId));
-  };
+  }, []);
 
-  // Get unique locations from events
+  // Optimized location extraction with Set for better performance
   const locations = useMemo(() => {
-    const uniqueLocations = [
-      ...new Set(
-        events
-          .map((event) => event.location)
-          .filter((location): location is string => location !== undefined)
-          .map((location) => {
-            // Extract city from location string
-            const parts = location.split(", ");
-            return parts[parts.length - 1]; // Get the last part which should be the city
-          })
-      ),
-    ];
-    return uniqueLocations.sort();
+    const locationSet = new Set<string>();
+    events.forEach((event) => {
+      if (event.location) {
+        const parts = event.location.split(", ");
+        locationSet.add(parts[parts.length - 1]);
+      }
+    });
+    return Array.from(locationSet).sort();
   }, [events]);
 
-  // Filter and sort events
+  // Optimized filter and sort events
   const filteredAndSortedEvents = useMemo(() => {
-    let filtered = [...events];
+    if (events.length === 0) return [];
 
-    // Apply location filter
-    if (locationFilter !== "all") {
-      filtered = filtered.filter((event) =>
-        event.location?.toLowerCase().includes(locationFilter.toLowerCase())
+    let filtered = events;
+
+    // Apply location filter only if needed
+    if (filters.location !== "all") {
+      filtered = events.filter((event) =>
+        event.location?.toLowerCase().includes(filters.location.toLowerCase())
       );
     }
 
-    // Apply sorting
-    if (sortOrder === "nearest") {
-      // Sort by created date (newest first)
-      filtered.sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    } else if (sortOrder === "furthest") {
-      // Sort by created date (oldest first)
-      filtered.sort(
+    // Apply sorting - optimized for server-side sorted data
+    if (filters.sortOrder === "furthest") {
+      return [...filtered].sort(
         (a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
     }
 
+    // Default newest first (already sorted from server)
     return filtered;
-  }, [events, locationFilter, sortOrder]);
+  }, [events, filters.location, filters.sortOrder]);
 
   // Helper function to format date and time period for daily schedule
   const formatDate = (schedule: unknown) => {
@@ -278,7 +459,12 @@ export function EventsGallery({
               <span className="text-sm text-muted-foreground whitespace-nowrap">
                 Location:
               </span>
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <Select
+                value={filters.location}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, location: value }))
+                }
+              >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All locations" />
                 </SelectTrigger>
@@ -298,7 +484,12 @@ export function EventsGallery({
               <span className="text-sm text-muted-foreground whitespace-nowrap">
                 Sort by:
               </span>
-              <Select value={sortOrder} onValueChange={setSortOrder}>
+              <Select
+                value={filters.sortOrder}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, sortOrder: value }))
+                }
+              >
                 <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Sort by date" />
                 </SelectTrigger>
@@ -315,7 +506,7 @@ export function EventsGallery({
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
             Showing {filteredAndSortedEvents.length} of {events.length} events
-            {locationFilter !== "all" && ` in ${locationFilter}`}
+            {filters.location !== "all" && ` in ${filters.location}`}
           </p>
         </div>
       </div>

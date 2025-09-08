@@ -13,11 +13,32 @@ import {
 import { Car as CarIcon, Eye, Star, User, Plus } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import type { Car } from "@/types/car";
 
+// Gallery car type for display
+type GalleryCar = Pick<
+  Car,
+  | "id"
+  | "brand"
+  | "model"
+  | "year"
+  | "images"
+  | "total_likes"
+  | "created_at"
+  | "owner_id"
+  | "is_liked"
+> & {
+  owner: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  };
+};
+
 interface GarageGalleryProps {
-  cars: Car[];
+  cars: GalleryCar[];
   user?: {
     id: string;
     username: string;
@@ -31,6 +52,10 @@ interface GarageGalleryProps {
     carId: string,
     userId: string
   ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
+  // Pagination props
+  currentPage?: number;
+  totalPages?: number;
+  totalCars?: number;
 }
 
 export function GarageGallery({
@@ -38,6 +63,9 @@ export function GarageGallery({
   user,
   onLike,
   onUnlike,
+  currentPage = 1,
+  totalPages = 1,
+  totalCars = 0,
 }: GarageGalleryProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [carLikeCounts, setCarLikeCounts] = useState<Record<string, number>>(
@@ -51,11 +79,13 @@ export function GarageGallery({
     }
   );
 
-  // Filter states
-  const [brandFilter, setBrandFilter] = useState<string>("all");
-  const [modelFilter, setModelFilter] = useState<string>("all");
-  const [yearFilter, setYearFilter] = useState<string>("all");
-  const [sortOrder, setSortOrder] = useState<string>("newest");
+  // Combined filter state to reduce re-renders
+  const [filters, setFilters] = useState({
+    brand: "all",
+    model: "all",
+    year: "all",
+    sort: "newest",
+  });
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
@@ -68,7 +98,20 @@ export function GarageGallery({
     }));
   };
 
-  // Get unique brands from cars
+  // Memoized filter handlers to prevent unnecessary re-renders
+  const updateFilter = useMemo(
+    () => ({
+      brand: (value: string) =>
+        setFilters((prev) => ({ ...prev, brand: value, model: "all" })),
+      model: (value: string) =>
+        setFilters((prev) => ({ ...prev, model: value })),
+      year: (value: string) => setFilters((prev) => ({ ...prev, year: value })),
+      sort: (value: string) => setFilters((prev) => ({ ...prev, sort: value })),
+    }),
+    []
+  );
+
+  // Get unique brands from cars (memoized)
   const brands = useMemo(() => {
     const uniqueBrands = [...new Set(cars.map((car) => car.brand))].sort();
     return uniqueBrands;
@@ -76,17 +119,17 @@ export function GarageGallery({
 
   // Get unique models from cars (filtered by selected brand)
   const models = useMemo(() => {
-    if (brandFilter === "all") {
+    if (filters.brand === "all") {
       return []; // Don't show any models if no brand is selected
     }
-    const filteredCars = cars.filter((car) => car.brand === brandFilter);
+    const filteredCars = cars.filter((car) => car.brand === filters.brand);
     const uniqueModels = [
       ...new Set(filteredCars.map((car) => car.model)),
     ].sort();
     return uniqueModels;
-  }, [cars, brandFilter]);
+  }, [cars, filters.brand]);
 
-  // Get unique years from cars
+  // Get unique years from cars (memoized)
   const years = useMemo(() => {
     const uniqueYears = [...new Set(cars.map((car) => car.year))].sort(
       (a, b) => b - a
@@ -94,43 +137,43 @@ export function GarageGallery({
     return uniqueYears;
   }, [cars]);
 
-  // Filter and sort cars
+  // Filter and sort cars (optimized with combined filter state)
   const filteredAndSortedCars = useMemo(() => {
     let filtered = [...cars];
 
     // Apply brand filter
-    if (brandFilter !== "all") {
-      filtered = filtered.filter((car) => car.brand === brandFilter);
+    if (filters.brand !== "all") {
+      filtered = filtered.filter((car) => car.brand === filters.brand);
     }
 
     // Apply model filter
-    if (modelFilter !== "all") {
-      filtered = filtered.filter((car) => car.model === modelFilter);
+    if (filters.model !== "all") {
+      filtered = filtered.filter((car) => car.model === filters.model);
     }
 
     // Apply year filter
-    if (yearFilter !== "all") {
-      filtered = filtered.filter((car) => car.year.toString() === yearFilter);
+    if (filters.year !== "all") {
+      filtered = filtered.filter((car) => car.year.toString() === filters.year);
     }
 
     // Apply sorting
-    if (sortOrder === "newest") {
+    if (filters.sort === "newest") {
       filtered.sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-    } else if (sortOrder === "oldest") {
+    } else if (filters.sort === "oldest") {
       filtered.sort(
         (a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
-    } else if (sortOrder === "most_liked") {
+    } else if (filters.sort === "most_liked") {
       filtered.sort(
         (a, b) =>
           (carLikeCounts[b.id] ?? b.total_likes) -
           (carLikeCounts[a.id] ?? a.total_likes)
       );
-    } else if (sortOrder === "least_liked") {
+    } else if (filters.sort === "least_liked") {
       filtered.sort(
         (a, b) =>
           (carLikeCounts[a.id] ?? a.total_likes) -
@@ -139,21 +182,7 @@ export function GarageGallery({
     }
 
     return filtered;
-  }, [cars, brandFilter, modelFilter, yearFilter, sortOrder, carLikeCounts]);
-
-  // Reset model filter when brand changes
-  useEffect(() => {
-    setModelFilter("all");
-  }, [brandFilter]);
-
-  // Update like counts when cars prop changes
-  useEffect(() => {
-    const counts: Record<string, number> = {};
-    cars.forEach((car) => {
-      counts[car.id] = car.total_likes;
-    });
-    setCarLikeCounts(counts);
-  }, [cars]);
+  }, [cars, filters, carLikeCounts]);
 
   return (
     <div className="space-y-8">
@@ -192,7 +221,7 @@ export function GarageGallery({
       <div className="space-y-4">
         {/* Mobile: Stack filters vertically, Desktop: Grid layout */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Select value={brandFilter} onValueChange={setBrandFilter}>
+          <Select value={filters.brand} onValueChange={updateFilter.brand}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="All Brands" />
             </SelectTrigger>
@@ -207,14 +236,14 @@ export function GarageGallery({
           </Select>
 
           <Select
-            value={modelFilter}
-            onValueChange={setModelFilter}
-            disabled={brandFilter === "all"}
+            value={filters.model}
+            onValueChange={updateFilter.model}
+            disabled={filters.brand === "all"}
           >
             <SelectTrigger className="w-full">
               <SelectValue
                 placeholder={
-                  brandFilter === "all" ? "Select brand first" : "All Models"
+                  filters.brand === "all" ? "Select brand first" : "All Models"
                 }
               />
             </SelectTrigger>
@@ -228,7 +257,7 @@ export function GarageGallery({
             </SelectContent>
           </Select>
 
-          <Select value={yearFilter} onValueChange={setYearFilter}>
+          <Select value={filters.year} onValueChange={updateFilter.year}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="All Years" />
             </SelectTrigger>
@@ -242,7 +271,7 @@ export function GarageGallery({
             </SelectContent>
           </Select>
 
-          <Select value={sortOrder} onValueChange={setSortOrder}>
+          <Select value={filters.sort} onValueChange={updateFilter.sort}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Sort By" />
             </SelectTrigger>
@@ -361,6 +390,55 @@ export function GarageGallery({
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-8">
+          <Link
+            href={`/garage?page=${currentPage - 1}`}
+            className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+          >
+            <Button variant="outline" disabled={currentPage <= 1}>
+              Previous
+            </Button>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const page = i + Math.max(1, currentPage - 2);
+              if (page > totalPages) return null;
+
+              return (
+                <Link key={page} href={`/garage?page=${page}`}>
+                  <Button
+                    variant={page === currentPage ? "default" : "outline"}
+                    size="sm"
+                  >
+                    {page}
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+
+          <Link
+            href={`/garage?page=${currentPage + 1}`}
+            className={
+              currentPage >= totalPages ? "pointer-events-none opacity-50" : ""
+            }
+          >
+            <Button variant="outline" disabled={currentPage >= totalPages}>
+              Next
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Results info */}
+      <div className="text-center text-sm text-muted-foreground mt-4">
+        Showing {cars.length} of {totalCars} cars
+        {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
+      </div>
     </div>
   );
 }

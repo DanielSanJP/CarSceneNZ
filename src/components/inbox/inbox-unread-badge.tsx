@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { useInboxSafe } from "@/hooks/use-inbox-safe";
+import { usePathname } from "next/navigation";
 
 interface InboxUnreadBadgeProps {
   // Optional prop for backward compatibility
@@ -19,11 +20,15 @@ export function InboxUnreadBadge({
   className,
 }: InboxUnreadBadgeProps) {
   const { unreadCount: contextUnreadCount } = useInboxSafe();
+  const pathname = usePathname();
 
   // Use context count if available, fall back to prop for backward compatibility
   const displayCount = contextUnreadCount ?? propUnreadCount ?? 0;
 
-  if (displayCount === 0) {
+  // Don't show badge if user is currently on the inbox page
+  const isOnInboxPage = pathname === "/inbox";
+
+  if (displayCount === 0 || isOnInboxPage) {
     return null;
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -27,7 +27,7 @@ interface MyEventsViewProps {
   >;
 }
 
-export function MyEventsView({ events, attendeeCounts }: MyEventsViewProps) {
+function MyEventsViewComponent({ events, attendeeCounts }: MyEventsViewProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const userEvents = events;
@@ -129,6 +129,7 @@ export function MyEventsView({ events, attendeeCounts }: MyEventsViewProps) {
                           src={event.poster_image_url}
                           alt={event.title}
                           fill
+                          quality={75}
                           className="object-cover"
                           sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                           onError={() => handleImageError(event.id)}
@@ -251,3 +252,6 @@ export function MyEventsView({ events, attendeeCounts }: MyEventsViewProps) {
     </div>
   );
 }
+
+// Export memoized component for performance
+export const MyEventsView = memo(MyEventsViewComponent);

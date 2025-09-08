@@ -84,37 +84,28 @@ export function InboxProvider({
   }, [userId]);
 
   // Function to set inbox page active state
-  const setInboxPageActive = useCallback(
-    (isActive: boolean) => {
-      setIsInboxPageActive(isActive);
-
-      // If user is on inbox page and page is visible, mark as read
-      if (isActive && isPageVisible) {
-        markAsRead();
-      }
-    },
-    [isPageVisible, markAsRead]
-  );
+  const setInboxPageActive = useCallback((isActive: boolean) => {
+    setIsInboxPageActive(isActive);
+    // Note: Don't auto-mark as read here since server-side already handles it
+    // Only mark as read when new messages arrive while actively viewing
+  }, []);
 
   // Handle page visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isVisible = !document.hidden;
       setIsPageVisible(isVisible);
-
-      // If page becomes visible and user is on inbox, mark as read
-      if (isVisible && isInboxPageActive) {
-        markAsRead();
-      }
+      // Note: Don't auto-mark as read on visibility change
+      // Server-side handles initial read state, only mark when new messages arrive
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isInboxPageActive, markAsRead]);
+  }, []);
 
-  // Set up real-time subscription for new messages
+  // Set up real-time subscription for badge counting only
   useEffect(() => {
     if (!userId) {
       setUnreadCount(0);
@@ -129,45 +120,41 @@ export function InboxProvider({
       try {
         setError(null);
 
-        // Create realtime channel for this user's messages
+        // Create realtime channel for badge counting only (no message content handling)
         channel = supabase
-          .channel(`inbox-${userId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT", // Only listen for new messages
-              schema: "public",
-              table: "messages",
-              filter: `receiver_id=eq.${userId}`,
-            },
-            async (payload) => {
-              console.log("New message received:", payload);
+          .channel(`inbox-badges-${userId}`)
+          .on("broadcast", { event: "new_message_badge" }, async (payload) => {
+            console.log("New message badge broadcast received:", payload);
 
+            // Only process if message is for this user
+            if (payload.payload?.receiver_id === userId) {
               // Check if user is currently on inbox page and page is visible
               const shouldAutoMarkRead = isInboxPageActive && isPageVisible;
 
               if (shouldAutoMarkRead) {
-                // Don't increment count, just mark as read immediately
+                // User is on inbox page - auto mark as read (no badge increment)
                 console.log(
                   "Auto-marking new message as read (user on inbox page)"
                 );
-                setTimeout(() => markAsRead(), 100); // Small delay to ensure message is saved
+                markAsRead();
               } else {
-                // Increment unread count for normal behavior
+                // User not on inbox page - increment badge count
+                console.log(
+                  "Incrementing unread count (user not on inbox page)"
+                );
                 setUnreadCount((prev) => prev + 1);
               }
-
-              // Optional: Show a toast notification
-              if (typeof window !== "undefined" && "Notification" in window) {
-                if (Notification.permission === "granted") {
-                  new Notification("New message received", {
-                    body: "You have a new message in your inbox",
-                    icon: "/favicon.ico",
-                  });
-                }
-              }
             }
-          )
+          })
+          .on("broadcast", { event: "messages_marked_read" }, (payload) => {
+            console.log("Messages marked read broadcast received:", payload);
+
+            // Only process if it's for this user
+            if (payload.payload?.user_id === userId) {
+              console.log("Clearing badge count - messages marked as read");
+              setUnreadCount(0);
+            }
+          })
           .on(
             "postgres_changes",
             {
@@ -176,7 +163,10 @@ export function InboxProvider({
               table: "users",
               filter: `id=eq.${userId}`,
             },
-            async (payload) => {
+            async (payload: {
+              new?: { last_seen_inbox?: string };
+              old?: { last_seen_inbox?: string };
+            }) => {
               // Listen for updates to last_seen_inbox to refresh count
               if (
                 payload.new?.last_seen_inbox !== payload.old?.last_seen_inbox
@@ -187,30 +177,34 @@ export function InboxProvider({
             }
           )
           .subscribe((status) => {
-            console.log("Inbox realtime status:", status);
+            console.log("Inbox badge realtime status:", status);
 
             switch (status) {
               case "SUBSCRIBED":
                 setIsConnected(true);
                 setError(null);
+                console.log("✅ Successfully subscribed to badge counting");
                 break;
               case "CHANNEL_ERROR":
                 setIsConnected(false);
                 setError("Failed to connect to real-time updates");
+                console.error("❌ Badge channel error");
                 break;
               case "TIMED_OUT":
                 setIsConnected(false);
                 setError("Connection timed out");
+                console.error("⏱️ Badge connection timed out");
                 break;
               case "CLOSED":
                 setIsConnected(false);
+                console.log("🔌 Badge connection closed");
                 break;
               default:
-                console.log("Unhandled realtime status:", status);
+                console.log("Unhandled badge realtime status:", status);
             }
           });
       } catch (err) {
-        console.error("Error setting up inbox realtime:", err);
+        console.error("Error setting up inbox badge realtime:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
         setIsConnected(false);
       }
@@ -221,7 +215,7 @@ export function InboxProvider({
     // Cleanup
     return () => {
       if (channel) {
-        console.log("Cleaning up inbox realtime subscription");
+        console.log("Cleaning up inbox badge realtime subscription");
         supabase.removeChannel(channel);
       }
     };
