@@ -1,26 +1,20 @@
 "use client";
 
-import { Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Users, Plus } from "lucide-react";
 import { ClubGallery } from "@/components/clubs/tabs/club-gallery";
 import { CreateClubForm } from "@/components/clubs/tabs/create-club-form";
-import { MyClubView } from "@/components/clubs/tabs/my-club-view";
+import { ClubCardSkeleton } from "@/components/ui/content-skeletons";
 import type { Club } from "@/types/club";
 import type { User } from "@/types/user";
 
-type MainTab = "gallery" | "myclub" | "create";
+type MainTab = "gallery" | "create";
 
 interface ClubTabNavigationProps {
   clubs: (Club & { memberCount: number })[];
   currentUser: User | null;
-  userMemberships: Array<{
-    club: Club;
-    role: string;
-    joined_at: string;
-    memberCount: number;
-  }>;
   userClubIds: Set<string>;
   pagination?: {
     currentPage: number;
@@ -45,7 +39,6 @@ interface ClubTabNavigationProps {
 function ClubTabNavigationContent({
   clubs,
   currentUser,
-  userMemberships,
   userClubIds,
   pagination,
   createClubAction,
@@ -55,28 +48,42 @@ function ClubTabNavigationContent({
 }: ClubTabNavigationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isTabLoading, setIsTabLoading] = useState(false);
 
-  // Get current tab from URL
-  const getCurrentTab = (): MainTab => {
+  // Get default tab - always start with gallery since myclub is now separate
+  const getDefaultTab = (): MainTab => {
     const tabFromUrl = searchParams.get("tab") as MainTab;
-    if (tabFromUrl && ["gallery", "myclub", "create"].includes(tabFromUrl)) {
+    if (tabFromUrl && ["gallery", "create"].includes(tabFromUrl)) {
       return tabFromUrl;
     }
-    // Default to "myclub" if user has clubs, otherwise "gallery"
-    return hasUserClubs ? "myclub" : "gallery";
+    // Default to "gallery" since myclub is now a separate page
+    return "gallery";
   };
 
-  // Check if user has clubs to show My Clubs tab
-  const hasUserClubs = userMemberships.length > 0;
+  const [currentTab, setCurrentTab] = useState<MainTab>(getDefaultTab());
 
-  const currentTab = getCurrentTab();
+  // Update tab from URL parameters
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab") as MainTab;
+    if (tabFromUrl && ["gallery", "create"].includes(tabFromUrl)) {
+      setCurrentTab(tabFromUrl);
+    } else {
+      // Default to "gallery" since myclub is now a separate page
+      setCurrentTab("gallery");
+    }
+  }, [searchParams]);
 
   // Handle tab navigation
   const handleTabChange = (tab: MainTab) => {
-    if (tab === "myclub" && hasUserClubs) {
-      // My Clubs becomes the default clean URL when user has clubs
-      router.push("/clubs", { scroll: false });
-    } else if (tab === "gallery") {
+    if (tab === currentTab) return; // Don't change if same tab
+
+    // Update tab state immediately for instant visual feedback
+    setCurrentTab(tab);
+
+    // Show loading state briefly for better UX
+    setIsTabLoading(true);
+
+    if (tab === "gallery") {
       // Browse Clubs gets the tab parameter
       router.push("/clubs?tab=gallery", { scroll: false });
     } else {
@@ -84,6 +91,11 @@ function ClubTabNavigationContent({
       const newUrl = `/clubs?tab=${tab}`;
       router.push(newUrl, { scroll: false });
     }
+
+    // Hide loading after a brief moment
+    setTimeout(() => {
+      setIsTabLoading(false);
+    }, 150);
   };
 
   return (
@@ -101,16 +113,6 @@ function ClubTabNavigationContent({
           {/* Main Navigation Tabs */}
           <div className="flex justify-center mb-8">
             <div className="bg-muted p-1 rounded-lg flex gap-1">
-              {hasUserClubs && (
-                <Button
-                  variant={currentTab === "myclub" ? "default" : "ghost"}
-                  onClick={() => handleTabChange("myclub")}
-                  className="flex items-center gap-2"
-                >
-                  <Users className="h-4 w-4" />
-                  My Clubs
-                </Button>
-              )}
               <Button
                 variant={currentTab === "gallery" ? "default" : "ghost"}
                 onClick={() => handleTabChange("gallery")}
@@ -131,57 +133,50 @@ function ClubTabNavigationContent({
           </div>
 
           {/* Content based on current tab */}
-          {currentTab === "gallery" && (
-            <ClubGallery
-              clubs={clubs}
-              currentUser={currentUser}
-              userClubIds={userClubIds}
-              pagination={pagination}
-              joinClubAction={joinClubAction}
-              sendClubJoinRequestAction={sendClubJoinRequestAction}
-            />
-          )}
+          {isTabLoading ? (
+            // Show appropriate skeleton based on tab type
+            <>
+              {currentTab === "gallery" && <ClubCardSkeleton count={9} />}
+              {currentTab === "create" && (
+                <div className="max-w-2xl mx-auto">
+                  <ClubCardSkeleton count={1} />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {currentTab === "gallery" && (
+                <ClubGallery
+                  clubs={clubs}
+                  currentUser={currentUser}
+                  userClubIds={userClubIds}
+                  pagination={pagination}
+                  joinClubAction={joinClubAction}
+                  sendClubJoinRequestAction={sendClubJoinRequestAction}
+                />
+              )}
 
-          {currentTab === "myclub" && hasUserClubs && (
-            <MyClubView
-              userClubs={userMemberships.map((membership) => ({
-                club: {
-                  id: membership.club.id,
-                  name: membership.club.name,
-                  description: membership.club.description || "",
-                  location: membership.club.location || "",
-                  club_type: membership.club.club_type as
-                    | "open"
-                    | "invite"
-                    | "closed",
-                  banner_image_url: membership.club.banner_image_url || "",
-                  leader_id: membership.club.leader_id,
-                  total_likes: membership.club.total_likes,
-                  created_at: membership.club.created_at,
-                },
-                role: membership.role as "leader" | "co-leader" | "member",
-                joined_at: membership.joined_at,
-                memberCount: membership.memberCount,
-              }))}
-            />
+              {currentTab === "create" && (
+                <>
+                  {currentUser ? (
+                    <CreateClubForm
+                      user={currentUser}
+                      action={createClubAction}
+                      embedded={true}
+                      onSuccess={() => router.push("/clubs/my-clubs")}
+                      uploadAction={uploadAction}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Please log in to create a club.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           )}
-
-          {currentTab === "create" &&
-            (currentUser ? (
-              <CreateClubForm
-                user={currentUser}
-                action={createClubAction}
-                embedded={true}
-                onSuccess={() => handleTabChange("myclub")}
-                uploadAction={uploadAction}
-              />
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Please log in to create a club.
-                </p>
-              </div>
-            ))}
         </div>
       </div>
     </div>
@@ -191,7 +186,6 @@ function ClubTabNavigationContent({
 export function ClubTabNavigation({
   clubs,
   currentUser,
-  userMemberships,
   userClubIds,
   pagination,
   createClubAction,
@@ -200,31 +194,15 @@ export function ClubTabNavigation({
   sendClubJoinRequestAction,
 }: ClubTabNavigationProps) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background">
-          <div className="container mx-auto px-4 py-8">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold mb-4">🏁 Car Clubs</h1>
-                <p className="text-muted-foreground mb-6">Loading...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <ClubTabNavigationContent
-        clubs={clubs}
-        currentUser={currentUser}
-        userMemberships={userMemberships}
-        userClubIds={userClubIds}
-        pagination={pagination}
-        createClubAction={createClubAction}
-        uploadAction={uploadAction}
-        joinClubAction={joinClubAction}
-        sendClubJoinRequestAction={sendClubJoinRequestAction}
-      />
-    </Suspense>
+    <ClubTabNavigationContent
+      clubs={clubs}
+      currentUser={currentUser}
+      userClubIds={userClubIds}
+      pagination={pagination}
+      createClubAction={createClubAction}
+      uploadAction={uploadAction}
+      joinClubAction={joinClubAction}
+      sendClubJoinRequestAction={sendClubJoinRequestAction}
+    />
   );
 }

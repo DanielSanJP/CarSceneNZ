@@ -118,6 +118,12 @@ function ProfileDropdown({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
+          <Link href="/clubs/my-clubs" className="cursor-pointer">
+            <Users className="mr-2 h-4 w-4" />
+            <span>My Clubs</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link href="/inbox" className="cursor-pointer relative">
             <Mail className="mr-2 h-4 w-4" />
             <span>Inbox</span>
@@ -158,6 +164,11 @@ export function Navigation({
     if (path === "/garage" && pathname.startsWith("/garage/")) {
       // Don't activate main garage if we're on a specific sub-route
       return pathname === "/garage";
+    }
+
+    if (path === "/clubs" && pathname.startsWith("/clubs/")) {
+      // Don't activate main clubs if we're on a specific sub-route
+      return pathname === "/clubs";
     }
 
     // For other paths, use exact match or direct sub-path
@@ -261,6 +272,18 @@ export function Navigation({
                         >
                           <Calendar className="h-4 w-4" />
                           <span>My Events</span>
+                        </Link>
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                    <NavigationMenuItem>
+                      <NavigationMenuLink asChild>
+                        <Link
+                          href="/clubs/my-clubs"
+                          className="flex flex-row items-center gap-2"
+                          data-active={isActivePath("/clubs/my-clubs")}
+                        >
+                          <Users className="h-4 w-4" />
+                          <span>My Clubs</span>
                         </Link>
                       </NavigationMenuLink>
                     </NavigationMenuItem>

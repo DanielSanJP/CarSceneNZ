@@ -14,6 +14,57 @@ import { useInboxPageActive } from "@/hooks/use-inbox-page-active";
 import { useInboxSafe } from "@/hooks/use-inbox-safe";
 import { toast } from "sonner";
 
+// Helper function to format relative time
+function getRelativeTime(date: string | Date): string {
+  const now = new Date();
+  const messageDate = new Date(date);
+  const diffInSeconds = Math.floor(
+    (now.getTime() - messageDate.getTime()) / 1000
+  );
+
+  // Less than 1 minute
+  if (diffInSeconds < 60) {
+    return "Just now";
+  }
+
+  // Less than 1 hour
+  if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+
+  // Less than 24 hours
+  if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  // Less than 7 days
+  if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    if (days === 1) {
+      return "Yesterday";
+    }
+    return `${days} days ago`;
+  }
+
+  // Less than 30 days
+  if (diffInSeconds < 2592000) {
+    const weeks = Math.floor(diffInSeconds / 604800);
+    return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
+  }
+
+  // Less than 365 days
+  if (diffInSeconds < 31536000) {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `${months} month${months === 1 ? "" : "s"} ago`;
+  }
+
+  // More than a year
+  const years = Math.floor(diffInSeconds / 31536000);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
+
 interface InboxViewProps {
   userId: string;
   initialMessages: InboxMessage[];
@@ -158,45 +209,47 @@ function InboxViewComponent({
         ) : (
           messages.map((msg: InboxMessage) => (
             <Card key={msg.id}>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-12 gap-4">
-                  {/* Left Column - Profile Info */}
-                  <div className="col-span-3 flex items-start space-x-3">
-                    {/* Profile Avatar */}
-                    <Link href={`/profile/${msg.sender?.username}`}>
+              <CardContent className="p-3 sm:p-4">
+                {/* Mobile-first: Stack everything vertically on small screens */}
+                <div className="space-y-3 sm:grid sm:grid-cols-12 sm:gap-4 sm:space-y-0">
+                  {/* Profile Section */}
+                  <div className="flex items-start gap-3 sm:col-span-3">
+                    {/* Avatar */}
+                    <Link
+                      href={`/profile/${msg.sender?.username}`}
+                      className="flex-shrink-0"
+                    >
                       {msg.sender?.profile_image_url ? (
                         <Image
                           src={msg.sender.profile_image_url}
                           alt={msg.sender.username || "User"}
-                          width={64}
-                          height={64}
+                          width={48}
+                          height={48}
                           quality={100}
-                          className="h-16 w-16 rounded-full object-cover hover:opacity-80 transition-opacity"
+                          className="h-12 w-12 rounded-full object-cover hover:opacity-80 transition-opacity"
                         />
                       ) : (
-                        <Avatar className="h-16 w-16 hover:opacity-80 transition-opacity">
-                          <AvatarFallback className="text-lg">
+                        <Avatar className="h-12 w-12 hover:opacity-80 transition-opacity">
+                          <AvatarFallback className="text-sm">
                             {msg.sender?.username?.charAt(0) || "?"}
                           </AvatarFallback>
                         </Avatar>
                       )}
                     </Link>
 
-                    {/* Name and Badge Column */}
-                    <div className="flex-1 flex flex-col justify-between h-full min-h-[4rem]">
-                      <div className="space-y-2">
-                        {/* Display Name - Top */}
-                        <div>
-                          <Link
-                            href={`/profile/${msg.sender?.username}`}
-                            className="font-semibold hover:underline text-base"
-                          >
-                            {msg.sender?.display_name || msg.sender?.username}
-                          </Link>
-                        </div>
+                    {/* Profile Info */}
+                    <div className="flex-1 min-w-0">
+                      {/* Name */}
+                      <Link
+                        href={`/profile/${msg.sender?.username}`}
+                        className="font-semibold hover:underline text-sm block truncate"
+                      >
+                        {msg.sender?.display_name || msg.sender?.username}
+                      </Link>
 
-                        {/* Badge */}
-                        <div>
+                      {/* Badge and Date on same line for mobile */}
+                      <div className="flex items-center justify-between mt-1">
+                        <div className="flex-shrink-0">
                           {msg.message_type === "club_join_request" && (
                             <Badge variant="secondary" className="text-xs">
                               <Users className="h-3 w-3 mr-1" />
@@ -215,107 +268,143 @@ function InboxViewComponent({
                             </Badge>
                           )}
                         </div>
-                      </div>
 
-                      {/* Date - Bottom Right */}
-                      <div className="flex justify-end mt-auto">
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(msg.created_at).toLocaleDateString(
+                        {/* Relative time on mobile */}
+                        <p
+                          className="text-xs text-muted-foreground flex-shrink-0 sm:hidden"
+                          title={new Date(msg.created_at).toLocaleString(
                             "en-US",
                             {
                               year: "numeric",
                               month: "short",
                               day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
                             }
                           )}
+                        >
+                          {getRelativeTime(msg.created_at)}
+                        </p>
+                      </div>
+
+                      {/* Relative time on desktop (hidden on mobile) */}
+                      <div className="hidden sm:block mt-2">
+                        <p
+                          className="text-xs text-muted-foreground cursor-help"
+                          title={new Date(msg.created_at).toLocaleString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            }
+                          )}
+                        >
+                          {getRelativeTime(msg.created_at)}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Right Column - Message Content */}
-                  <div className="col-span-9 space-y-3 min-w-0">
+                  {/* Content Section */}
+                  <div className="sm:col-span-9 space-y-2 min-w-0">
                     {/* Subject */}
-                    <h3 className="font-semibold text-lg break-words">
+                    <h3 className="font-semibold text-base sm:text-lg break-words leading-tight">
                       {msg.subject || "No subject"}
                     </h3>
 
                     {/* Message Content */}
-                    <p className="leading-relaxed break-words whitespace-pre-wrap">
+                    <p className="text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">
                       {getCleanMessage(msg.message)}
                     </p>
 
                     {/* Club Context */}
                     {msg.club_name && (
-                      <div className=" rounded-lg p-3 text-sm">
+                      <div className="bg-muted rounded-lg p-2 sm:p-3 text-sm">
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-gray-500" />
+                          <Users className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">{msg.club_name}</span>
                         </div>
                       </div>
                     )}
 
-                    {/* Join Request Actions - Show for all club join requests */}
-                    {msg.message_type === "club_join_request" && (
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          size="sm"
-                          variant="success"
-                          onClick={() => handleJoinRequest(msg, "approve")}
-                          disabled={processingRequest === msg.id}
-                        >
-                          {processingRequest === msg.id ? (
-                            <Clock className="h-4 w-4 mr-1" />
-                          ) : (
-                            <Check className="h-4 w-4 mr-1" />
-                          )}
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleJoinRequest(msg, "reject")}
-                          disabled={processingRequest === msg.id}
-                        >
-                          {processingRequest === msg.id ? (
-                            <Clock className="h-4 w-4 mr-1" />
-                          ) : (
-                            <X className="h-4 w-4 mr-1" />
-                          )}
-                          Reject
-                        </Button>
-                      </div>
-                    )}
+                    {/* Action Buttons */}
+                    {(msg.message_type === "club_join_request" ||
+                      msg.message_type === "club_invitation") && (
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        {msg.message_type === "club_join_request" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleJoinRequest(msg, "approve")}
+                              disabled={processingRequest === msg.id}
+                              className="flex-1 sm:flex-none"
+                            >
+                              {processingRequest === msg.id ? (
+                                <Clock className="h-4 w-4 mr-2" />
+                              ) : (
+                                <Check className="h-4 w-4 mr-2" />
+                              )}
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleJoinRequest(msg, "reject")}
+                              disabled={processingRequest === msg.id}
+                              className="flex-1 sm:flex-none"
+                            >
+                              {processingRequest === msg.id ? (
+                                <Clock className="h-4 w-4 mr-2" />
+                              ) : (
+                                <X className="h-4 w-4 mr-2" />
+                              )}
+                              Reject
+                            </Button>
+                          </>
+                        )}
 
-                    {/* Club Invitation Actions - Show for all club invitations */}
-                    {msg.message_type === "club_invitation" && (
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          size="sm"
-                          variant="success"
-                          onClick={() => handleClubInvitation(msg, "accept")}
-                          disabled={processingRequest === msg.id}
-                        >
-                          {processingRequest === msg.id ? (
-                            <Clock className="h-4 w-4 mr-1" />
-                          ) : (
-                            <Check className="h-4 w-4 mr-1" />
-                          )}
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleClubInvitation(msg, "reject")}
-                          disabled={processingRequest === msg.id}
-                        >
-                          {processingRequest === msg.id ? (
-                            <Clock className="h-4 w-4 mr-1" />
-                          ) : (
-                            <X className="h-4 w-4 mr-1" />
-                          )}
-                          Reject
-                        </Button>
+                        {msg.message_type === "club_invitation" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() =>
+                                handleClubInvitation(msg, "accept")
+                              }
+                              disabled={processingRequest === msg.id}
+                              className="flex-1 sm:flex-none"
+                            >
+                              {processingRequest === msg.id ? (
+                                <Clock className="h-4 w-4 mr-2" />
+                              ) : (
+                                <Check className="h-4 w-4 mr-2" />
+                              )}
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleClubInvitation(msg, "reject")
+                              }
+                              disabled={processingRequest === msg.id}
+                              className="flex-1 sm:flex-none"
+                            >
+                              {processingRequest === msg.id ? (
+                                <Clock className="h-4 w-4 mr-2" />
+                              ) : (
+                                <X className="h-4 w-4 mr-2" />
+                              )}
+                              Reject
+                            </Button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

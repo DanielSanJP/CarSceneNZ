@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import {
   getTopOwners,
   getTopClubs,
@@ -34,14 +33,12 @@ export default async function LeaderboardsPage({
             </p>
           </div>
 
-          <Suspense fallback={<div>Loading leaderboards...</div>}>
-            <LeaderboardsView
-              ownersData={ownersData}
-              clubsData={clubsData}
-              carsData={carsData}
-              defaultTab={params.tab as "owners" | "clubs" | "cars"}
-            />
-          </Suspense>
+          <LeaderboardsView
+            ownersData={ownersData}
+            clubsData={clubsData}
+            carsData={carsData}
+            defaultTab={params.tab as "owners" | "clubs" | "cars"}
+          />
         </div>
       </div>
     </div>

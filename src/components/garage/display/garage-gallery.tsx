@@ -84,7 +84,7 @@ export function GarageGallery({
     brand: "all",
     model: "all",
     year: "all",
-    sort: "newest",
+    sort: "newest_year", // Default to newest car year instead of recently added
   });
 
   const handleImageError = (carId: string) => {
@@ -157,12 +157,16 @@ export function GarageGallery({
     }
 
     // Apply sorting
-    if (filters.sort === "newest") {
+    if (filters.sort === "newest_year") {
+      filtered.sort((a, b) => b.year - a.year);
+    } else if (filters.sort === "oldest_year") {
+      filtered.sort((a, b) => a.year - b.year);
+    } else if (filters.sort === "recently_added") {
       filtered.sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-    } else if (filters.sort === "oldest") {
+    } else if (filters.sort === "oldest_added") {
       filtered.sort(
         (a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -185,107 +189,113 @@ export function GarageGallery({
   }, [cars, filters, carLikeCounts]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Car Gallery</h1>
-          <p className="text-muted-foreground mt-2">
-            Discover amazing builds from the community
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Car Gallery</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Discover amazing builds from the community
+            </p>
+          </div>
           {user && (
-            <Link href="/garage/my-garage" className="w-full sm:w-auto">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto flex items-center justify-center gap-2"
-              >
-                <CarIcon className="h-4 w-4" />
-                My Garage
-              </Button>
-            </Link>
-          )}
-          {user && (
-            <Link href="/garage/create" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto flex items-center justify-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add Car
-              </Button>
-            </Link>
+            <div className="flex gap-2 sm:gap-3">
+              <Link href="/garage/my-garage" className="flex-1 sm:flex-none">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5"
+                >
+                  <CarIcon className="h-3.5 w-3.5" />
+                  <span className="hidden xs:inline">My Garage</span>
+                  <span className="xs:hidden">My Cars</span>
+                </Button>
+              </Link>
+              <Link href="/garage/create" className="flex-1 sm:flex-none">
+                <Button
+                  size="sm"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="hidden xs:inline">Add Car</span>
+                  <span className="xs:hidden">Add</span>
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
       </div>
 
       {/* Filters */}
-      <div className="space-y-4">
-        {/* Mobile: Stack filters vertically, Desktop: Grid layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Select value={filters.brand} onValueChange={updateFilter.brand}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Brands" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Brands</SelectItem>
-              {brands.map((brand) => (
-                <SelectItem key={brand} value={brand}>
-                  {brand}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="space-y-3">
+        {/* Flexible filter layout - BMY on one line, Sort can wrap */}
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="flex flex-1 min-w-0 gap-2 sm:gap-3">
+            <Select value={filters.brand} onValueChange={updateFilter.brand}>
+              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[80px]">
+                <SelectValue placeholder="Brand" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Brands</SelectItem>
+                {brands.map((brand) => (
+                  <SelectItem key={brand} value={brand}>
+                    {brand}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={filters.model}
-            onValueChange={updateFilter.model}
-            disabled={filters.brand === "all"}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue
-                placeholder={
-                  filters.brand === "all" ? "Select brand first" : "All Models"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Models</SelectItem>
-              {models.map((model) => (
-                <SelectItem key={model} value={model}>
-                  {model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={filters.model}
+              onValueChange={updateFilter.model}
+              disabled={filters.brand === "all"}
+            >
+              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[80px]">
+                <SelectValue placeholder="Model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Models</SelectItem>
+                {models.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={filters.year} onValueChange={updateFilter.year}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Years" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={filters.year} onValueChange={updateFilter.year}>
+              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[70px]">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <Select value={filters.sort} onValueChange={updateFilter.sort}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Sort By" />
+            <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm w-full sm:w-auto sm:min-w-[120px]">
+              <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="newest_year">Newest Cars</SelectItem>
+              <SelectItem value="oldest_year">Oldest Cars</SelectItem>
               <SelectItem value="most_liked">Most Liked</SelectItem>
               <SelectItem value="least_liked">Least Liked</SelectItem>
+              <SelectItem value="recently_added">Recently Added</SelectItem>
+              <SelectItem value="oldest_added">Oldest Added</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Results count - separate row for better mobile layout */}
-        <div className="text-sm text-muted-foreground text-center sm:text-left">
+        {/* Results count - compact */}
+        <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
           {filteredAndSortedCars.length} cars found
         </div>
       </div>
@@ -310,7 +320,7 @@ export function GarageGallery({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedCars.map((car) => (
             <Link href={`/garage/${car.id}`} key={car.id} className="group">
               <Card className="overflow-hidden pt-0 hover:shadow-lg transition-shadow">
@@ -349,41 +359,41 @@ export function GarageGallery({
                   </div>
                 </div>
 
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">
+                <CardHeader className="pb-2 sm:pb-3">
+                  <CardTitle className="text-base sm:text-lg">
                     {car.year} {car.brand} {car.model}
                   </CardTitle>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                      {carLikeCounts[car.id] ?? car.total_likes} likes
+                      {carLikeCounts[car.id] ?? car.total_likes}
                     </span>
                     {car.owner && (
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {car.owner.display_name || car.owner.username}
+                      <span className="flex items-center gap-1 truncate">
+                        <User className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">
+                          {car.owner.display_name || car.owner.username}
+                        </span>
                       </span>
                     )}
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
+                <CardContent className="pt-0 pb-3 sm:pb-4">
                   {/* Action Buttons */}
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.location.href = `/garage/${car.id}`;
-                      }}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-8 sm:h-9"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.location.href = `/garage/${car.id}`;
+                    }}
+                  >
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />
+                    <span className="text-xs sm:text-sm">View Details</span>
+                  </Button>
                 </CardContent>
               </Card>
             </Link>
@@ -393,17 +403,18 @@ export function GarageGallery({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-8">
+        <div className="flex justify-center items-center gap-2 mt-6">
           <Link
             href={`/garage?page=${currentPage - 1}`}
             className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
           >
-            <Button variant="outline" disabled={currentPage <= 1}>
-              Previous
+            <Button variant="outline" size="sm" disabled={currentPage <= 1}>
+              <span className="hidden xs:inline">Previous</span>
+              <span className="xs:hidden">Prev</span>
             </Button>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               const page = i + Math.max(1, currentPage - 2);
               if (page > totalPages) return null;
@@ -413,6 +424,7 @@ export function GarageGallery({
                   <Button
                     variant={page === currentPage ? "default" : "outline"}
                     size="sm"
+                    className="h-8 w-8 p-0 text-xs"
                   >
                     {page}
                   </Button>
@@ -427,15 +439,20 @@ export function GarageGallery({
               currentPage >= totalPages ? "pointer-events-none opacity-50" : ""
             }
           >
-            <Button variant="outline" disabled={currentPage >= totalPages}>
-              Next
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= totalPages}
+            >
+              <span className="hidden xs:inline">Next</span>
+              <span className="xs:hidden">Next</span>
             </Button>
           </Link>
         </div>
       )}
 
       {/* Results info */}
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      <div className="text-center text-xs sm:text-sm text-muted-foreground mt-3">
         Showing {cars.length} of {totalCars} cars
         {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
       </div>

@@ -78,6 +78,11 @@ const userNavItems = [
     icon: Calendar,
   },
   {
+    title: "My Clubs",
+    url: "/clubs/my-clubs",
+    icon: Users,
+  },
+  {
     title: "Inbox",
     url: "/inbox",
     icon: Mail,
@@ -108,6 +113,11 @@ export function AppSidebar({ user, unreadCount }: AppSidebarProps) {
     if (path === "/garage" && pathname.startsWith("/garage/")) {
       // Don't activate main garage if we're on a specific sub-route
       return pathname === "/garage";
+    }
+
+    if (path === "/clubs" && pathname.startsWith("/clubs/")) {
+      // Don't activate main clubs if we're on a specific sub-route
+      return pathname === "/clubs";
     }
 
     // For other paths, use exact match or direct sub-path
