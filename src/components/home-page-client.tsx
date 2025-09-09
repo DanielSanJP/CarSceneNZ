@@ -15,21 +15,14 @@ import { useMemo } from "react";
 import type { Car } from "@/types/car";
 import type { Event } from "@/types/event";
 import type { User } from "@/types/user";
-import type { Club } from "@/types/club";
 
 interface HomePageClientProps {
   events: Event[];
   cars: Car[];
-  clubs: Club[];
   users: User[];
 }
 
-export function HomePageClient({
-  events,
-  cars,
-  clubs,
-  users,
-}: HomePageClientProps) {
+export function HomePageClient({ events, cars, users }: HomePageClientProps) {
   // Create users map for quick lookups
   const usersMap = useMemo(() => {
     const map: Record<string, User> = {};
@@ -63,17 +56,6 @@ export function HomePageClient({
       .sort((a, b) => (b.total_likes || 0) - (a.total_likes || 0))
       .slice(0, 3);
   }, [cars]);
-
-  // Calculate stats
-  const stats = useMemo(
-    () => ({
-      users: users.length,
-      cars: cars.length,
-      events: events.length,
-      clubs: clubs.length,
-    }),
-    [users.length, cars.length, events.length, clubs.length]
-  );
 
   // Helper function to format date with ordinal suffix
   const formatEventDate = (dateString: string) => {
@@ -260,48 +242,6 @@ export function HomePageClient({
               </Link>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Community Stats Section */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold text-foreground mb-4">
-            Community Stats
-          </h3>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Join a growing community of car enthusiasts across New Zealand.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-4 gap-6">
-          <Card className="text-center">
-            <CardHeader>
-              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{stats.users}</CardTitle>
-              <CardDescription>Members</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="text-center">
-            <CardHeader>
-              <CarIcon className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{stats.cars}</CardTitle>
-              <CardDescription>Cars</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="text-center">
-            <CardHeader>
-              <Calendar className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{stats.events}</CardTitle>
-              <CardDescription>Events</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="text-center">
-            <CardHeader>
-              <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>{stats.clubs}</CardTitle>
-              <CardDescription>Clubs</CardDescription>
-            </CardHeader>
-          </Card>
         </div>
       </section>
 

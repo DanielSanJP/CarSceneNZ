@@ -24,45 +24,42 @@ function getRelativeTime(date: string | Date): string {
 
   // Less than 1 minute
   if (diffInSeconds < 60) {
-    return "Just now";
+    return "now";
   }
 
   // Less than 1 hour
   if (diffInSeconds < 3600) {
     const minutes = Math.floor(diffInSeconds / 60);
-    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+    return `${minutes}m`;
   }
 
   // Less than 24 hours
   if (diffInSeconds < 86400) {
     const hours = Math.floor(diffInSeconds / 3600);
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+    return `${hours}h`;
   }
 
   // Less than 7 days
   if (diffInSeconds < 604800) {
     const days = Math.floor(diffInSeconds / 86400);
-    if (days === 1) {
-      return "Yesterday";
-    }
-    return `${days} days ago`;
+    return `${days}d`;
   }
 
-  // Less than 30 days
-  if (diffInSeconds < 2592000) {
+  // Less than 4 weeks (about a month)
+  if (diffInSeconds < 2419200) {
     const weeks = Math.floor(diffInSeconds / 604800);
-    return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
+    return `${weeks}w`;
   }
 
   // Less than 365 days
   if (diffInSeconds < 31536000) {
     const months = Math.floor(diffInSeconds / 2592000);
-    return `${months} month${months === 1 ? "" : "s"} ago`;
+    return `${months}mo`;
   }
 
   // More than a year
   const years = Math.floor(diffInSeconds / 31536000);
-  return `${years} year${years === 1 ? "" : "s"} ago`;
+  return `${years}y`;
 }
 
 interface InboxViewProps {

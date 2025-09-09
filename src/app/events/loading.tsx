@@ -38,7 +38,7 @@ export default function EventsLoading() {
             {Array.from({ length: 12 }).map((_, index) => (
               <Card
                 key={index}
-                className="overflow-hidden hover:shadow-lg transition-shadow"
+                className="overflow-hidden hover:shadow-lg transition-shadow pt-0"
               >
                 {/* Event image skeleton - aspect-video to match gallery */}
                 <div className="aspect-video relative overflow-hidden">
