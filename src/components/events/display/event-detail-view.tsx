@@ -23,77 +23,174 @@ import {
 import Link from "next/link";
 import type { Event } from "@/types/event";
 import { toast } from "sonner";
-
-// Match the AttendeeData interface from the server component
-interface AttendeeData {
-  id: string;
-  status: "interested" | "going" | "approved";
-  user: {
-    id: string;
-    username: string;
-    display_name?: string;
-    profile_image_url?: string;
-  };
-}
+import { useEventDetail, useEventAttendance } from "@/hooks/use-events";
+import type { AttendeeData } from "@/lib/server/events";
 
 interface EventDetailViewProps {
-  event: Event;
+  // Optimized mode props
+  eventId?: string;
+  // Legacy mode props (optional when using optimized mode)
+  event?: Event;
   user?: {
     id: string;
     username: string;
     display_name?: string;
   } | null;
-  initialAttendees: AttendeeData[];
-  initialUserStatus: string | null;
-  attendEventAction: (
+  initialAttendees?: AttendeeData[];
+  initialUserStatus?: string | null;
+  attendEventAction?: (
     eventId: string,
     userId: string,
     status: "interested" | "going" | "approved"
   ) => Promise<unknown>;
-  unattendEventAction: (eventId: string, userId: string) => Promise<void>;
-  getEventAttendeesAction: (eventId: string) => Promise<AttendeeData[]>;
-  getUserEventStatusAction: (
+  unattendEventAction?: (eventId: string, userId: string) => Promise<void>;
+  getEventAttendeesAction?: (eventId: string) => Promise<AttendeeData[]>;
+  getUserEventStatusAction?: (
     eventId: string,
     userId: string
   ) => Promise<string | null>;
 }
 
 export function EventDetailView({
-  event,
-  user,
+  // Optimized mode props
+  eventId,
+  // Legacy mode props
+  event: propEvent,
+  user: propUser,
   initialAttendees,
   initialUserStatus,
-  attendEventAction,
-  unattendEventAction,
+  attendEventAction: propAttendEventAction,
+  unattendEventAction: propUnattendEventAction,
   getEventAttendeesAction,
   getUserEventStatusAction,
 }: EventDetailViewProps) {
   const router = useRouter();
-  const [attendees, setAttendees] = useState<AttendeeData[]>(initialAttendees);
+
+  // Use React Query hooks when eventId is provided (optimized mode)
+  // Only use optimized mode if no legacy props are provided
+  const shouldUseOptimizedMode = !!eventId && !propEvent && !initialAttendees;
+
+  const {
+    data: eventDetailData,
+    isLoading,
+    error,
+    isError,
+  } = useEventDetail(shouldUseOptimizedMode ? eventId || "" : "");
+
+  const attendanceMutation = useEventAttendance();
+
+  // Determine which data source to use
+  const event = propEvent || eventDetailData?.event;
+  const user = propUser || eventDetailData?.user || null;
+  const serverAttendees = initialAttendees || eventDetailData?.attendees || [];
+  const serverUserStatus =
+    initialUserStatus ?? eventDetailData?.userStatus ?? null;
+
+  // Local state for optimistic updates
+  const [attendees, setAttendees] = useState<AttendeeData[]>(serverAttendees);
   const [failedImage, setFailedImage] = useState(false);
-  const [userStatus, setUserStatus] = useState<string | null>(
-    initialUserStatus
-  );
+  const [userStatus, setUserStatus] = useState<string | null>(serverUserStatus);
 
+  // Update local state when server data changes
   useEffect(() => {
-    const fetchEventData = async () => {
-      try {
-        // Get event attendees
-        const attendeesData = await getEventAttendeesAction(event.id);
-        setAttendees(attendeesData);
+    if (eventDetailData) {
+      setAttendees(eventDetailData.attendees);
+      setUserStatus(eventDetailData.userStatus);
+    } else if (initialAttendees && initialUserStatus !== undefined) {
+      setAttendees(initialAttendees);
+      setUserStatus(initialUserStatus);
+    }
+  }, [eventDetailData, initialAttendees, initialUserStatus]);
 
-        // Get user's current status if logged in
-        if (user) {
-          const status = await getUserEventStatusAction(event.id, user.id);
-          setUserStatus(status);
+  // Legacy data fetching effect (only for legacy mode)
+  useEffect(() => {
+    if (
+      !shouldUseOptimizedMode &&
+      event &&
+      getEventAttendeesAction &&
+      getUserEventStatusAction
+    ) {
+      const fetchEventData = async () => {
+        try {
+          // Get event attendees
+          const attendeesData = await getEventAttendeesAction(event.id);
+          setAttendees(attendeesData);
+
+          // Get user's current status if logged in
+          if (user) {
+            const status = await getUserEventStatusAction(event.id, user.id);
+            setUserStatus(status);
+          }
+        } catch {
+          // Error fetching event data - user status will remain null
         }
-      } catch {
-        // Error fetching event data - user status will remain null
-      }
-    };
+      };
 
-    fetchEventData();
-  }, [event.id, user, getEventAttendeesAction, getUserEventStatusAction]);
+      fetchEventData();
+    }
+  }, [
+    shouldUseOptimizedMode,
+    event,
+    user,
+    getEventAttendeesAction,
+    getUserEventStatusAction,
+  ]);
+
+  // Handle optimized attendance actions
+  const handleOptimizedAttendance = async (
+    status: "interested" | "going"
+  ): Promise<void> => {
+    if (!event || !user) return;
+
+    try {
+      await attendanceMutation.mutateAsync({ eventId: event.id, status });
+    } catch (error) {
+      console.error("Error updating event attendance:", error);
+      throw error;
+    }
+  };
+
+  const handleOptimizedUnattendance = async (): Promise<void> => {
+    if (!event || !user) return;
+
+    try {
+      await attendanceMutation.mutateAsync({
+        eventId: event.id,
+        status: "remove",
+      });
+    } catch (error) {
+      console.error("Error removing event attendance:", error);
+      throw error;
+    }
+  };
+
+  // Handle loading and error states for optimized mode
+  if (shouldUseOptimizedMode && isLoading) {
+    return null; // loading.tsx handles this
+  }
+
+  if (shouldUseOptimizedMode && isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <p className="text-center text-destructive">
+              {error?.message ||
+                "Failed to load event details. Please try again."}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Event not found.</p>
+      </div>
+    );
+  }
 
   // Get attendee counts
   const goingCount = attendees.filter(
@@ -130,16 +227,28 @@ export function EventDetailView({
       if (userStatus === status) {
         // User is removing their attendance - optimistic update
         setUserStatus(null);
-        await unattendEventAction(event.id, user.id);
+
+        if (shouldUseOptimizedMode) {
+          await handleOptimizedUnattendance();
+        } else if (propUnattendEventAction) {
+          await propUnattendEventAction(event.id, user.id);
+        }
       } else {
         // User is setting/changing their attendance - optimistic update
         setUserStatus(status);
-        await attendEventAction(event.id, user.id, status);
+
+        if (shouldUseOptimizedMode) {
+          await handleOptimizedAttendance(status as "interested" | "going");
+        } else if (propAttendEventAction) {
+          await propAttendEventAction(event.id, user.id, status);
+        }
       }
 
-      // Refresh attendee data only on success
-      const updatedAttendees = await getEventAttendeesAction(event.id);
-      setAttendees(updatedAttendees);
+      // Refresh attendee data only on success (legacy mode only)
+      if (!shouldUseOptimizedMode && getEventAttendeesAction) {
+        const updatedAttendees = await getEventAttendeesAction(event.id);
+        setAttendees(updatedAttendees);
+      }
     } catch {
       // Revert optimistic update on error
       setUserStatus(originalStatus);

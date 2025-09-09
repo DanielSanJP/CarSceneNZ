@@ -11,57 +11,51 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Car, Star, Eye, ExternalLink, Edit, Users } from "lucide-react";
-import Link from "next/link";
+import {
+  Car,
+  Star,
+  Eye,
+  ExternalLink,
+  Edit,
+  Users,
+  UserPlus,
+} from "lucide-react";
+import { toast } from "sonner";
 import Image from "next/image";
-import { InviteToClub } from "@/components/clubs/invite-to-club";
-import type { User } from "@/types/user";
-import type { Car as CarType } from "@/types/car";
-import type { Club } from "@/types/club";
+import Link from "next/link";
 
-interface UserProfileClientProps {
-  profileUser: User | null;
-  currentUser: User | null;
-  userCars: CarType[];
-  followers: User[];
-  following: User[];
-  userClubs: Array<{
-    club: Club;
-    role: string;
-    joined_at: string;
-    memberCount: number;
-  }>;
-  leaderClubs: Array<{
-    id: string;
-    name: string;
-    description: string;
-    image_url: string | null;
-    memberCount: number;
-  } | null>;
-  sendClubInvitationAction: (
-    targetUserId: string,
-    clubId: string,
-    message?: string
-  ) => Promise<{
-    success: boolean;
-    error?: string;
-  }>;
+import {
+  useProfile,
+  useLeaderClubs,
+  useFollowToggle,
+} from "@/hooks/use-profile";
+import { InviteToClub } from "@/components/clubs/invite-to-club";
+import type { ProfileData } from "@/lib/api/profile";
+
+interface UserProfileDisplayProps {
+  userId: string;
+  initialData?: ProfileData;
 }
 
-export function UserProfileClient({
-  profileUser,
-  currentUser,
-  userCars,
-  followers,
-  following,
-  userClubs,
-  leaderClubs,
-  sendClubInvitationAction,
-}: UserProfileClientProps) {
+export function UserProfileDisplay({
+  userId,
+  initialData,
+}: UserProfileDisplayProps) {
   const router = useRouter();
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
+
+  // React Query hooks
+  const {
+    data: profileData,
+    isLoading: profileLoading,
+    error: profileError,
+  } = useProfile(userId, initialData);
+
+  const { data: leaderClubsData } = useLeaderClubs(!!profileData?.currentUser);
+
+  const followMutation = useFollowToggle();
 
   const handleBackClick = () => {
     if (window.history.length > 1) {
@@ -75,8 +69,57 @@ export function UserProfileClient({
     setFailedImages((prev) => new Set(prev).add(carId));
   };
 
-  // User not found
-  if (!profileUser) {
+  const handleFollowToggle = async () => {
+    if (!profileData?.currentUser || !profileData) {
+      toast.error("Please log in to follow users");
+      return;
+    }
+
+    const action = profileData.isFollowing ? "unfollow" : "follow";
+
+    followMutation.mutate(
+      { targetUserId: userId, action },
+      {
+        onSuccess: () => {
+          toast.success(
+            action === "follow"
+              ? `You are now following ${profileData.profileUser.display_name}`
+              : `You unfollowed ${profileData.profileUser.display_name}`
+          );
+        },
+        onError: (error) => {
+          toast.error(`Failed to ${action}: ${error.message}`);
+        },
+      }
+    );
+  };
+
+  // Loading state
+  if (profileLoading) {
+    return null; // Let loading.tsx handle this
+  }
+
+  // Error state
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">Error Loading Profile</h1>
+            <p className="text-muted-foreground mt-2">
+              {profileError.message || "Failed to load profile data"}
+            </p>
+            <Button onClick={handleBackClick} className="mt-4">
+              Go Back
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // User not found state
+  if (!profileData?.profileUser) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
@@ -94,8 +137,58 @@ export function UserProfileClient({
     );
   }
 
-  // Check if viewing own profile
+  const {
+    profileUser,
+    userCars,
+    followers,
+    following,
+    userClubs,
+    isFollowing,
+    currentUser,
+  } = profileData;
   const isOwnProfile = currentUser?.id === profileUser.id;
+  const leaderClubs = leaderClubsData?.leaderClubs || [];
+
+  // Server action wrapper for club invitations
+  const sendClubInvitationAction = async (
+    targetUserId: string,
+    clubId: string,
+    message?: string
+  ) => {
+    try {
+      const response = await fetch("/api/profile/clubs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          targetUserId,
+          clubId,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return {
+          success: false,
+          error: error.error || "Failed to send club invitation",
+        };
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        ...result,
+      };
+    } catch (error) {
+      console.error("Club invitation error:", error);
+      return {
+        success: false,
+        error: "An unexpected error occurred",
+      };
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -137,13 +230,27 @@ export function UserProfileClient({
                       <p className="text-muted-foreground">
                         @{profileUser.username}
                       </p>
-                      {isOwnProfile && (
+                      {isOwnProfile ? (
                         <Link href="/profile/edit">
                           <Button variant="outline" size="sm" className="w-fit">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Profile
                           </Button>
                         </Link>
+                      ) : (
+                        <Button
+                          variant={isFollowing ? "outline" : "default"}
+                          size="sm"
+                          onClick={handleFollowToggle}
+                          disabled={followMutation.isPending}
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          {followMutation.isPending
+                            ? "Loading..."
+                            : isFollowing
+                            ? "Unfollow"
+                            : "Follow"}
+                        </Button>
                       )}
                       {!isOwnProfile &&
                         currentUser &&
@@ -247,7 +354,7 @@ export function UserProfileClient({
                       <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
                       <span className="text-3xl font-bold text-primary">
                         {userCars.reduce(
-                          (sum, car) => sum + (car.total_likes || 0),
+                          (sum: number, car) => sum + (car.total_likes || 0),
                           0
                         )}
                       </span>

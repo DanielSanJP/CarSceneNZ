@@ -115,8 +115,8 @@ CREATE TABLE public.event_attendees (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT event_attendees_pkey PRIMARY KEY (id),
-    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.events (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -154,8 +154,8 @@ CREATE TABLE public.user_follows (
     following_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT user_follows_pkey PRIMARY KEY (id),
-    CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.users(id),
-    CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id)
+    CONSTRAINT user_follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id),
+    CONSTRAINT user_follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.users (
     id uuid NOT NULL,

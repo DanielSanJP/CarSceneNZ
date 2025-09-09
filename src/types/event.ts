@@ -18,6 +18,9 @@ export interface Event {
     display_name?: string;
     profile_image_url?: string;
   };
+  // RPC fields for optimized queries
+  attendeeCount?: number;
+  interestedCount?: number;
 }
 
 export interface EventAttendee {

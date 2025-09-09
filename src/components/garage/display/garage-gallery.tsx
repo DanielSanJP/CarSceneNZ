@@ -14,89 +14,45 @@ import { Car as CarIcon, Eye, Star, User, Plus } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useMemo } from "react";
-import type { Car } from "@/types/car";
-
-// Gallery car type for display
-type GalleryCar = Pick<
-  Car,
-  | "id"
-  | "brand"
-  | "model"
-  | "year"
-  | "images"
-  | "total_likes"
-  | "created_at"
-  | "owner_id"
-  | "is_liked"
-> & {
-  owner: {
-    id: string;
-    username: string;
-    display_name?: string;
-    profile_image_url?: string;
-  };
-};
+import { useGarage, useCarLike } from "@/hooks/use-garage";
 
 interface GarageGalleryProps {
-  cars: GalleryCar[];
-  user?: {
-    id: string;
-    username: string;
-    display_name?: string;
-  } | null;
-  onLike?: (
-    carId: string,
-    userId: string
-  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
-  onUnlike?: (
-    carId: string,
-    userId: string
-  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
-  // Pagination props
-  currentPage?: number;
-  totalPages?: number;
-  totalCars?: number;
+  page?: number;
+  limit?: number;
 }
 
-export function GarageGallery({
-  cars,
-  user,
-  onLike,
-  onUnlike,
-  currentPage = 1,
-  totalPages = 1,
-  totalCars = 0,
-}: GarageGalleryProps) {
+type SortOption =
+  | "newest_year"
+  | "oldest_year"
+  | "most_liked"
+  | "least_liked"
+  | "recently_added"
+  | "oldest_added";
+
+export function GarageGallery({ page = 1, limit = 12 }: GarageGalleryProps) {
+  const {
+    data: garageData,
+    isLoading,
+    error,
+    isError,
+  } = useGarage(page, limit);
+
+  const carLikeMutation = useCarLike();
+
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [carLikeCounts, setCarLikeCounts] = useState<Record<string, number>>(
-    () => {
-      // Initialize with current like counts
-      const counts: Record<string, number> = {};
-      cars.forEach((car) => {
-        counts[car.id] = car.total_likes;
-      });
-      return counts;
-    }
+    {}
   );
-
-  // Combined filter state to reduce re-renders
   const [filters, setFilters] = useState({
     brand: "all",
     model: "all",
     year: "all",
-    sort: "newest_year", // Default to newest car year instead of recently added
+    sort: "newest_year" as SortOption,
   });
 
-  const handleImageError = (carId: string) => {
-    setFailedImages((prev) => new Set(prev).add(carId));
-  };
-
-  const handleLikeCountChange = (carId: string, newCount: number) => {
-    setCarLikeCounts((prev) => ({
-      ...prev,
-      [carId]: newCount,
-    }));
-  };
+  // Pre-compute data for hooks
+  const cars = useMemo(() => garageData?.cars || [], [garageData?.cars]);
+  const currentUser = garageData?.currentUser || null;
 
   // Memoized filter handlers to prevent unnecessary re-renders
   const updateFilter = useMemo(
@@ -106,7 +62,8 @@ export function GarageGallery({
       model: (value: string) =>
         setFilters((prev) => ({ ...prev, model: value })),
       year: (value: string) => setFilters((prev) => ({ ...prev, year: value })),
-      sort: (value: string) => setFilters((prev) => ({ ...prev, sort: value })),
+      sort: (value: string) =>
+        setFilters((prev) => ({ ...prev, sort: value as SortOption })),
     }),
     []
   );
@@ -188,6 +145,71 @@ export function GarageGallery({
     return filtered;
   }, [cars, filters, carLikeCounts]);
 
+  // Handle loading and error states
+  if (isLoading) {
+    return null; // loading.tsx handles this
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <p className="text-center text-destructive">
+              {error?.message || "Failed to load garage. Please try again."}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!garageData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">No garage data available.</p>
+      </div>
+    );
+  }
+
+  // Handle image loading errors
+  const handleImageError = (carId: string) => {
+    setFailedImages((prev) => new Set(prev).add(carId));
+  };
+
+  // Handle like count changes
+  const handleLikeCountChange = (carId: string, newCount: number) => {
+    setCarLikeCounts((prev) => ({
+      ...prev,
+      [carId]: newCount,
+    }));
+  };
+
+  // Handle car like/unlike
+  const handleLike = async (carId: string) => {
+    if (!currentUser) return { success: false, error: "Not authenticated" };
+
+    try {
+      await carLikeMutation.mutateAsync(carId);
+      return { success: true };
+    } catch (error) {
+      console.error("Error liking car:", error);
+      return { success: false, error: "Failed to like car" };
+    }
+  };
+
+  const handleUnlike = async (carId: string) => {
+    if (!currentUser) return { success: false, error: "Not authenticated" };
+
+    try {
+      await carLikeMutation.mutateAsync(carId);
+      return { success: true };
+    } catch (error) {
+      console.error("Error unliking car:", error);
+      return { success: false, error: "Failed to unlike car" };
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -199,7 +221,7 @@ export function GarageGallery({
               Discover amazing builds from the community
             </p>
           </div>
-          {user && (
+          {currentUser && (
             <div className="flex gap-2 sm:gap-3">
               <Link href="/garage/my-garage" className="flex-1 sm:flex-none">
                 <Button
@@ -309,7 +331,7 @@ export function GarageGallery({
             <p className="text-muted-foreground mb-6">
               Try adjusting your filters or check back later for new builds
             </p>
-            {user && (
+            {currentUser && (
               <Link href="/garage/create">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -349,9 +371,9 @@ export function GarageGallery({
                       initialIsLiked={car.is_liked || false}
                       variant="floating"
                       size="xl"
-                      user={user}
-                      onLike={onLike}
-                      onUnlike={onUnlike}
+                      user={currentUser}
+                      onLike={handleLike}
+                      onUnlike={handleUnlike}
                       onLikeCountChange={(newCount) =>
                         handleLikeCountChange(car.id, newCount)
                       }
@@ -401,60 +423,9 @@ export function GarageGallery({
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-6">
-          <Link
-            href={`/garage?page=${currentPage - 1}`}
-            className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
-          >
-            <Button variant="outline" size="sm" disabled={currentPage <= 1}>
-              <span className="hidden xs:inline">Previous</span>
-              <span className="xs:hidden">Prev</span>
-            </Button>
-          </Link>
-
-          <div className="flex items-center gap-1 sm:gap-2">
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const page = i + Math.max(1, currentPage - 2);
-              if (page > totalPages) return null;
-
-              return (
-                <Link key={page} href={`/garage?page=${page}`}>
-                  <Button
-                    variant={page === currentPage ? "default" : "outline"}
-                    size="sm"
-                    className="h-8 w-8 p-0 text-xs"
-                  >
-                    {page}
-                  </Button>
-                </Link>
-              );
-            })}
-          </div>
-
-          <Link
-            href={`/garage?page=${currentPage + 1}`}
-            className={
-              currentPage >= totalPages ? "pointer-events-none opacity-50" : ""
-            }
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={currentPage >= totalPages}
-            >
-              <span className="hidden xs:inline">Next</span>
-              <span className="xs:hidden">Next</span>
-            </Button>
-          </Link>
-        </div>
-      )}
-
       {/* Results info */}
       <div className="text-center text-xs sm:text-sm text-muted-foreground mt-3">
-        Showing {cars.length} of {totalCars} cars
-        {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
+        Showing {filteredAndSortedCars.length} of {cars.length} cars
       </div>
     </div>
   );
