@@ -7,6 +7,7 @@ import { LikeButton } from "@/components/ui/like-button";
 import { ArrowLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCarDetail, useCarLike } from "@/hooks/use-garage";
 import {
   CarImageGallery,
   OwnerDetails,
@@ -20,47 +21,216 @@ import {
   InteriorModifications,
   CarStats,
 } from "./car-detail-cards";
-import type { Car } from "@/types/car";
+import type { User } from "@/types/user";
 import { getEngineData } from "@/lib/utils/car-helpers";
 
 interface CarDetailViewProps {
-  car: Car;
-  user?: {
-    id: string;
-    username: string;
-    display_name?: string;
-  } | null;
-  onLike?: (
-    carId: string,
-    userId: string
-  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
-  onUnlike?: (
-    carId: string,
-    userId: string
-  ) => Promise<{ success: boolean; newLikeCount?: number; error?: string }>;
+  carId: string;
+  user?: User | null;
 }
 
 export const CarDetailView = React.memo(function CarDetailView({
-  car,
+  carId,
   user,
-  onLike,
-  onUnlike,
 }: CarDetailViewProps) {
   const router = useRouter();
-  const [likeCount, setLikeCount] = useState(car.total_likes);
+  const {
+    data: carDetailData,
+    isLoading,
+    error,
+    refetch,
+  } = useCarDetail(carId);
+  const carLikeMutation = useCarLike();
+  const [likeCount, setLikeCount] = useState(0);
+
+  // Memoize car formatted data to prevent unnecessary recalculations
+  const carFormatted = useMemo(() => {
+    if (!carDetailData) return null;
+
+    const { car, engine, wheels, suspension, brakes, exterior, interior } =
+      carDetailData;
+
+    // Convert API array formats to Car type object formats
+    const convertedBrakes = brakes?.length
+      ? {
+          front: brakes.find((b) => b.position === "front")
+            ? {
+                caliper: brakes.find((b) => b.position === "front")
+                  ?.caliper_brand,
+                pads: brakes.find((b) => b.position === "front")?.pad_brand,
+                disc_size: brakes.find((b) => b.position === "front")
+                  ?.rotor_size,
+                disc_type: brakes.find((b) => b.position === "front")
+                  ?.rotor_model,
+              }
+            : undefined,
+          rear: brakes.find((b) => b.position === "rear")
+            ? {
+                caliper: brakes.find((b) => b.position === "rear")
+                  ?.caliper_brand,
+                pads: brakes.find((b) => b.position === "rear")?.pad_brand,
+                disc_size: brakes.find((b) => b.position === "rear")
+                  ?.rotor_size,
+                disc_type: brakes.find((b) => b.position === "rear")
+                  ?.rotor_model,
+              }
+            : undefined,
+        }
+      : undefined;
+
+    const convertedSuspension = suspension?.length
+      ? {
+          front: suspension.find((s) => s.position === "front")
+            ? {
+                suspension: suspension.find((s) => s.position === "front")
+                  ?.brand,
+                spring_rate: suspension.find((s) => s.position === "front")
+                  ?.spring_rate,
+                strut_brace: suspension.find((s) => s.position === "front")
+                  ?.strut_brace,
+                anti_roll_bar: suspension.find((s) => s.position === "front")
+                  ?.anti_roll_bar,
+              }
+            : undefined,
+          rear: suspension.find((s) => s.position === "rear")
+            ? {
+                suspension: suspension.find((s) => s.position === "rear")
+                  ?.brand,
+                spring_rate: suspension.find((s) => s.position === "rear")
+                  ?.spring_rate,
+                strut_brace: suspension.find((s) => s.position === "rear")
+                  ?.strut_brace,
+                anti_roll_bar: suspension.find((s) => s.position === "rear")
+                  ?.anti_roll_bar,
+              }
+            : undefined,
+        }
+      : undefined;
+
+    const convertedWheels = wheels?.length
+      ? {
+          front: wheels.find((w) => w.position === "front")
+            ? {
+                wheel: wheels.find((w) => w.position === "front")?.brand,
+                wheel_size: wheels.find((w) => w.position === "front")?.size,
+                wheel_offset: wheels
+                  .find((w) => w.position === "front")
+                  ?.offset?.toString(),
+                tyre: wheels.find((w) => w.position === "front")?.tire_brand,
+                tyre_size: wheels.find((w) => w.position === "front")
+                  ?.tire_size,
+              }
+            : undefined,
+          rear: wheels.find((w) => w.position === "rear")
+            ? {
+                wheel: wheels.find((w) => w.position === "rear")?.brand,
+                wheel_size: wheels.find((w) => w.position === "rear")?.size,
+                wheel_offset: wheels
+                  .find((w) => w.position === "rear")
+                  ?.offset?.toString(),
+                tyre: wheels.find((w) => w.position === "rear")?.tire_brand,
+                tyre_size: wheels.find((w) => w.position === "rear")?.tire_size,
+              }
+            : undefined,
+        }
+      : undefined;
+
+    return {
+      ...car,
+      // Flatten engine data
+      ...engine,
+      // Flatten exterior data
+      ...exterior,
+      // Flatten interior data
+      ...interior,
+      // Convert structured data to Car type format
+      brakes: convertedBrakes,
+      suspension: convertedSuspension,
+      wheels: convertedWheels,
+    };
+  }, [carDetailData]);
+
+  // Memoize the engine data to avoid recalculation on each render
+  const engineData = useMemo(() => {
+    if (!carFormatted) return null;
+    return getEngineData(carFormatted);
+  }, [carFormatted]);
+
+  // Update like count when data loads
+  React.useEffect(() => {
+    if (carDetailData?.car?.total_likes !== undefined) {
+      setLikeCount(carDetailData.car.total_likes);
+    }
+  }, [carDetailData?.car?.total_likes]);
+
+  // Handle loading state - let loading.tsx handle this
+  if (isLoading) {
+    return null; // loading.tsx will show the skeleton
+  }
+
+  // Handle error or missing data - simple error fallback
+  if (error || !carDetailData || !carFormatted || !engineData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">
+            Failed to load car details
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            There was an error loading the car information.
+          </p>
+          <Button onClick={() => refetch()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const { car } = carDetailData;
 
   // Check if user owns this car
   const isOwner = user && car.owner_id === user.id;
   const owner = car.owner;
-
-  // Memoize the engine data to avoid recalculation on each render
-  const engineData = useMemo(() => getEngineData(car), [car]);
 
   const handleBackClick = () => {
     if (window.history.length > 1) {
       router.back();
     } else {
       router.push("/garage");
+    }
+  };
+
+  // Optimized like/unlike handlers
+  const handleLike = async (carId: string) => {
+    try {
+      const result = await carLikeMutation.mutateAsync(carId);
+      if (result.success) {
+        setLikeCount(result.newLikeCount || likeCount + 1);
+        return {
+          success: true,
+          newLikeCount: result.newLikeCount || likeCount + 1,
+        };
+      }
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error("Failed to like car:", error);
+      return { success: false, error: "Failed to like car" };
+    }
+  };
+
+  const handleUnlike = async (carId: string) => {
+    try {
+      const result = await carLikeMutation.mutateAsync(carId);
+      if (result.success) {
+        setLikeCount(result.newLikeCount || likeCount - 1);
+        return {
+          success: true,
+          newLikeCount: result.newLikeCount || likeCount - 1,
+        };
+      }
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error("Failed to unlike car:", error);
+      return { success: false, error: "Failed to unlike car" };
     }
   };
 
@@ -87,8 +257,8 @@ export const CarDetailView = React.memo(function CarDetailView({
                 initialIsLiked={car.is_liked || false}
                 size="default"
                 user={user}
-                onLike={onLike}
-                onUnlike={onUnlike}
+                onLike={handleLike}
+                onUnlike={handleUnlike}
                 onLikeCountChange={setLikeCount}
               />
               {isOwner && (
@@ -105,7 +275,7 @@ export const CarDetailView = React.memo(function CarDetailView({
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Images */}
             <div className="space-y-4">
-              <CarImageGallery car={car} />
+              <CarImageGallery car={carFormatted} />
 
               {/* Owner Details */}
               {owner && <OwnerDetails owner={owner} />}
@@ -114,31 +284,31 @@ export const CarDetailView = React.memo(function CarDetailView({
             {/* Car Details */}
             <div className="space-y-6">
               {/* Basic Info */}
-              <BasicCarInfo car={car} />
+              <BasicCarInfo car={carFormatted} />
 
               {/* Engine Details */}
               <EngineDetails engine={engineData} />
 
               {/* Engine Modifications */}
-              <EngineModifications car={car} />
+              <EngineModifications car={carFormatted} />
 
               {/* Wheels & Tires */}
-              <WheelsTires car={car} />
+              <WheelsTires car={carFormatted} />
 
               {/* Suspension */}
-              <SuspensionDetails car={car} />
+              <SuspensionDetails car={carFormatted} />
 
               {/* Brakes */}
-              <BrakingSystem car={car} />
+              <BrakingSystem car={carFormatted} />
 
               {/* Exterior Modifications */}
-              <ExteriorModifications car={car} />
+              <ExteriorModifications car={carFormatted} />
 
               {/* Interior Modifications */}
-              <InteriorModifications car={car} />
+              <InteriorModifications car={carFormatted} />
 
               {/* Like Section */}
-              <CarStats car={car} likeCount={likeCount} />
+              <CarStats car={carFormatted} likeCount={likeCount} />
             </div>
           </div>
         </div>

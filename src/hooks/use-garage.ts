@@ -15,87 +15,108 @@ export interface GarageData {
 }
 
 export interface CarDetailData {
-  car: Car;
-  user: User | null;
-  hasLiked: boolean;
-  likeCount: number;
-  currentUser: User | null;
-  engine?: {
-    make: string;
+  car: {
+    id: string;
+    brand: string;
     model: string;
-    year?: number;
+    year: number;
+    images: string[];
+    total_likes: number;
+    created_at: string;
+    updated_at: string;
+    owner_id: string;
+    is_liked: boolean;
+    owner: {
+      id: string;
+      username: string;
+      display_name?: string;
+      profile_image_url?: string;
+    };
+  };
+  engine: {
+    engine_code?: string;
     displacement?: string;
-    cylinder_count?: number;
-    forced_induction?: string;
-    fuel_type?: string;
-    transmission?: string;
-    drivetrain?: string;
+    aspiration?: string;
     power_hp?: number;
-    torque_lb_ft?: number;
-    modifications?: string;
+    torque_nm?: number;
+    ecu?: string;
+    tuned_by?: string;
+    pistons?: string;
+    connecting_rods?: string;
+    valves?: string;
+    valve_springs?: string;
+    camshafts?: string;
+    header?: string;
+    exhaust?: string;
+    intake?: string;
+    turbo?: string;
+    intercooler?: string;
+    fuel_injectors?: string;
+    fuel_pump?: string;
+    fuel_rail?: string;
   };
-  wheels?: {
-    front_wheel_brand?: string;
-    front_wheel_model?: string;
-    front_wheel_size?: string;
-    front_tire_brand?: string;
-    front_tire_model?: string;
-    front_tire_size?: string;
-    rear_wheel_brand?: string;
-    rear_wheel_model?: string;
-    rear_wheel_size?: string;
-    rear_tire_brand?: string;
-    rear_tire_model?: string;
-    rear_tire_size?: string;
-    wheel_color?: string;
-    wheel_finish?: string;
-  };
-  suspension?: {
-    front_suspension?: string;
-    rear_suspension?: string;
-    coilovers?: string;
-    lowering_amount?: string;
-    spring_rates?: string;
-    damper_settings?: string;
-    anti_roll_bars?: string;
-    alignment_specs?: string;
-  };
-  brakes?: {
-    front_brake_brand?: string;
-    front_brake_model?: string;
-    front_rotor_size?: string;
-    front_rotor_type?: string;
-    rear_brake_brand?: string;
-    rear_brake_model?: string;
-    rear_rotor_size?: string;
-    rear_rotor_type?: string;
-    brake_fluid?: string;
-    brake_lines?: string;
-  };
-  exterior_modifications?: {
-    body_kit?: string;
+  wheels: Array<{
+    position: string;
+    brand?: string;
+    model?: string;
+    size?: string;
+    offset?: number;
+    tire_brand?: string;
+    tire_model?: string;
+    tire_size?: string;
+  }>;
+  suspension: Array<{
+    position?: string;
+    suspension_type?: string;
+    brand?: string;
+    model?: string;
+    spring_rate?: string;
+    damping?: string;
+    anti_roll_bar?: string;
+    strut_brace?: string;
+  }>;
+  brakes: Array<{
+    position: string;
+    caliper_brand?: string;
+    caliper_model?: string;
+    rotor_brand?: string;
+    rotor_model?: string;
+    rotor_size?: string;
+    pad_brand?: string;
+    pad_model?: string;
+  }>;
+  exterior: {
     front_bumper?: string;
+    front_lip?: string;
     rear_bumper?: string;
+    rear_lip?: string;
     side_skirts?: string;
-    spoiler?: string;
+    rear_spoiler?: string;
+    diffuser?: string;
+    fender_flares?: string;
     hood?: string;
-    fenders?: string;
     paint_color?: string;
     paint_finish?: string;
-    wrap_details?: string;
-    window_tint?: string;
-    lights?: string;
+    wrap_brand?: string;
+    wrap_color?: string;
+    headlights?: string;
+    taillights?: string;
+    fog_lights?: string;
+    underglow?: string;
+    interior_lighting?: string;
   };
-  interior_modifications?: {
-    seats?: string;
+  interior: {
+    front_seats?: string;
+    rear_seats?: string;
     steering_wheel?: string;
-    shift_knob?: string;
-    pedals?: string;
-    gauges?: string;
-    audio_system?: string;
-    trim_details?: string;
-    floor_mats?: string;
-    other_interior?: string;
+    head_unit?: string;
+    speakers?: string;
+    subwoofer?: string;
+    amplifier?: string;
+  };
+  meta: {
+    generated_at: string;
+    cache_key: string;
   };
 }
 
@@ -180,7 +201,14 @@ async function toggleCarLike(carId: string) {
     throw new Error(error.error || 'Failed to toggle car like');
   }
 
-  return response.json();
+  const result = await response.json();
+  return {
+    success: result.success,
+    newLikeCount: result.new_like_count,
+    action: result.action,
+    isLiked: result.is_liked,
+    error: result.error,
+  };
 }
 
 // Hook to fetch garage with optimized settings
@@ -288,10 +316,16 @@ export function useCarLike() {
         (oldData) => {
           if (!oldData) return oldData;
 
+          const wasLiked = oldData.car.is_liked;
+          const currentLikeCount = oldData.car.total_likes;
+
           return {
             ...oldData,
-            hasLiked: !oldData.hasLiked,
-            likeCount: oldData.hasLiked ? oldData.likeCount - 1 : oldData.likeCount + 1,
+            car: {
+              ...oldData.car,
+              is_liked: !wasLiked,
+              total_likes: wasLiked ? currentLikeCount - 1 : currentLikeCount + 1,
+            },
           };
         }
       );

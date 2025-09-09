@@ -241,3 +241,45 @@ export function useEventsPreloader() {
     }
   };
 }
+
+// User Events Data Interface
+export interface UserEventsData {
+  events: Event[];
+  total: number;
+  meta: {
+    generated_at: string;
+    cache_key: string;
+  };
+}
+
+// Get user's events data
+async function getUserEventsData(): Promise<UserEventsData> {
+  const response = await fetch('/api/events/my-events', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch user events');
+  }
+
+  return response.json();
+}
+
+// Hook to fetch user's events with optimized settings
+export function useUserEvents() {
+  return useQuery({
+    queryKey: eventsKeys.myEvents(),
+    queryFn: getUserEventsData,
+    staleTime: 2 * 60 * 1000, // 2 minutes - user's own events might change
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    networkMode: 'offlineFirst',
+  });
+}
