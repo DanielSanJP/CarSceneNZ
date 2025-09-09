@@ -2,7 +2,7 @@ import { getUserOptional } from "@/lib/auth";
 import { CarDetailView } from "@/components/garage/display/car-detail-view";
 
 interface CarDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function CarDetailPage({ params }: CarDetailPageProps) {

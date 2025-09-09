@@ -1,7 +1,7 @@
 import { GarageGallery } from "@/components/garage/display/garage-gallery";
 
 interface GaragePageProps {
-  searchParams: { page?: string };
+  searchParams: Promise<{ page?: string }>;
 }
 
 export default async function GaragePage({ searchParams }: GaragePageProps) {

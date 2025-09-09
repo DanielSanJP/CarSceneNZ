@@ -6,7 +6,7 @@ import { EventDetailView } from "@/components/events/display/event-detail-view";
 export const dynamic = "force-dynamic";
 
 interface EventDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function EventDetailPage({

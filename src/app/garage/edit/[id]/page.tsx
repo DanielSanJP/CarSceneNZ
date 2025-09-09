@@ -10,7 +10,7 @@ import { EditCarForm } from "@/components/garage";
 import { uploadCarImages } from "@/lib/server/image-upload";
 
 interface EditCarPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 async function uploadCarImagesServerAction(
