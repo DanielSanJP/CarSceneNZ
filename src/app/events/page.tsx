@@ -2,6 +2,54 @@ import { getUserOptional } from "@/lib/auth";
 import { createClient } from "@/lib/utils/supabase/server";
 import { EventsGallery } from "@/components/events";
 import type { EventsData } from "@/types/event";
+import { revalidatePath } from "next/cache";
+import { getUser } from "@/lib/auth";
+
+// Server action for event attendance - directly in this file
+async function attendEventAction(
+  eventId: string,
+  status: "interested" | "going" | "remove"
+) {
+  "use server";
+
+  try {
+    const user = await getUser();
+    if (!user) {
+      return { success: false, error: "Authentication required" };
+    }
+
+    const supabase = await createClient();
+
+    // Call the RPC function with correct parameter names
+    const { data: result, error } = await supabase.rpc(
+      "toggle_event_attendance",
+      {
+        target_event_id: eventId,
+        current_user_id: user.id,
+        attendance_status: status,
+      }
+    );
+
+    if (error) {
+      console.error("Event attendance RPC error:", error);
+      return { success: false, error: "Failed to update attendance" };
+    }
+
+    if (!result || result.length === 0) {
+      return { success: false, error: "No response from attendance update" };
+    }
+
+    // Revalidate the events page to show updated data
+    revalidatePath("/events");
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Server action error:", error);
+    return { success: false, error: "Server error occurred" };
+  }
+}
 
 // Define type for RPC result
 type EventRPCResult = {
@@ -25,8 +73,14 @@ interface EventsPageProps {
   searchParams: Promise<{ page?: string }>;
 }
 
-// Cache this page for 5 minutes, then revalidate in the background
+// Cache this page for 5 minutes with ISR, then revalidate in the background
 export const revalidate = 300; // 5 minutes
+
+// Alternative: Generate static pages for first few pages
+export async function generateStaticParams() {
+  // Pre-generate first 3 pages at build time
+  return [{ page: "1" }, { page: "2" }, { page: "3" }];
+}
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   // Await searchParams before accessing properties (Next.js 15 requirement)
@@ -41,7 +95,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   const user = await getUserOptional();
   const supabase = await createClient();
 
-  // Fetch initial events data directly in server component
+  console.log(
+    `🗄️ Next.js Cache: Fetching events page ${page} directly from database...`
+  );
+  const startTime = Date.now();
+
+  // Fetch initial events data directly in server component with Next.js caching
   const { data: events, error } = (await supabase.rpc("get_events_optimized", {
     page_limit: limit,
     page_offset: offset,
@@ -70,6 +129,10 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       }, {});
     }
   }
+
+  console.log(
+    `✅ Next.js Cache: Events fetched in ${Date.now() - startTime}ms`
+  );
 
   // Transform events data to match our EventsData interface
   const eventsData: EventsData = {
@@ -109,5 +172,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     },
   };
 
-  return <EventsGallery page={page} limit={limit} initialData={eventsData} />;
+  return (
+    <EventsGallery
+      page={page}
+      limit={limit}
+      eventsData={eventsData}
+      attendEventAction={attendEventAction}
+    />
+  );
 }

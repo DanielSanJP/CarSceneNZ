@@ -12,22 +12,83 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Car as CarIcon, Users, Trophy, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useHomeDataProcessed, type HomeData } from "@/hooks/use-home";
 import type { Event } from "@/types/event";
+import type { Car } from "@/types/car";
+import type { User } from "@/types/user";
 
-interface HomepageProps {
-  initialData?: HomeData | null;
+// Extended types for home page data - moved from use-home.ts
+export interface HomeEvent extends Event {
+  host?: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  };
+  attendeeCount?: number;
+  interestedCount?: number;
 }
 
-export function Homepage({ initialData }: HomepageProps) {
-  const {
-    data: processedData,
-    rawData,
-    isLoading,
-    error,
-    isError,
-  } = useHomeDataProcessed(initialData);
+export interface HomeCar extends Car {
+  owner?: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  };
+}
 
+export interface HomeClub {
+  id: string;
+  name: string;
+  description?: string;
+  logo_url?: string;
+  banner_url?: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  leader_id: string;
+  leader?: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  };
+  member_count?: number;
+}
+
+export interface HomeUser extends User {
+  car_count?: number;
+  followers_count?: number;
+}
+
+export interface HomeData {
+  events: HomeEvent[];
+  cars: HomeCar[];
+  clubs: HomeClub[];
+  users: HomeUser[];
+  stats: {
+    total_events: number;
+    total_cars: number;
+    total_clubs: number;
+    total_users: number;
+  };
+  meta: {
+    generated_at: string;
+    cache_key: string;
+  };
+}
+
+export interface ProcessedHomeData extends HomeData {
+  upcomingEvents: HomeEvent[];
+  featuredCars: HomeCar[];
+  usersMap: Record<string, HomeUser>;
+}
+
+interface HomepageProps {
+  homeData: ProcessedHomeData | null;
+}
+
+export function Homepage({ homeData }: HomepageProps) {
   // Helper function to format date with ordinal suffix
   const formatEventDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -53,20 +114,14 @@ export function Homepage({ initialData }: HomepageProps) {
     return `${weekday} ${day}${getOrdinalSuffix(day)} ${month}`;
   };
 
-  // Loading state - this should rarely show due to loading.tsx
-  if (isLoading) {
-    return null;
-  }
-
-  // Error state
-  if (isError) {
+  // No data state
+  if (!homeData) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md">
           <CardContent className="pt-6">
             <p className="text-center text-destructive">
-              {error?.message ||
-                "Failed to load home page data. Please try again."}
+              Failed to load home page data. Please try again.
             </p>
           </CardContent>
         </Card>
@@ -74,17 +129,8 @@ export function Homepage({ initialData }: HomepageProps) {
     );
   }
 
-  // No data state
-  if (!processedData || !rawData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">No data available.</p>
-      </div>
-    );
-  }
-
-  // Extract optimized data
-  const { upcomingEvents, featuredCars, usersMap } = processedData;
+  // Extract data from props
+  const { upcomingEvents, featuredCars, usersMap } = homeData;
 
   return (
     <div className="min-h-screen bg-background">
@@ -195,7 +241,7 @@ export function Homepage({ initialData }: HomepageProps) {
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {featuredCars && featuredCars.length > 0 ? (
-            featuredCars.map((car) => (
+            featuredCars.map((car: HomeCar) => (
               <Link key={car.id} href={`/garage/${car.id}`}>
                 <Card className="overflow-hidden pt-0 text-center hover:shadow-lg transition-shadow cursor-pointer">
                   <div className="relative aspect-square overflow-hidden">

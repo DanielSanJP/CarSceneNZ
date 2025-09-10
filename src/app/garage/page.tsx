@@ -1,6 +1,8 @@
 import { getUserOptional } from "@/lib/auth";
 import { createClient } from "@/lib/utils/supabase/server";
 import { GarageGallery } from "@/components/garage/display/garage-gallery";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { GarageData } from "@/types/car";
 
 interface GaragePageProps {
@@ -9,6 +11,55 @@ interface GaragePageProps {
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
+
+// Server action for car likes
+async function likeCarAction(carId: string) {
+  "use server";
+
+  const user = await getUserOptional();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const supabase = await createClient();
+
+  try {
+    console.log(
+      `🔄 Server Action: Toggling like for car ${carId}, user ${user.id}`
+    );
+
+    // Call the RPC function for car likes
+    const { data, error } = await supabase.rpc("toggle_car_like_optimized", {
+      car_id_param: carId,
+      user_id_param: user.id,
+    });
+
+    if (error) {
+      console.error("❌ Car Like RPC Error:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Car Like Success:", data);
+
+    // Revalidate relevant pages
+    revalidatePath("/garage");
+    revalidatePath(`/garage/${carId}`);
+    revalidatePath("/");
+
+    return {
+      success: true,
+      newLikeCount: data.new_like_count,
+      isLiked: data.is_liked,
+      action: data.action,
+    };
+  } catch (error) {
+    console.error("❌ Car Like Server Action Exception:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update like",
+    };
+  }
+}
 
 export default async function GaragePage({ searchParams }: GaragePageProps) {
   // Await searchParams before accessing properties (Next.js 15 requirement)
@@ -53,7 +104,12 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
-          <GarageGallery page={page} limit={limit} initialData={garageData} />
+          <GarageGallery
+            page={page}
+            limit={limit}
+            garageData={garageData}
+            likeCarAction={likeCarAction}
+          />
         </div>
       </div>
     </div>

@@ -58,8 +58,8 @@ const getAllClubs = cache(async (): Promise<Club[]> => {
   return data as Club[];
 });
 
-// Force dynamic rendering since we use authentication/cookies
-export const dynamic = "force-dynamic";
+// Cache this page for 5 minutes, then revalidate in the background
+export const revalidate = 300; // 5 minutes
 
 export default async function SearchPage() {
   // Fetch all data on the server

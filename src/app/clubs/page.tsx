@@ -8,8 +8,8 @@ import { createClient } from "@/lib/utils/supabase/server";
 import { Club } from "@/types";
 import { getClubsGalleryData, type ClubsGalleryData } from "@/hooks/use-clubs";
 
-// Force dynamic rendering since we use authentication/cookies
-export const dynamic = "force-dynamic";
+// Cache this page for 5 minutes, then revalidate in the background
+export const revalidate = 300; // 5 minutes
 
 // Inline server functions from clubs.ts
 async function createClub(clubData: {
@@ -411,5 +411,3 @@ export default async function ClubsPage({
     />
   );
 }
-
-export const revalidate = 300; // 5 minutes

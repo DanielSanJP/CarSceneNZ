@@ -3,13 +3,16 @@ import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/utils/supabase/server";
 import { UserGarageData } from "@/types/car";
 
-// Force dynamic rendering for authentication
-export const dynamic = "force-dynamic";
+// Cache this page for 5 minutes, then revalidate in the background
+export const revalidate = 300; // 5 minutes
 
 export default async function MyGaragePage() {
   // Server-side auth check - this will redirect if not authenticated
   const user = await getUser();
   const supabase = await createClient();
+
+  console.log("🚀 SSR: Fetching user garage data using optimized RPC...");
+  const startTime = Date.now();
 
   // Fetch initial my garage data server-side
   const { data, error } = await supabase.rpc("get_user_garage_optimized", {
@@ -21,7 +24,11 @@ export default async function MyGaragePage() {
     throw new Error("Failed to load your garage");
   }
 
-  const initialData: UserGarageData = data || {
+  console.log(
+    `✅ SSR: User garage data fetched in ${Date.now() - startTime}ms`
+  );
+
+  const garageData: UserGarageData = data || {
     cars: [],
     total: 0,
     meta: {
@@ -30,5 +37,5 @@ export default async function MyGaragePage() {
     },
   };
 
-  return <MyGarageView initialData={initialData} />;
+  return <MyGarageView garageData={garageData} />;
 }

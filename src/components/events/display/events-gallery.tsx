@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Event, EventsData } from "@/types/event";
-import { useEvents, useEventAttendance } from "@/hooks/use-events";
 import {
   Card,
   CardContent,
@@ -35,34 +34,13 @@ import {
 } from "lucide-react";
 
 interface EventsGalleryProps {
-  // Optional props for when used as a standalone optimized component
-  page?: number;
-  limit?: number;
-  // SSR support
-  initialData?: EventsData | null;
-  // Legacy props for when used with external data
-  events?: Event[];
-  user?: {
-    id: string;
-    username: string;
-    display_name?: string;
-  } | null;
-  attendeeCounts?: Record<
-    string,
-    { interested: number; going: number; total: number }
-  >;
-  userEventStatuses?: Record<string, string>;
+  page: number;
+  limit: number;
+  eventsData: EventsData; // Direct SSR data - required
   attendEventAction?: (
     eventId: string,
-    userId: string,
-    status: "interested" | "going" | "approved"
+    status: "interested" | "going" | "remove"
   ) => Promise<{ success: boolean; error?: string }>;
-  unattendEventAction?: (
-    eventId: string,
-    userId: string
-  ) => Promise<{ success: boolean; error?: string }>;
-  totalPages?: number;
-  currentPage?: number;
 }
 
 // Memoized individual event card component
@@ -252,32 +230,16 @@ const EventCard = React.memo(
 EventCard.displayName = "EventCard";
 
 export function EventsGallery({
-  // Optimized mode props
-  page = 1,
-  limit = 12,
-  // SSR support
-  initialData,
-  // Legacy mode props
-  events: propEvents,
-  user: propUser,
-  attendeeCounts: propAttendeeCounts,
-  userEventStatuses: propUserEventStatuses,
-  attendEventAction: propAttendEventAction,
-  unattendEventAction: propUnattendEventAction,
+  page,
+  limit,
+  eventsData,
+  attendEventAction,
 }: EventsGalleryProps) {
   const router = useRouter();
 
-  // Use React Query hooks when no events prop is provided (optimized mode)
-  const shouldUseOptimizedMode = !propEvents;
-
-  const {
-    data: eventsData,
-    isLoading,
-    error,
-    isError,
-  } = useEvents(page, limit, initialData);
-
-  const attendanceMutation = useEventAttendance();
+  console.log(
+    `📊 EventsGallery: Using pure SSR data (Next.js) - Page ${page}, Limit ${limit}`
+  );
 
   // State for filters - combined into single object to reduce re-renders
   const [filters, setFilters] = useState({
@@ -298,83 +260,36 @@ export function EventsGallery({
     setFailedImages((prev) => new Set(prev).add(eventId));
   }, []);
 
-  // Determine which data source to use
-  const events = useMemo(
-    () => propEvents || eventsData?.events || [],
-    [propEvents, eventsData?.events]
-  );
+  // Use SSR data directly
+  const events = useMemo(() => eventsData?.events || [], [eventsData?.events]);
+  const user = eventsData?.currentUser || null;
+  const userEventStatuses = eventsData?.userStatuses || {};
 
-  const user = propUser || eventsData?.currentUser || null;
-  const userEventStatuses =
-    propUserEventStatuses || eventsData?.userStatuses || {};
-
-  // Convert eventsData to attendeeCounts format if using optimized mode
+  // Convert eventsData to attendeeCounts format
   const attendeeCounts = useMemo(
     () =>
-      propAttendeeCounts ||
-      (eventsData?.events
-        ? eventsData.events.reduce((acc, event) => {
-            acc[event.id] = {
-              interested: event.interestedCount || 0,
-              going: event.attendeeCount || 0,
-              total: (event.interestedCount || 0) + (event.attendeeCount || 0),
-            };
-            return acc;
-          }, {} as Record<string, { interested: number; going: number; total: number }>)
-        : {}),
-    [propAttendeeCounts, eventsData?.events]
+      eventsData?.events
+        ? eventsData.events.reduce(
+            (
+              acc: Record<
+                string,
+                { interested: number; going: number; total: number }
+              >,
+              event: Event
+            ) => {
+              acc[event.id] = {
+                interested: event.interestedCount || 0,
+                going: event.attendeeCount || 0,
+                total:
+                  (event.interestedCount || 0) + (event.attendeeCount || 0),
+              };
+              return acc;
+            },
+            {}
+          )
+        : {},
+    [eventsData?.events]
   );
-
-  // Handle attendance actions - use optimized or legacy approach
-  const handleOptimizedAttendance = async (
-    eventId: string,
-    status: "interested" | "going"
-  ): Promise<{ success: boolean; error?: string }> => {
-    try {
-      await attendanceMutation.mutateAsync({ eventId, status });
-      return { success: true };
-    } catch (error) {
-      console.error("Error updating event attendance:", error);
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to update attendance",
-      };
-    }
-  };
-
-  const handleOptimizedUnattendance = async (
-    eventId: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    try {
-      await attendanceMutation.mutateAsync({ eventId, status: "remove" });
-      return { success: true };
-    } catch (error) {
-      console.error("Error removing event attendance:", error);
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to remove attendance",
-      };
-    }
-  };
-
-  // Use appropriate attendance handlers
-  const attendEventAction =
-    propAttendEventAction ||
-    ((
-      eventId: string,
-      _userId: string,
-      status: "interested" | "going" | "approved"
-    ) => handleOptimizedAttendance(eventId, status as "interested" | "going"));
-
-  const unattendEventAction =
-    propUnattendEventAction ||
-    ((eventId: string) => handleOptimizedUnattendance(eventId));
 
   // Optimized location extraction with Set for better performance
   const locations = useMemo(() => {
@@ -412,33 +327,6 @@ export function EventsGallery({
     // Default newest first (already sorted from server)
     return filtered;
   }, [events, filters.location, filters.sortOrder]);
-
-  // Handle loading and error states for optimized mode
-  if (shouldUseOptimizedMode && isLoading) {
-    return null; // loading.tsx handles this
-  }
-
-  if (shouldUseOptimizedMode && isError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center text-destructive">
-              {error?.message || "Failed to load events. Please try again."}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (shouldUseOptimizedMode && !eventsData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">No events data available.</p>
-      </div>
-    );
-  }
 
   // Helper function to format date and time period for daily schedule
   const formatDate = (schedule: unknown) => {
@@ -486,7 +374,7 @@ export function EventsGallery({
   // Handle user attendance actions with optimistic updates
   const handleAttendanceAction = async (
     eventId: string,
-    status: "interested" | "going"
+    status: "interested" | "going" | "remove"
   ) => {
     if (!user) {
       // Redirect to register page when user is not logged in
@@ -494,8 +382,8 @@ export function EventsGallery({
       return;
     }
 
-    if (!attendEventAction || !unattendEventAction) {
-      console.error("Server actions not provided");
+    if (!attendEventAction) {
+      console.error("Server action not provided");
       return;
     }
 
@@ -503,45 +391,33 @@ export function EventsGallery({
       const currentStatus = getUserStatus(eventId);
 
       // Optimistic update - update UI immediately
-      if (currentStatus === status) {
+      if (status === "remove" || currentStatus === status) {
         // User is removing their attendance
         setLocalUserStatuses((prev) => ({ ...prev, [eventId]: null }));
       } else {
-        // User is setting/changing their attendance
+        // User is setting new attendance status
         setLocalUserStatuses((prev) => ({ ...prev, [eventId]: status }));
       }
 
-      // Then make the actual server call
-      if (currentStatus === status) {
-        // User is removing their attendance (same as detail page)
-        const result = await unattendEventAction(eventId, user.id);
-        if (!result.success) {
-          console.error("Failed to unattend event:", result.error);
-          // Revert optimistic update on failure
-          setLocalUserStatuses((prev) => ({
-            ...prev,
-            [eventId]: currentStatus,
-          }));
-        }
-      } else {
-        // User is setting/changing their attendance (same as detail page)
-        const result = await attendEventAction(eventId, user.id, status);
-        if (!result.success) {
-          console.error("Failed to attend event:", result.error);
-          // Revert optimistic update on failure
-          setLocalUserStatuses((prev) => ({
-            ...prev,
-            [eventId]: currentStatus,
-          }));
-        }
+      // Call server action with the actual status (or 'remove' for unattending)
+      const actionStatus =
+        status === "remove" || currentStatus === status ? "remove" : status;
+      const result = await attendEventAction(eventId, actionStatus);
+
+      if (!result.success) {
+        // Revert optimistic update on failure
+        setLocalUserStatuses((prev) => ({ ...prev, [eventId]: currentStatus }));
+        console.error("Failed to update attendance:", result.error);
       }
     } catch (error) {
       console.error("Error updating attendance:", error);
       // Revert optimistic update on error
-      const currentStatus = userEventStatuses?.[eventId] || null;
+      const currentStatus = getUserStatus(eventId);
       setLocalUserStatuses((prev) => ({ ...prev, [eventId]: currentStatus }));
     }
-  }; // Helper function to get host info
+  };
+
+  // Helper function to get host info
   const getHostInfo = (
     host:
       | {

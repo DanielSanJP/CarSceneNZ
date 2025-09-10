@@ -14,13 +14,19 @@ import { Car as CarIcon, Eye, Star, User, Plus } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useMemo } from "react";
-import { useGarage, useCarLike } from "@/hooks/use-garage";
 import type { GarageData } from "@/types/car";
 
 interface GarageGalleryProps {
   page?: number;
   limit?: number;
-  initialData?: GarageData | null;
+  garageData: GarageData | null;
+  likeCarAction?: (carId: string) => Promise<{
+    success: boolean;
+    error?: string;
+    newLikeCount?: number;
+    isLiked?: boolean;
+    action?: string;
+  }>;
 }
 
 type SortOption =
@@ -32,19 +38,9 @@ type SortOption =
   | "oldest_added";
 
 export function GarageGallery({
-  page = 1,
-  limit = 12,
-  initialData,
+  garageData,
+  likeCarAction,
 }: GarageGalleryProps) {
-  const {
-    data: garageData,
-    isLoading,
-    error,
-    isError,
-  } = useGarage(page, limit, initialData);
-
-  const carLikeMutation = useCarLike();
-
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [carLikeCounts, setCarLikeCounts] = useState<Record<string, number>>(
     {}
@@ -151,29 +147,17 @@ export function GarageGallery({
     return filtered;
   }, [cars, filters, carLikeCounts]);
 
-  // Handle loading and error states
-  if (isLoading) {
-    return null; // loading.tsx handles this
-  }
-
-  if (isError) {
+  // Handle no data state
+  if (!garageData) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md">
           <CardContent className="pt-6">
             <p className="text-center text-destructive">
-              {error?.message || "Failed to load garage. Please try again."}
+              Failed to load garage. Please try again.
             </p>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  if (!garageData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">No garage data available.</p>
       </div>
     );
   }
@@ -191,13 +175,18 @@ export function GarageGallery({
     }));
   };
 
-  // Handle car like/unlike
+  // Handle car like/unlike with server action
   const handleLike = async (carId: string) => {
-    if (!currentUser) return { success: false, error: "Not authenticated" };
+    if (!currentUser || !likeCarAction) {
+      return { success: false, error: "Not authenticated" };
+    }
 
     try {
-      await carLikeMutation.mutateAsync(carId);
-      return { success: true };
+      const result = await likeCarAction(carId);
+      if (result.success && result.newLikeCount !== undefined) {
+        handleLikeCountChange(carId, result.newLikeCount);
+      }
+      return result;
     } catch (error) {
       console.error("Error liking car:", error);
       return { success: false, error: "Failed to like car" };
@@ -205,11 +194,16 @@ export function GarageGallery({
   };
 
   const handleUnlike = async (carId: string) => {
-    if (!currentUser) return { success: false, error: "Not authenticated" };
+    if (!currentUser || !likeCarAction) {
+      return { success: false, error: "Not authenticated" };
+    }
 
     try {
-      await carLikeMutation.mutateAsync(carId);
-      return { success: true };
+      const result = await likeCarAction(carId);
+      if (result.success && result.newLikeCount !== undefined) {
+        handleLikeCountChange(carId, result.newLikeCount);
+      }
+      return result;
     } catch (error) {
       console.error("Error unliking car:", error);
       return { success: false, error: "Failed to unlike car" };

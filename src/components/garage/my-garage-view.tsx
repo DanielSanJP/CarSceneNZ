@@ -6,33 +6,21 @@ import { Plus, Car as CarIcon, Edit3, Eye, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, memo } from "react";
-import { useUserGarage } from "@/hooks/use-garage";
 import { UserGarageData } from "@/types/car";
 
 interface MyGarageViewProps {
-  initialData?: UserGarageData;
+  garageData: UserGarageData;
 }
 
-function MyGarageView({ initialData }: MyGarageViewProps) {
-  const {
-    data: garageData,
-    isLoading,
-    error,
-    refetch,
-  } = useUserGarage(initialData);
+function MyGarageView({ garageData }: MyGarageViewProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
   };
 
-  // Handle loading state - let loading.tsx handle this
-  if (isLoading) {
-    return null; // loading.tsx will show the skeleton
-  }
-
-  // Handle error state
-  if (error || !garageData) {
+  // Handle no data state
+  if (!garageData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -40,7 +28,7 @@ function MyGarageView({ initialData }: MyGarageViewProps) {
           <p className="text-muted-foreground mb-6">
             There was an error loading your garage.
           </p>
-          <Button onClick={() => refetch()}>Try Again</Button>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       </div>
     );

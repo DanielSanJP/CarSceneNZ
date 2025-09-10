@@ -17,48 +17,22 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useUserEvents, type UserEventsData } from "@/hooks/use-events";
 import type { Event } from "@/types/event";
 
+// Pure SSR data structure - no React Query
 interface MyEventsViewProps {
+  events: Event[]; // Direct SSR data
   userId: string;
-  initialData?: UserEventsData | null;
 }
 
-function MyEventsViewComponent({ userId, initialData }: MyEventsViewProps) {
-  const {
-    data: eventsData,
-    isLoading,
-    error,
-    refetch,
-  } = useUserEvents(userId, initialData);
+function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handleImageError = (eventId: string) => {
     setFailedImages((prev) => new Set(prev).add(eventId));
   };
 
-  // Handle loading state - let loading.tsx handle this
-  if (isLoading) {
-    return null; // loading.tsx will show the skeleton
-  }
-
-  // Handle error state
-  if (error || !eventsData) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Failed to load events</h2>
-          <p className="text-muted-foreground mb-6">
-            There was an error loading your events.
-          </p>
-          <Button onClick={() => refetch()}>Try Again</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const userEvents = eventsData.events || [];
+  // Pure SSR - no loading or error states needed (handled by page-level loading.tsx/error.tsx)
 
   const getAttendeeCount = (event: Event & { attendee_count?: number }) => {
     return event.attendee_count || 0;

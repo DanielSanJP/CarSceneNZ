@@ -1,6 +1,5 @@
 import { getUser } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { CreateEventForm } from "@/components/events/create-event-form";
 import { uploadEventImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
@@ -146,8 +145,16 @@ async function createEventAction(formData: FormData) {
 
   const result = await createEvent(eventData);
 
-  revalidatePath("/events");
-  redirect(`/events/${result.id}`);
+  // Comprehensive cache invalidation for live updates
+  revalidatePath("/events"); // Events gallery page
+  revalidatePath("/events/my-events"); // User's events page
+  revalidatePath("/"); // Homepage (featured events)
+  revalidateTag("events"); // All event-related cache
+  revalidateTag("home"); // Homepage cache
+  revalidateTag("latest-events"); // Featured events on homepage
+
+  // Return the result for client-side navigation instead of redirect
+  return { success: true, eventId: result.id };
 }
 
 export default async function CreateEventPage() {

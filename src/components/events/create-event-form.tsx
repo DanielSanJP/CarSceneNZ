@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +15,14 @@ import { EventImageManager } from "./event-image-manager";
 import type { User } from "@/types/user";
 
 interface CreateEventFormProps {
-  action: (formData: FormData) => Promise<void>;
+  action: (
+    formData: FormData
+  ) => Promise<{ success: boolean; eventId: string }>;
   user: User;
   uploadAction: (
     formData: FormData
   ) => Promise<{ url: string | null; error: string | null }>;
+  revalidateAction?: () => Promise<void>; // Server action for cache invalidation
 }
 
 interface EventFormData {
@@ -38,10 +42,12 @@ export function CreateEventForm({
   action,
   user,
   uploadAction,
+  revalidateAction,
 }: CreateEventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const locationInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // Generate a temporary ID for image uploads during creation
   const [tempEventId] = useState(
@@ -121,7 +127,23 @@ export function CreateEventForm({
         JSON.stringify(validScheduleItems)
       );
 
-      await action(formDataFromForm);
+      const result = await action(formDataFromForm);
+
+      // Trigger server-side cache revalidation for immediate UI updates
+      if (revalidateAction) {
+        try {
+          await revalidateAction();
+          console.log("✅ Server cache revalidated successfully");
+        } catch (revalidateError) {
+          console.warn("⚠️ Cache revalidation failed:", revalidateError);
+          // Don't fail the form submission if revalidation fails
+        }
+      }
+
+      // Handle client-side navigation
+      if (result.success) {
+        router.push(`/events/${result.eventId}`);
+      }
     } catch (error) {
       // Check if this is a Next.js redirect (expected behavior)
       if (

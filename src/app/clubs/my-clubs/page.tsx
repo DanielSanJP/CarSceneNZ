@@ -2,8 +2,8 @@ import { MyClubView } from "@/components/clubs/my-club-view";
 import { getUser } from "@/lib/auth";
 import { getUserClubsData, type UserClubsData } from "@/hooks/use-clubs";
 
-// Force dynamic rendering for authentication
-export const dynamic = "force-dynamic";
+// Cache this page for 5 minutes, then revalidate in the background
+export const revalidate = 300; // 5 minutes
 
 export default async function MyClubsPage() {
   // Server-side auth check - redirects if not authenticated
@@ -20,5 +20,3 @@ export default async function MyClubsPage() {
 
   return <MyClubView userId={user.id} initialData={initialData} />;
 }
-
-export const revalidate = 300; // 5 minutes

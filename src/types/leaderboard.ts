@@ -22,3 +22,13 @@ export interface ClubRanking {
   likes: number;
   memberCount: number;
 }
+
+export interface LeaderboardsData {
+  cars: CarRanking[];
+  owners: OwnerRanking[];
+  clubs: ClubRanking[];
+  meta: {
+    generated_at: string;
+    cache_key: string;
+  };
+}

@@ -7,32 +7,22 @@ import { Users, Car, Trophy } from "lucide-react";
 import { OwnerRankings } from "@/components/leaderboard/owner-rankings";
 import { ClubRankings } from "@/components/leaderboard/club-rankings";
 import { CarRankings } from "@/components/leaderboard/car-rankings";
-import {
-  useLeaderboards,
-  type LeaderboardsData,
-} from "@/hooks/use-leaderboards";
+import type { LeaderboardsData } from "@/types/leaderboard";
 
 type TabType = "owners" | "clubs" | "cars";
 
 interface LeaderboardsViewProps {
   defaultTab?: TabType;
-  initialData?: LeaderboardsData | null;
+  leaderboardsData: LeaderboardsData | null;
 }
 
 export function LeaderboardsView({
   defaultTab = "owners",
-  initialData,
+  leaderboardsData,
 }: LeaderboardsViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
-
-  // Use React Query to fetch leaderboards data
-  const {
-    data: leaderboardsData,
-    error,
-    refetch,
-  } = useLeaderboards(initialData);
 
   // Get tab from URL parameters
   useEffect(() => {
@@ -42,8 +32,8 @@ export function LeaderboardsView({
     }
   }, [searchParams]);
 
-  // Handle error state
-  if (error || !leaderboardsData) {
+  // Handle error state or missing data
+  if (!leaderboardsData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -53,7 +43,7 @@ export function LeaderboardsView({
           <p className="text-muted-foreground mb-6">
             There was an error loading the leaderboards data.
           </p>
-          <Button onClick={() => refetch()}>Try Again</Button>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       </div>
     );

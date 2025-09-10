@@ -7,7 +7,6 @@ import { LikeButton } from "@/components/ui/like-button";
 import { ArrowLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCarDetail, useCarLike } from "@/hooks/use-garage";
 import {
   CarImageGallery,
   OwnerDetails,
@@ -26,24 +25,23 @@ import type { CarDetailData } from "@/types/car";
 import { getEngineData } from "@/lib/utils/car-helpers";
 
 interface CarDetailViewProps {
-  carId: string;
   user?: User | null;
-  initialData?: CarDetailData | null;
+  carDetailData: CarDetailData | null;
+  likeCarAction?: (carId: string) => Promise<{
+    success: boolean;
+    error?: string;
+    newLikeCount?: number;
+    isLiked?: boolean;
+    action?: string;
+  }>;
 }
 
 export const CarDetailView = React.memo(function CarDetailView({
-  carId,
   user,
-  initialData,
+  carDetailData,
+  likeCarAction,
 }: CarDetailViewProps) {
   const router = useRouter();
-  const {
-    data: carDetailData,
-    isLoading,
-    error,
-    refetch,
-  } = useCarDetail(carId, initialData);
-  const carLikeMutation = useCarLike();
   const [likeCount, setLikeCount] = useState(0);
 
   // Memoize car formatted data to prevent unnecessary recalculations
@@ -166,13 +164,8 @@ export const CarDetailView = React.memo(function CarDetailView({
     }
   }, [carDetailData?.car?.total_likes]);
 
-  // Handle loading state - let loading.tsx handle this
-  if (isLoading) {
-    return null; // loading.tsx will show the skeleton
-  }
-
   // Handle error or missing data - simple error fallback
-  if (error || !carDetailData || !carFormatted || !engineData) {
+  if (!carDetailData || !carFormatted || !engineData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -182,7 +175,7 @@ export const CarDetailView = React.memo(function CarDetailView({
           <p className="text-muted-foreground mb-6">
             There was an error loading the car information.
           </p>
-          <Button onClick={() => refetch()}>Try Again</Button>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       </div>
     );
@@ -202,18 +195,18 @@ export const CarDetailView = React.memo(function CarDetailView({
     }
   };
 
-  // Optimized like/unlike handlers
+  // Optimized like/unlike handlers using server action
   const handleLike = async (carId: string) => {
+    if (!likeCarAction) {
+      return { success: false, error: "Like action not available" };
+    }
+
     try {
-      const result = await carLikeMutation.mutateAsync(carId);
-      if (result.success) {
-        setLikeCount(result.newLikeCount || likeCount + 1);
-        return {
-          success: true,
-          newLikeCount: result.newLikeCount || likeCount + 1,
-        };
+      const result = await likeCarAction(carId);
+      if (result.success && result.newLikeCount !== undefined) {
+        setLikeCount(result.newLikeCount);
       }
-      return { success: false, error: result.error };
+      return result;
     } catch (error) {
       console.error("Failed to like car:", error);
       return { success: false, error: "Failed to like car" };
@@ -221,16 +214,16 @@ export const CarDetailView = React.memo(function CarDetailView({
   };
 
   const handleUnlike = async (carId: string) => {
+    if (!likeCarAction) {
+      return { success: false, error: "Unlike action not available" };
+    }
+
     try {
-      const result = await carLikeMutation.mutateAsync(carId);
-      if (result.success) {
-        setLikeCount(result.newLikeCount || likeCount - 1);
-        return {
-          success: true,
-          newLikeCount: result.newLikeCount || likeCount - 1,
-        };
+      const result = await likeCarAction(carId);
+      if (result.success && result.newLikeCount !== undefined) {
+        setLikeCount(result.newLikeCount);
       }
-      return { success: false, error: result.error };
+      return result;
     } catch (error) {
       console.error("Failed to unlike car:", error);
       return { success: false, error: "Failed to unlike car" };
