@@ -7,42 +7,14 @@ import { memo } from "react";
 import { Users, MapPin, Crown, Shield, Globe, Lock, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useUserClubs, type UserClubsData } from "@/hooks/use-clubs";
+import type { UserClubsData } from "@/types/club";
 
 interface MyClubViewProps {
-  userId?: string;
-  initialData?: UserClubsData | null;
+  userClubsData: UserClubsData;
 }
 
-function MyClubViewComponent({ userId, initialData }: MyClubViewProps) {
-  // Use React Query to fetch user's clubs data
-  const {
-    data: userClubsData,
-    isLoading,
-    error,
-    refetch,
-  } = useUserClubs(userId, initialData);
-
-  // Handle loading state - let loading.tsx handle this
-  if (isLoading) {
-    return null; // loading.tsx will show the skeleton
-  }
-
-  // Handle error state
-  if (error || !userClubsData) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Failed to load clubs</h2>
-          <p className="text-muted-foreground mb-6">
-            There was an error loading your clubs.
-          </p>
-          <Button onClick={() => refetch()}>Try Again</Button>
-        </div>
-      </div>
-    );
-  }
-
+function MyClubViewComponent({ userClubsData }: MyClubViewProps) {
+  // Use data directly from props (no React Query)
   const userClubs = userClubsData.clubs || [];
 
   // Empty state - user is not in any clubs

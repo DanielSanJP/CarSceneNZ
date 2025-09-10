@@ -6,10 +6,66 @@ import { getUser } from "@/lib/auth";
 import { uploadClubImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
 import { Club } from "@/types";
-import { getClubsGalleryData, type ClubsGalleryData } from "@/hooks/use-clubs";
+import type { ClubsGalleryData } from "@/types/club";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
+
+// Server-side clubs gallery data fetching using RPC function
+async function getClubsGalleryDataSSR(
+  filters: {
+    search?: string;
+    location?: string;
+    club_type?: string;
+    sortBy?: string;
+    page?: number;
+    limit?: number;
+  },
+  currentUserId?: string
+): Promise<ClubsGalleryData> {
+  const supabase = await createClient();
+  const startTime = Date.now();
+
+  try {
+    const { data, error } = await supabase.rpc("get_clubs_gallery", {
+      search_term: filters.search || null,
+      location_filter: filters.location || null,
+      club_type_filter: filters.club_type || null,
+      sort_by: filters.sortBy || "likes",
+      result_limit: filters.limit || 12,
+      result_offset: ((filters.page || 1) - 1) * (filters.limit || 12),
+      current_user_id: currentUserId || null,
+    });
+
+    if (error) {
+      console.error("Error fetching clubs gallery:", error);
+      throw new Error("Failed to fetch clubs gallery data");
+    }
+
+    console.log(
+      `✅ SSR: Clubs gallery data fetched in ${Date.now() - startTime}ms`
+    );
+
+    return {
+      clubs: data?.clubs || [],
+      pagination: data?.pagination || {
+        total: 0,
+        page: filters.page || 1,
+        limit: filters.limit || 12,
+        totalPages: 0,
+      },
+      filters: {
+        search: filters.search || "",
+        location: filters.location || "",
+        club_type: filters.club_type || "",
+        sortBy: filters.sortBy || "likes",
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching clubs gallery data:", error);
+    throw new Error("Failed to fetch clubs gallery data");
+  }
+}
 
 // Inline server functions from clubs.ts
 async function createClub(clubData: {
@@ -385,7 +441,7 @@ export default async function ClubsPage({
   // Fetch initial clubs data for SSR
   let initialData: ClubsGalleryData | null = null;
   try {
-    initialData = await getClubsGalleryData(initialFilters);
+    initialData = await getClubsGalleryDataSSR(initialFilters, currentUser?.id);
   } catch (error) {
     console.error("Failed to fetch clubs gallery data on server:", error);
     // Continue without initial data, let client handle the error

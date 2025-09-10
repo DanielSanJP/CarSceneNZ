@@ -24,10 +24,9 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import type { User } from "@/types/user";
-import type { Club } from "@/types/club";
+import type { Club, ClubsGalleryData } from "@/types/club";
 import { Pagination, PaginationInfo } from "@/components/ui/pagination";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
-import { useClubsGallery, type ClubsGalleryData } from "@/hooks/use-clubs";
 
 interface ClubGalleryProps {
   currentUser: User | null;
@@ -47,7 +46,7 @@ interface ClubGalleryProps {
     sortBy?: string;
     page?: number;
   };
-  initialData?: ClubsGalleryData | null;
+  clubsData: ClubsGalleryData | null;
 }
 
 export const ClubGallery = memo(function ClubGallery({
@@ -55,7 +54,7 @@ export const ClubGallery = memo(function ClubGallery({
   joinClubAction,
   sendClubJoinRequestAction,
   initialFilters = {},
-  initialData,
+  clubsData,
 }: ClubGalleryProps) {
   const [searchTerm, setSearchTerm] = useState(initialFilters.search || "");
   const [locationFilter, setLocationFilter] = useState<string>(
@@ -70,76 +69,30 @@ export const ClubGallery = memo(function ClubGallery({
   const [currentPage, setCurrentPage] = useState(initialFilters.page || 1);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Use React Query to fetch clubs data with filters
-  const {
-    data: clubsData,
-    isLoading,
-    error,
-    refetch,
-  } = useClubsGallery(
-    {
-      search: searchTerm || undefined,
-      location: locationFilter !== "all" ? locationFilter : undefined,
-      club_type: typeFilter !== "all" ? typeFilter : undefined,
-      sortBy,
-      page: currentPage,
-      limit: 12,
-    },
-    initialData
-  );
-
-  // Handle loading state - show skeleton
-  if (isLoading) {
+  // Handle error state or missing data
+  if (!clubsData) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-10 bg-muted animate-pulse rounded" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <Card key={i} className="overflow-hidden">
-              <div className="h-32 bg-muted animate-pulse" />
-              <CardContent className="p-4 space-y-3">
-                <div className="h-6 bg-muted animate-pulse rounded" />
-                <div className="h-4 bg-muted animate-pulse rounded" />
-                <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
-              </CardContent>
-            </Card>
-          ))}
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Failed to load clubs</h2>
+          <p className="text-muted-foreground mb-6">
+            There was an error loading the clubs data.
+          </p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       </div>
     );
   }
 
-  // Handle error state
-  if (error || !clubsData) {
-    return (
-      <div className="text-center py-12">
-        <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-medium mb-2">Failed to load clubs</h3>
-        <p className="text-muted-foreground mb-6">
-          There was an error loading the clubs.
-        </p>
-        <Button onClick={() => refetch()}>Try Again</Button>
-      </div>
-    );
-  }
-
   const clubs = clubsData?.clubs || [];
-  const totalCount = clubsData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / 12);
+  const totalCount = clubsData?.pagination?.total || 0;
+  const totalPages = clubsData?.pagination?.totalPages || 0;
 
   // Check if current user is a member of a club
-  const isUserMemberOfClub = (clubId: string) => {
-    // TODO: Add user membership check if needed via React Query
-    console.log("Checking membership for club:", clubId);
-    return false;
+  const isUserMemberOfClub = (
+    club: Club & { memberCount: number; isUserMember?: boolean }
+  ) => {
+    return club.isUserMember || false;
   };
 
   // Get club type icon and styling
@@ -295,194 +248,196 @@ export const ClubGallery = memo(function ClubGallery({
 
       {/* Clubs Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {clubs.map((club: Club & { memberCount: number }) => {
-          const memberCount = club.memberCount; // Use real member count from server
-          const typeInfo = getClubTypeInfo(club.club_type || "general");
-          const leader = club.leader; // Use real leader from server
-          const isUserMember = isUserMemberOfClub(club.id);
+        {clubs.map(
+          (club: Club & { memberCount: number; isUserMember?: boolean }) => {
+            const memberCount = club.memberCount; // Use real member count from server
+            const typeInfo = getClubTypeInfo(club.club_type || "general");
+            const leader = club.leader; // Use real leader from server
+            const isUserMember = isUserMemberOfClub(club);
 
-          return (
-            <Card
-              key={club.id}
-              className="overflow-hidden hover:shadow-lg transition-all duration-300 group py-0 cursor-pointer"
-            >
-              <Link href={`/clubs/${club.id}?from=gallery`} className="block">
-                {/* Banner Image Background */}
-                <div className="relative aspect-square overflow-hidden">
-                  {failedImages.has(club.id) ? (
-                    <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                      <Users className="h-12 w-12 text-primary opacity-50" />
+            return (
+              <Card
+                key={club.id}
+                className="overflow-hidden hover:shadow-lg transition-all duration-300 group py-0 cursor-pointer"
+              >
+                <Link href={`/clubs/${club.id}?from=gallery`} className="block">
+                  {/* Banner Image Background */}
+                  <div className="relative aspect-square overflow-hidden">
+                    {failedImages.has(club.id) ? (
+                      <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                        <Users className="h-12 w-12 text-primary opacity-50" />
+                      </div>
+                    ) : (
+                      <Image
+                        src={club.banner_image_url || "/clubs/default-club.jpg"}
+                        alt={club.name}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        loading="lazy"
+                        onError={() => handleImageError(club.id)}
+                      />
+                    )}
+
+                    {/* Member count */}
+                    <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {memberCount}
                     </div>
-                  ) : (
-                    <Image
-                      src={club.banner_image_url || "/clubs/default-club.jpg"}
-                      alt={club.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      loading="lazy"
-                      onError={() => handleImageError(club.id)}
-                    />
-                  )}
 
-                  {/* Member count */}
-                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {memberCount}
+                    {/* Club type badge */}
+                    <div
+                      className={`absolute top-3 left-3 ${typeInfo.color} text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}
+                    >
+                      {typeInfo.icon}
+                      {typeInfo.text}
+                    </div>
                   </div>
 
-                  {/* Club type badge */}
+                  <CardContent className="p-4 pt-6">
+                    {/* Club name and location */}
+                    <div className="space-y-2 mb-3">
+                      <h3 className="font-bold text-lg leading-tight">
+                        {club.name}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {club.location}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                          {club.total_likes}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {club.description && club.description.length > 100
+                        ? `${club.description.substring(0, 100)}...`
+                        : club.description || "No description available."}
+                    </p>
+
+                    {/* Leader info */}
+                    {leader && (
+                      <div className="text-xs text-muted-foreground mb-4">
+                        Led by {leader.display_name || leader.username}
+                      </div>
+                    )}
+                  </CardContent>
+                </Link>
+
+                {/* Action buttons outside the clickable area */}
+                <CardContent className="p-4 pt-0 relative z-10">
+                  {/* Action button */}
                   <div
-                    className={`absolute top-3 left-3 ${typeInfo.color} text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}
+                    className="flex gap-2"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {typeInfo.icon}
-                    {typeInfo.text}
-                  </div>
-                </div>
-
-                <CardContent className="p-4 pt-6">
-                  {/* Club name and location */}
-                  <div className="space-y-2 mb-3">
-                    <h3 className="font-bold text-lg leading-tight">
-                      {club.name}
-                    </h3>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {club.location}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                        {club.total_likes}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {club.description && club.description.length > 100
-                      ? `${club.description.substring(0, 100)}...`
-                      : club.description || "No description available."}
-                  </p>
-
-                  {/* Leader info */}
-                  {leader && (
-                    <div className="text-xs text-muted-foreground mb-4">
-                      Led by {leader.display_name || leader.username}
-                    </div>
-                  )}
-                </CardContent>
-              </Link>
-
-              {/* Action buttons outside the clickable area */}
-              <CardContent className="p-4 pt-0 relative z-10">
-                {/* Action button */}
-                <div
-                  className="flex gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Main Action Button */}
-                  {isUserMember ? (
-                    <Link
-                      href={`/clubs/${club.id}?from=gallery`}
-                      className="flex-1"
-                    >
-                      <Button className="w-full" size="sm">
-                        View Club
-                      </Button>
-                    </Link>
-                  ) : !currentUser ? (
-                    <Link href="/login" className="flex-1">
-                      <Button className="w-full" size="sm">
-                        Sign In to Join
-                      </Button>
-                    </Link>
-                  ) : club.club_type === "closed" ? (
-                    <Link
-                      href={`/clubs/${club.id}?from=gallery`}
-                      className="flex-1"
-                    >
-                      <Button className="w-full" size="sm" variant="outline">
-                        View Club
-                      </Button>
-                    </Link>
-                  ) : club.club_type === "invite" || club.is_invite_only ? (
-                    sendClubJoinRequestAction ? (
-                      <RequestToJoin
-                        clubId={club.id}
-                        clubName={club.name}
-                        sendClubJoinRequestAction={sendClubJoinRequestAction}
-                        trigger={
-                          <Button className="flex-1" size="sm">
+                    {/* Main Action Button */}
+                    {isUserMember ? (
+                      <Link
+                        href={`/clubs/${club.id}?from=gallery`}
+                        className="flex-1"
+                      >
+                        <Button className="w-full" size="sm">
+                          View Club
+                        </Button>
+                      </Link>
+                    ) : !currentUser ? (
+                      <Link href="/login" className="flex-1">
+                        <Button className="w-full" size="sm">
+                          Sign In to Join
+                        </Button>
+                      </Link>
+                    ) : club.club_type === "closed" ? (
+                      <Link
+                        href={`/clubs/${club.id}?from=gallery`}
+                        className="flex-1"
+                      >
+                        <Button className="w-full" size="sm" variant="outline">
+                          View Club
+                        </Button>
+                      </Link>
+                    ) : club.club_type === "invite" || club.is_invite_only ? (
+                      sendClubJoinRequestAction ? (
+                        <RequestToJoin
+                          clubId={club.id}
+                          clubName={club.name}
+                          sendClubJoinRequestAction={sendClubJoinRequestAction}
+                          trigger={
+                            <Button className="flex-1" size="sm">
+                              Request to Join
+                            </Button>
+                          }
+                        />
+                      ) : (
+                        <Link
+                          href={`/clubs/${club.id}?from=gallery`}
+                          className="flex-1"
+                        >
+                          <Button className="w-full" size="sm">
                             Request to Join
                           </Button>
-                        }
-                      />
+                        </Link>
+                      )
+                    ) : // Open club - direct join
+                    joinClubAction ? (
+                      <Button
+                        className="flex-1"
+                        size="sm"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          if (!currentUser) return;
+
+                          try {
+                            const result = await joinClubAction(
+                              club.id,
+                              currentUser.id
+                            );
+                            if (result.success) {
+                              window.location.reload();
+                            } else {
+                              alert(result.message || "Failed to join club");
+                            }
+                          } catch (error) {
+                            console.error("Error joining club:", error);
+                            alert("Failed to join club. Please try again.");
+                          }
+                        }}
+                      >
+                        Join Club
+                      </Button>
                     ) : (
                       <Link
                         href={`/clubs/${club.id}?from=gallery`}
                         className="flex-1"
                       >
                         <Button className="w-full" size="sm">
-                          Request to Join
+                          Join Club
                         </Button>
                       </Link>
-                    )
-                  ) : // Open club - direct join
-                  joinClubAction ? (
-                    <Button
-                      className="flex-1"
-                      size="sm"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+                    )}
 
-                        if (!currentUser) return;
-
-                        try {
-                          const result = await joinClubAction(
-                            club.id,
-                            currentUser.id
-                          );
-                          if (result.success) {
-                            window.location.reload();
-                          } else {
-                            alert(result.message || "Failed to join club");
-                          }
-                        } catch (error) {
-                          console.error("Error joining club:", error);
-                          alert("Failed to join club. Please try again.");
-                        }
-                      }}
-                    >
-                      Join Club
-                    </Button>
-                  ) : (
-                    <Link
-                      href={`/clubs/${club.id}?from=gallery`}
-                      className="flex-1"
-                    >
-                      <Button className="w-full" size="sm">
-                        Join Club
+                    {/* View Button */}
+                    <Link href={`/clubs/${club.id}?from=gallery`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View
                       </Button>
                     </Link>
-                  )}
-
-                  {/* View Button */}
-                  <Link href={`/clubs/${club.id}?from=gallery`}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      View
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }
+        )}
       </div>
 
       {clubs.length === 0 && (

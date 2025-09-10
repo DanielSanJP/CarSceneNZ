@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,120 +22,73 @@ import {
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
-
-import {
-  useProfile,
-  useLeaderClubs,
-  useFollowToggle,
-  type ProfileData,
-} from "@/hooks/use-profile";
+import type { ProfileData, LeaderClubsData, User } from "@/types/user";
 import { InviteToClub } from "@/components/clubs/invite-to-club";
 
 interface UserProfileDisplayProps {
-  userId: string;
-  initialData?: ProfileData;
+  profileData: ProfileData;
+  leaderClubsData?: LeaderClubsData | null;
+  currentUser: User | null;
+  followUserAction?: (
+    targetUserId: string,
+    action: "follow" | "unfollow"
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    action?: string;
+  }>;
 }
 
 export function UserProfileDisplay({
-  userId,
-  initialData,
+  profileData,
+  leaderClubsData = null,
+  currentUser,
+  followUserAction,
 }: UserProfileDisplayProps) {
-  const router = useRouter();
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
-  // React Query hooks
-  const {
-    data: profileData,
-    isLoading: profileLoading,
-    error: profileError,
-  } = useProfile(userId, initialData);
-
-  const { data: leaderClubsData } = useLeaderClubs(!!profileData?.currentUser);
-
-  const followMutation = useFollowToggle();
-
-  const handleBackClick = () => {
-    if (window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/search");
-    }
-  };
+  // Use data directly from props (no React Query)
+  const leaderClubs = leaderClubsData?.leaderClubs || [];
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
   };
 
   const handleFollowToggle = async () => {
-    if (!profileData?.currentUser || !profileData) {
+    if (!currentUser || !profileData) {
       toast.error("Please log in to follow users");
+      return;
+    }
+
+    if (!followUserAction) {
+      toast.error("Follow action not available");
       return;
     }
 
     const action = profileData.isFollowing ? "unfollow" : "follow";
 
-    followMutation.mutate(
-      { targetUserId: userId, action },
-      {
-        onSuccess: () => {
-          toast.success(
-            action === "follow"
-              ? `You are now following ${profileData.profileUser.display_name}`
-              : `You unfollowed ${profileData.profileUser.display_name}`
-          );
-        },
-        onError: (error) => {
-          toast.error(`Failed to ${action}: ${error.message}`);
-        },
+    setIsFollowLoading(true);
+    try {
+      const result = await followUserAction(profileData.profileUser.id, action);
+
+      if (!result.success) {
+        throw new Error(result.error || `Failed to ${action} user`);
       }
-    );
+
+      // Success - no toast needed, button state change is sufficient UX
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to ${action}: ${errorMessage}`);
+    } finally {
+      setIsFollowLoading(false);
+    }
   };
 
-  // Loading state
-  if (profileLoading) {
-    return null; // Let loading.tsx handle this
-  }
-
-  // Error state
-  if (profileError) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Error Loading Profile</h1>
-            <p className="text-muted-foreground mt-2">
-              {profileError.message || "Failed to load profile data"}
-            </p>
-            <Button onClick={handleBackClick} className="mt-4">
-              Go Back
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // User not found state
-  if (!profileData?.profileUser) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">User Not Found</h1>
-            <p className="text-muted-foreground mt-2">
-              The user you&apos;re looking for doesn&apos;t exist.
-            </p>
-            <Button onClick={handleBackClick} className="mt-4">
-              Go Back
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Extract data from props
   const {
     profileUser,
     userCars,
@@ -144,10 +96,8 @@ export function UserProfileDisplay({
     following,
     userClubs,
     isFollowing,
-    currentUser,
   } = profileData;
   const isOwnProfile = currentUser?.id === profileUser.id;
-  const leaderClubs = leaderClubsData?.leaderClubs || [];
 
   // Server action wrapper for club invitations
   const sendClubInvitationAction = async (
@@ -242,10 +192,10 @@ export function UserProfileDisplay({
                           variant={isFollowing ? "outline" : "default"}
                           size="sm"
                           onClick={handleFollowToggle}
-                          disabled={followMutation.isPending}
+                          disabled={isFollowLoading}
                         >
                           <UserPlus className="h-4 w-4 mr-2" />
-                          {followMutation.isPending
+                          {isFollowLoading
                             ? "Loading..."
                             : isFollowing
                             ? "Unfollow"
@@ -451,8 +401,7 @@ export function UserProfileDisplay({
                         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>
-                              {profileUser.display_name}&apos;s Followers (
-                              {followers.length})
+                              Followers ({followers.length})
                             </DialogTitle>
                           </DialogHeader>
                           <div className="grid gap-4 py-4">
@@ -527,7 +476,9 @@ export function UserProfileDisplay({
                     <Car className="h-5 w-5" />
                     {isOwnProfile
                       ? "My Cars"
-                      : `${profileUser.display_name}'s Garage`}
+                      : `${
+                          profileUser.display_name || profileUser.username
+                        }'s Garage`}
                     {isOwnProfile && (
                       <Link href="/garage/my-garage">
                         <Button variant="outline" size="sm" className="ml-3">
@@ -551,7 +502,9 @@ export function UserProfileDisplay({
                     <p className="text-muted-foreground">
                       {isOwnProfile
                         ? "Add your first car to get started"
-                        : `${profileUser.display_name} hasn't shared any cars publicly yet`}
+                        : `${
+                            profileUser.display_name || profileUser.username
+                          } hasn't shared any cars publicly yet`}
                     </p>
                     {isOwnProfile && (
                       <Link href="/garage/create" className="mt-4 inline-block">
@@ -566,15 +519,13 @@ export function UserProfileDisplay({
                         <Card className="overflow-hidden pt-0">
                           {/* Car Image */}
                           <div className="relative aspect-square overflow-hidden">
-                            {failedImages.has(car.id) ||
-                            !car.images ||
-                            !car.images[0] ? (
+                            {failedImages.has(car.id) || !car.image_url ? (
                               <div className="aspect-square bg-muted flex items-center justify-center">
                                 <Car className="h-12 w-12 text-muted-foreground" />
                               </div>
                             ) : (
                               <Image
-                                src={car.images[0]}
+                                src={car.image_url}
                                 alt={`${car.brand} ${car.model}`}
                                 fill
                                 className="object-cover"

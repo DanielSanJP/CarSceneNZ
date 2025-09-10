@@ -8,7 +8,7 @@ import { ClubGallery } from "@/components/clubs/tabs/club-gallery";
 import { CreateClubForm } from "@/components/clubs/tabs/create-club-form";
 import { ClubCardSkeleton } from "@/components/ui/content-skeletons";
 import type { User } from "@/types/user";
-import type { ClubsGalleryData } from "@/hooks/use-clubs";
+import type { ClubsGalleryData } from "@/types/club";
 
 type MainTab = "gallery" | "create";
 
@@ -148,7 +148,7 @@ function ClubTabNavigationContent({
                 <ClubGallery
                   currentUser={currentUser}
                   initialFilters={initialFilters}
-                  initialData={initialData}
+                  clubsData={initialData || null}
                   joinClubAction={joinClubAction}
                   sendClubJoinRequestAction={sendClubJoinRequestAction}
                 />
