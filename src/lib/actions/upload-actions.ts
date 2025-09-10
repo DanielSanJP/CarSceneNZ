@@ -1,5 +1,5 @@
-import 'server-only'
-import { uploadProfileImage, uploadCarImages, uploadClubImage, uploadEventImage } from './image-upload'
+'use server'
+import { uploadProfileImage, uploadCarImages, uploadClubImage, uploadEventImage } from '@/lib/utils/image-upload'
 
 /**
  * Server action for uploading profile image

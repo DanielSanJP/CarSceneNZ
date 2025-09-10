@@ -2,12 +2,80 @@ import { getUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CreateCarForm } from "@/components/garage";
-import { createCarWithComponents } from "@/lib/server/cars";
 import {
-  moveCarImagesFromTemp,
-  deleteCarImages,
+  moveFromTemp,
+  deleteResourceImages,
   uploadCarImages,
-} from "@/lib/server/image-upload";
+} from "@/lib/utils/image-upload";
+import { createClient } from "@/lib/utils/supabase/server";
+import { Car } from "@/types";
+
+// Inline server function from cars.ts
+async function createCarWithComponents(carData: {
+  owner_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  images: string[];
+  engine?: unknown;
+  suspension?: unknown;
+  wheels_tires?: unknown;
+  braking_system?: unknown;
+  exterior_mods?: unknown;
+  interior_mods?: unknown;
+}): Promise<Car> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("cars")
+      .insert({
+        owner_id: carData.owner_id,
+        brand: carData.brand,
+        model: carData.model,
+        year: carData.year,
+        images: carData.images,
+        engine: carData.engine,
+        suspension: carData.suspension,
+        wheels_tires: carData.wheels_tires,
+        braking_system: carData.braking_system,
+        exterior_mods: carData.exterior_mods,
+        interior_mods: carData.interior_mods,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating car:", error);
+      throw new Error("Failed to create car");
+    }
+
+    if (!data) {
+      throw new Error("No data returned from car creation");
+    }
+
+    return {
+      id: data.id,
+      owner_id: data.owner_id,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      images: data.images || [],
+      total_likes: data.total_likes || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      owner: {
+        id: data.owner_id,
+        username: "",
+        display_name: "",
+        profile_image_url: undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Error creating car:", error);
+    throw error;
+  }
+}
 
 async function uploadCarImagesServerAction(
   formData: FormData
@@ -156,7 +224,7 @@ async function createCarAction(formData: FormData) {
     // If we have temp images, move them to the final car folder
     if (tempCarId && images.length > 0) {
       try {
-        const newImageUrls = await moveCarImagesFromTemp(tempCarId, result.id);
+        const newImageUrls = await moveFromTemp(tempCarId, result.id, "cars");
         if (newImageUrls.length > 0) {
           // Update the car record with the new image URLs
           // Note: You might want to add an updateCarImages function to your cars.ts
@@ -174,7 +242,7 @@ async function createCarAction(formData: FormData) {
     // If car creation failed and we have temp images, clean them up
     if (tempCarId) {
       try {
-        await deleteCarImages(tempCarId);
+        await deleteResourceImages(tempCarId, "cars");
       } catch (cleanupError) {
         console.error("Error cleaning up temp images:", cleanupError);
       }

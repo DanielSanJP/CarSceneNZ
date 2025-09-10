@@ -7,20 +7,18 @@ import { Users, Plus } from "lucide-react";
 import { ClubGallery } from "@/components/clubs/tabs/club-gallery";
 import { CreateClubForm } from "@/components/clubs/tabs/create-club-form";
 import { ClubCardSkeleton } from "@/components/ui/content-skeletons";
-import type { Club } from "@/types/club";
 import type { User } from "@/types/user";
 
 type MainTab = "gallery" | "create";
 
 interface ClubTabNavigationProps {
-  clubs: (Club & { memberCount: number })[];
   currentUser: User | null;
-  userClubIds: Set<string>;
-  pagination?: {
-    currentPage: number;
-    totalPages: number;
-    totalCount: number;
-    itemsPerPage: number;
+  initialFilters?: {
+    search?: string;
+    location?: string;
+    club_type?: string;
+    sortBy?: string;
+    page?: number;
   };
   createClubAction: (formData: FormData) => Promise<void>;
   uploadAction: (
@@ -37,10 +35,8 @@ interface ClubTabNavigationProps {
 }
 
 function ClubTabNavigationContent({
-  clubs,
   currentUser,
-  userClubIds,
-  pagination,
+  initialFilters = {},
   createClubAction,
   uploadAction,
   joinClubAction,
@@ -50,13 +46,13 @@ function ClubTabNavigationContent({
   const searchParams = useSearchParams();
   const [isTabLoading, setIsTabLoading] = useState(false);
 
-  // Get default tab - always start with gallery since myclub is now separate
+  // Get default tab - support gallery and create only
   const getDefaultTab = (): MainTab => {
     const tabFromUrl = searchParams.get("tab") as MainTab;
     if (tabFromUrl && ["gallery", "create"].includes(tabFromUrl)) {
       return tabFromUrl;
     }
-    // Default to "gallery" since myclub is now a separate page
+    // Default to "gallery"
     return "gallery";
   };
 
@@ -68,7 +64,7 @@ function ClubTabNavigationContent({
     if (tabFromUrl && ["gallery", "create"].includes(tabFromUrl)) {
       setCurrentTab(tabFromUrl);
     } else {
-      // Default to "gallery" since myclub is now a separate page
+      // Default to "gallery"
       setCurrentTab("gallery");
     }
   }, [searchParams]);
@@ -147,10 +143,8 @@ function ClubTabNavigationContent({
             <>
               {currentTab === "gallery" && (
                 <ClubGallery
-                  clubs={clubs}
                   currentUser={currentUser}
-                  userClubIds={userClubIds}
-                  pagination={pagination}
+                  initialFilters={initialFilters}
                   joinClubAction={joinClubAction}
                   sendClubJoinRequestAction={sendClubJoinRequestAction}
                 />
@@ -184,10 +178,8 @@ function ClubTabNavigationContent({
 }
 
 export function ClubTabNavigation({
-  clubs,
   currentUser,
-  userClubIds,
-  pagination,
+  initialFilters,
   createClubAction,
   uploadAction,
   joinClubAction,
@@ -195,10 +187,8 @@ export function ClubTabNavigation({
 }: ClubTabNavigationProps) {
   return (
     <ClubTabNavigationContent
-      clubs={clubs}
       currentUser={currentUser}
-      userClubIds={userClubIds}
-      pagination={pagination}
+      initialFilters={initialFilters}
       createClubAction={createClubAction}
       uploadAction={uploadAction}
       joinClubAction={joinClubAction}

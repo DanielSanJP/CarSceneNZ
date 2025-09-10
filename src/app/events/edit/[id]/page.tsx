@@ -2,12 +2,113 @@ import { redirect, notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { EditEventForm } from "@/components/events/edit-event-form";
 import { getUser } from "@/lib/auth";
-import { getEventById, updateEvent, deleteEvent } from "@/lib/server/events";
-import { uploadEventImage } from "@/lib/server/image-upload";
+import { uploadEventImage } from "@/lib/utils/image-upload";
+import { createClient } from "@/lib/utils/supabase/server";
+import { Event } from "@/types";
 
 interface EditEventPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string }>;
+}
+
+// Inline server functions from events.ts
+async function getEventById(eventId: string): Promise<Event | null> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        `
+        *,
+        users!events_host_id_fkey (
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `
+      )
+      .eq("id", eventId)
+      .single();
+
+    if (error || !data) {
+      console.error("Error getting event by ID:", error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      host_id: data.host_id,
+      title: data.title,
+      description: data.description,
+      poster_image_url: data.poster_image_url,
+      location: data.location,
+      daily_schedule: data.daily_schedule || [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      host: {
+        id: data.users.id,
+        username: data.users.username,
+        display_name: data.users.display_name || data.users.username,
+        profile_image_url: data.users.profile_image_url,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting event by ID:", error);
+    return null;
+  }
+}
+
+async function updateEvent(
+  eventId: string,
+  eventData: {
+    title: string;
+    description?: string;
+    poster_image_url?: string;
+    location?: string;
+    daily_schedule: unknown[];
+  }
+): Promise<void> {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from("events")
+      .update({
+        title: eventData.title,
+        description: eventData.description,
+        poster_image_url: eventData.poster_image_url,
+        location: eventData.location,
+        daily_schedule: eventData.daily_schedule,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", eventId);
+
+    if (error) {
+      console.error("Error updating event:", error);
+      throw new Error("Failed to update event");
+    }
+  } catch (error) {
+    console.error("Error updating event:", error);
+    throw error;
+  }
+}
+
+async function deleteEvent(eventId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase.from("events").delete().eq("id", eventId);
+
+    if (error) {
+      console.error("Error deleting event:", error);
+      throw new Error("Failed to delete event");
+    }
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    throw error;
+  }
 }
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)

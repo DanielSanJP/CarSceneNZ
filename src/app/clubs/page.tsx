@@ -2,24 +2,137 @@ import { getUserOptional } from "@/lib/auth";
 import { ClubTabNavigation } from "@/components/clubs/club-tab-navigation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  createClub,
-  getUserClubMemberships,
-  getAllClubsWithStats,
-  getClubsCount,
-} from "@/lib/server/clubs";
-// import {
-//   moveClubImageFromTemp,
-//   deleteClubImage,
-// } from "@/lib/utils/image-upload"; // TODO: Convert to server action
 import { getUser } from "@/lib/auth";
-import { uploadClubImage } from "@/lib/server/image-upload";
+import { uploadClubImage } from "@/lib/utils/image-upload";
+import { createClient } from "@/lib/utils/supabase/server";
+import { Club } from "@/types";
 
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
 
-// Cache club data for 1 minute since it changes frequently with member actions
-export const revalidate = 60;
+// Inline server functions from clubs.ts
+async function createClub(clubData: {
+  name: string;
+  description: string;
+  location: string;
+  club_type: string;
+  banner_image: string;
+  leader_id: string;
+}): Promise<Club | null> {
+  try {
+    console.log("=== createClub function called ===");
+    console.log("Club data:", clubData);
+
+    const supabase = await createClient();
+    console.log("Supabase client created");
+
+    // Insert the club (database will auto-generate UUID)
+    const { data: clubInsertData, error: clubError } = await supabase
+      .from("clubs")
+      .insert({
+        name: clubData.name.trim(),
+        description: clubData.description.trim(),
+        location: clubData.location,
+        club_type: clubData.club_type,
+        banner_image_url: clubData.banner_image || null,
+        leader_id: clubData.leader_id,
+      })
+      .select()
+      .single();
+
+    console.log("Club insert result:", {
+      data: clubInsertData,
+      error: clubError,
+    });
+
+    if (clubError || !clubInsertData) {
+      console.error("Error creating club:", clubError);
+      return null;
+    }
+
+    console.log("Club created successfully, ID:", clubInsertData.id);
+
+    // Add the leader as a member with 'leader' role
+    const { error: memberError } = await supabase.from("club_members").insert({
+      club_id: clubInsertData.id,
+      user_id: clubData.leader_id,
+      role: "leader",
+    });
+
+    console.log("Club member insert result:", { error: memberError });
+
+    if (memberError) {
+      console.error("Error adding leader as member:", memberError);
+      // Don't fail the whole operation, but log the error
+    }
+
+    // Return the created club with simplified structure
+    return {
+      id: clubInsertData.id,
+      name: clubInsertData.name,
+      description: clubInsertData.description,
+      banner_image_url: clubInsertData.banner_image_url,
+      club_type: clubInsertData.club_type,
+      location: clubInsertData.location,
+      leader_id: clubInsertData.leader_id,
+      total_likes: 0,
+      created_at: clubInsertData.created_at,
+      updated_at: clubInsertData.updated_at,
+      leader: {
+        id: clubData.leader_id,
+        username: "",
+        display_name: "",
+        profile_image_url: undefined,
+      },
+    };
+  } catch (error) {
+    console.error("=== createClub function error ===", error);
+    return null;
+  }
+}
+
+async function joinClub(
+  clubId: string,
+  userId: string
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    const supabase = await createClient();
+
+    // Check if already a member
+    const { data: existingMember, error: checkError } = await supabase
+      .from("club_members")
+      .select("id")
+      .eq("club_id", clubId)
+      .eq("user_id", userId)
+      .single();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      console.error("Error checking existing membership:", checkError);
+      return { success: false, message: "Failed to check membership status" };
+    }
+
+    if (existingMember) {
+      return { success: false, message: "Already a member of this club" };
+    }
+
+    // Add user to club
+    const { error: insertError } = await supabase.from("club_members").insert({
+      club_id: clubId,
+      user_id: userId,
+      role: "member",
+    });
+
+    if (insertError) {
+      console.error("Error joining club:", insertError);
+      return { success: false, message: "Failed to join club" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in joinClub:", error);
+    return { success: false, message: "Failed to join club" };
+  }
+}
 
 async function uploadClubImageServerAction(formData: FormData) {
   "use server";
@@ -50,7 +163,6 @@ async function joinClubAction(
   userId: string
 ): Promise<{ success: boolean; message?: string }> {
   "use server";
-  const { joinClub } = await import("@/lib/server/clubs");
   return await joinClub(clubId, userId);
 }
 
@@ -60,8 +172,78 @@ async function sendClubJoinRequestAction(
   message?: string
 ): Promise<{ success: boolean; error?: string }> {
   "use server";
-  const { sendClubJoinRequest } = await import("@/lib/server/inbox");
-  return await sendClubJoinRequest(clubId, message);
+
+  try {
+    const user = await getUser();
+    if (!user) {
+      return {
+        success: false,
+        error: "You must be logged in to send a join request",
+      };
+    }
+
+    const supabase = await createClient();
+
+    // Check if club exists
+    const { data: club, error: clubError } = await supabase
+      .from("clubs")
+      .select("id, name, leader_id")
+      .eq("id", clubId)
+      .single();
+
+    if (clubError || !club) {
+      return { success: false, error: "Club not found" };
+    }
+
+    // Check if user is already a member
+    const { data: existingMember } = await supabase
+      .from("club_members")
+      .select("id")
+      .eq("club_id", clubId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (existingMember) {
+      return { success: false, error: "You are already a member of this club" };
+    }
+
+    // Check if request already exists
+    const { data: existingRequest } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("receiver_id", club.leader_id)
+      .eq("sender_id", user.id)
+      .eq("message_type", "club_join_request")
+      .single();
+
+    if (existingRequest) {
+      return {
+        success: false,
+        error: "You have already sent a join request to this club",
+      };
+    }
+
+    // Send join request message
+    const { error: messageError } = await supabase.from("messages").insert({
+      receiver_id: club.leader_id,
+      sender_id: user.id,
+      subject: `Join Request for ${club.name}`,
+      message:
+        message || `${user.username} wants to join your club "${club.name}"`,
+      message_type: "club_join_request",
+      created_at: new Date().toISOString(),
+    });
+
+    if (messageError) {
+      console.error("Error sending join request:", messageError);
+      return { success: false, error: "Failed to send join request" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error sending club join request:", error);
+    return { success: false, error: "Failed to send join request" };
+  }
 }
 
 async function createClubAction(formData: FormData) {
@@ -156,7 +338,6 @@ async function createClubAction(formData: FormData) {
     console.log("Revalidating paths...");
     // Revalidate relevant paths
     revalidatePath("/clubs");
-    revalidatePath("/clubs?tab=myclub");
 
     console.log("Redirecting to club:", result.id);
     // Redirect to the new club page
@@ -183,76 +364,24 @@ export default async function ClubsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // Parse search parameters first
+  // Parse search parameters for authentication check
   const params = await searchParams;
-  const tab = params.tab;
 
   // Get user (optional)
   const currentUser = await getUserOptional();
 
-  // Early return for guest users trying to access myclub
-  if (tab === "myclub" && !currentUser) {
-    redirect("/clubs?tab=gallery");
-  }
-
-  // Parse remaining search parameters
-  const search = typeof params.search === "string" ? params.search : undefined;
-  const location =
-    typeof params.location === "string" ? params.location : undefined;
-  const club_type =
-    typeof params.club_type === "string" ? params.club_type : undefined;
-  const sortBy = typeof params.sortBy === "string" ? params.sortBy : undefined;
-  const page = typeof params.page === "string" ? parseInt(params.page, 10) : 1;
-
-  const itemsPerPage = 12; // Back to 12 for better UX
-  const offset = (page - 1) * itemsPerPage;
-
-  // Parallel data fetching - userMemberships no longer needed for main clubs page
-  const [clubsWithStats, totalCount] = await Promise.all([
-    getAllClubsWithStats({
-      search,
-      location,
-      club_type,
-      sortBy,
-      limit: itemsPerPage,
-      offset,
-    }),
-    getClubsCount({
-      search,
-      location,
-      club_type,
-    }),
-  ]);
-
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
-
-  // For userClubIds, fetch minimal membership data if user is authenticated
-  const userMemberships = currentUser
-    ? await getUserClubMemberships(currentUser.id)
-    : [];
-
-  // Create a Set of club IDs the user is a member of for quick lookup
-  const userClubIds = new Set(userMemberships.map((m) => m.club.id));
-
-  // Transform data to match expected format (already includes memberCount)
-  const transformedClubs = clubsWithStats.map((club) => ({
-    id: club.id,
-    name: club.name,
-    description: club.description,
-    banner_image_url: club.banner_image_url,
-    club_type: club.club_type,
-    location: club.location,
-    leader_id: club.leader_id,
-    total_likes: club.total_likes || 0,
-    created_at: club.created_at,
-    updated_at: club.updated_at,
-    leader: club.leader,
-    memberCount: club.memberCount, // Real member count from server
-  }));
+  // Convert search params to initial filters for client component
+  const initialFilters = {
+    search: typeof params.search === "string" ? params.search : undefined,
+    location: typeof params.location === "string" ? params.location : undefined,
+    club_type:
+      typeof params.club_type === "string" ? params.club_type : undefined,
+    sortBy: typeof params.sortBy === "string" ? params.sortBy : "likes",
+    page: typeof params.page === "string" ? parseInt(params.page, 10) : 1,
+  };
 
   return (
     <ClubTabNavigation
-      clubs={transformedClubs}
       currentUser={
         currentUser
           ? {
@@ -262,13 +391,7 @@ export default async function ClubsPage({
             }
           : null
       }
-      userClubIds={userClubIds}
-      pagination={{
-        currentPage: page,
-        totalPages,
-        totalCount,
-        itemsPerPage,
-      }}
+      initialFilters={initialFilters}
       createClubAction={createClubAction}
       uploadAction={uploadClubImageServerAction}
       joinClubAction={joinClubAction}

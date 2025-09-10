@@ -9,7 +9,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { InboxProvider } from "@/contexts/inbox-context";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { getUserOptional } from "@/lib/auth";
-import { getUnreadMessageCount } from "@/lib/server/inbox";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +33,6 @@ export default async function RootLayout({
   // Get user on server side following Next.js 15 DAL pattern
   const user = await getUserOptional();
 
-  // Get unread message count for the user
-  const unreadCount = user ? await getUnreadMessageCount(user.id) : 0;
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -50,14 +46,11 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <ReactQueryProvider>
-            <InboxProvider
-              userId={user?.id || null}
-              initialUnreadCount={unreadCount}
-            >
+            <InboxProvider userId={user?.id || null}>
               <SidebarProvider defaultOpen={false}>
-                <AppSidebar user={user} unreadCount={unreadCount} />
+                <AppSidebar user={user} />
                 <SidebarInset>
-                  <Navigation user={user} unreadCount={unreadCount} />
+                  <Navigation user={user} />
                   <div className="flex-1 flex flex-col min-h-0">{children}</div>
                 </SidebarInset>
               </SidebarProvider>

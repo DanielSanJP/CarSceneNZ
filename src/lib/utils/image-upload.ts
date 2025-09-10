@@ -1,4 +1,4 @@
-import 'server-only'
+'use server'
 import { createClient } from '@/lib/utils/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -15,13 +15,6 @@ export interface UploadOptions {
 export interface UploadResult {
   url: string | null
   error: string | null
-}
-
-/**
- * Generate a temporary ID for new resources before they're created
- */
-export function generateTempId(): string {
-  return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
 
 /**
@@ -333,38 +326,3 @@ export const uploadEventImage = async (file: File, eventId: string, isTemp: bool
   const result = await uploadImage({ bucket: 'events', resourceId: eventId, file, isTemp })
   return result.url
 }
-
-// Additional convenience functions for compatibility with existing code
-export const generateTempCarId = generateTempId
-export const generateTempClubId = generateTempId
-
-export const preUploadCarImages = (files: File[], tempCarId: string) => 
-  uploadCarImages(files, tempCarId, true)
-
-export const moveCarImagesFromTemp = (tempId: string, finalId: string) =>
-  moveFromTemp(tempId, finalId, 'cars')
-
-export const deleteCarImages = (carId: string) =>
-  deleteResourceImages(carId, 'cars')
-
-export const uploadClubImageForCreation = async (file: File, tempId: string): Promise<string | null> => {
-  const result = await uploadImage({ bucket: 'clubs', resourceId: tempId, file, isTemp: true })
-  return result.url
-}
-
-export const moveClubImageFromTemp = (tempId: string, finalId: string) =>
-  moveFromTemp(tempId, finalId, 'clubs')
-
-export const deleteClubImage = (clubId: string) =>
-  deleteResourceImages(clubId, 'clubs')
-
-export const uploadEventImageForCreation = async (file: File, tempId: string): Promise<string | null> => {
-  const result = await uploadImage({ bucket: 'events', resourceId: tempId, file, isTemp: true })
-  return result.url
-}
-
-export const updateEventImageFileName = (tempId: string, finalId: string) =>
-  moveFromTemp(tempId, finalId, 'events')
-
-export const deleteEventImage = (eventId: string) =>
-  deleteResourceImages(eventId, 'events')

@@ -5,7 +5,7 @@ import {
   toggleFollow, 
   sendClubInvitation,
   type ProfileData
-} from '@/lib/api/profile';
+} from '@/lib/profile-api';
 
 // Query keys for better cache management
 export const profileKeys = {

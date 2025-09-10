@@ -1,9 +1,20 @@
 import type { Message } from './message';
 
-export interface InboxMessage extends Message {
+export interface InboxMessage extends Omit<Message, 'sender' | 'receiver'> {
   message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'club_invitation' | 'system';
   club_id?: string;
   club_name?: string;
+  // Flat sender fields from RPC function
+  sender_username?: string;
+  sender_display_name?: string;
+  sender_profile_image_url?: string;
+  // Keep the nested structure for backward compatibility
+  sender?: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  };
   metadata?: {
     club_join_request?: {
       club_id: string;

@@ -1,8 +1,79 @@
 import { getUser } from "@/lib/auth";
-import { updateUserProfile } from "@/lib/server/profile";
 import { revalidatePath } from "next/cache";
 import { EditProfileClient } from "@/components/profile/edit-profile-client";
-import { uploadProfileImage } from "@/lib/server/image-upload";
+import { uploadProfileImage } from "@/lib/utils/image-upload";
+import { createClient } from "@/lib/utils/supabase/server";
+import { User } from "@/types";
+
+// Inline server functions from profile.ts
+async function updateUserProfile(
+  userId: string,
+  updates: {
+    username?: string;
+    display_name?: string;
+    profile_image_url?: string;
+  }
+): Promise<User | null> {
+  try {
+    const supabase = await createClient();
+
+    // Prepare the update object
+    const updateObject: {
+      updated_at: string;
+      username?: string;
+      display_name?: string;
+      profile_image_url?: string;
+    } = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (updates.username) {
+      updateObject.username = updates.username;
+    }
+    if (updates.display_name !== undefined) {
+      updateObject.display_name = updates.display_name;
+    }
+    if (updates.profile_image_url !== undefined) {
+      updateObject.profile_image_url = updates.profile_image_url;
+    }
+
+    const { data: profileData, error } = await supabase
+      .from("users")
+      .update(updateObject)
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating user profile:", error);
+      if (error.code === "23505") {
+        // Unique constraint violation (likely username)
+        throw new Error("Username is already taken");
+      }
+      throw new Error("Failed to update profile");
+    }
+
+    if (!profileData) {
+      throw new Error("No data returned from update");
+    }
+
+    return {
+      id: profileData.id,
+      username: profileData.username,
+      display_name: profileData.display_name || profileData.username,
+      email: "",
+      profile_image_url: profileData.profile_image_url,
+      created_at: profileData.created_at,
+      updated_at: profileData.updated_at,
+    };
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Failed to update profile");
+  }
+}
 
 async function uploadProfileImageServerAction(formData: FormData) {
   "use server";

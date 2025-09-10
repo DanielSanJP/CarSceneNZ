@@ -28,13 +28,7 @@ import { ThemeButton } from "@/components/theme-button";
 import { InboxUnreadBadge } from "@/components/inbox/inbox-unread-badge";
 import type { User as UserType } from "@/types/user";
 
-function ProfileDropdown({
-  user,
-  unreadCount,
-}: {
-  user: UserType | null;
-  unreadCount: number;
-}) {
+function ProfileDropdown({ user }: { user: UserType | null }) {
   const [imageError, setImageError] = React.useState(false);
 
   // Use user data from our combined auth context
@@ -127,7 +121,7 @@ function ProfileDropdown({
           <Link href="/inbox" className="cursor-pointer relative">
             <Mail className="mr-2 h-4 w-4" />
             <span>Inbox</span>
-            <InboxUnreadBadge unreadCount={unreadCount} />
+            <InboxUnreadBadge />
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -140,13 +134,7 @@ function ProfileDropdown({
   );
 }
 
-export function Navigation({
-  user,
-  unreadCount,
-}: {
-  user: UserType | null;
-  unreadCount: number;
-}) {
+export function Navigation({ user }: { user: UserType | null }) {
   const pathname = usePathname();
 
   const isActivePath = (path: string) => {
@@ -296,7 +284,7 @@ export function Navigation({
                         >
                           <Mail className="h-4 w-4" />
                           <span>Inbox</span>
-                          <InboxUnreadBadge unreadCount={unreadCount} />
+                          <InboxUnreadBadge />
                         </Link>
                       </NavigationMenuLink>
                     </NavigationMenuItem>
@@ -316,7 +304,7 @@ export function Navigation({
             <MobileSearchButton />
             <ThemeButton />
             {user ? (
-              <ProfileDropdown user={user} unreadCount={unreadCount} />
+              <ProfileDropdown user={user} />
             ) : (
               <div className="hidden lg:flex space-x-2">
                 <Link href="/login">

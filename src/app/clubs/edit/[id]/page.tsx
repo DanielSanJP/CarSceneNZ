@@ -1,13 +1,120 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
-import { getClubById, updateClub } from "@/lib/server/clubs";
 import { EditClubForm } from "@/components/clubs/edit-club-form";
-import { uploadClubImage } from "@/lib/server/image-upload";
+import { uploadClubImage } from "@/lib/utils/image-upload";
+import { createClient } from "@/lib/utils/supabase/server";
+import { Club } from "@/types";
 
 interface EditClubPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string }>;
+}
+
+// Inline server functions from clubs.ts
+async function getClubById(clubId: string): Promise<Club | null> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("clubs")
+      .select(
+        `
+        *,
+        users!clubs_leader_id_fkey (
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `
+      )
+      .eq("id", clubId)
+      .single();
+
+    if (error || !data) {
+      console.error("Error getting club by ID:", error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      banner_image_url: data.banner_image_url,
+      club_type: data.club_type,
+      location: data.location,
+      leader_id: data.leader_id,
+      total_likes: data.total_likes || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      leader: {
+        id: data.users.id,
+        username: data.users.username,
+        display_name: data.users.display_name || data.users.username,
+        profile_image_url: data.users.profile_image_url,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting club by ID:", error);
+    return null;
+  }
+}
+
+async function updateClub(clubData: {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  club_type: string;
+  banner_image: string;
+}): Promise<Club | null> {
+  try {
+    console.log("=== updateClub function called ===");
+    console.log("Club data:", clubData);
+
+    const supabase = await createClient();
+    console.log("Supabase client created");
+
+    // Update the club
+    const { data: clubUpdateData, error: clubError } = await supabase
+      .from("clubs")
+      .update({
+        name: clubData.name.trim(),
+        description: clubData.description.trim(),
+        location: clubData.location,
+        club_type: clubData.club_type,
+        banner_image_url: clubData.banner_image || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", clubData.id)
+      .select()
+      .single();
+
+    console.log("Club update result:", {
+      data: clubUpdateData,
+      error: clubError,
+    });
+
+    if (clubError || !clubUpdateData) {
+      console.error("Error updating club:", clubError);
+      return null;
+    }
+
+    console.log("Club updated successfully, ID:", clubUpdateData.id);
+
+    // Return the updated club with leader info
+    console.log("Fetching complete updated club data...");
+    const result = await getClubById(clubUpdateData.id);
+    console.log(
+      "Final updated club result:",
+      result ? "Success" : "Failed to fetch"
+    );
+    return result;
+  } catch (error) {
+    console.error("=== updateClub function error ===", error);
+    return null;
+  }
 }
 
 async function uploadClubImageServerAction(formData: FormData) {

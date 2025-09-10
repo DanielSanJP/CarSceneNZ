@@ -134,80 +134,55 @@ export function useEventAttendance() {
   return useMutation({
     mutationFn: ({ eventId, status }: { eventId: string; status: 'interested' | 'going' | 'remove' }) =>
       updateEventAttendance(eventId, status),
-    onMutate: async ({ eventId, status }) => {
-      // Cancel any outgoing refetches for events
-      await queryClient.cancelQueries({ queryKey: eventsKeys.lists() });
+    onSuccess: (data, variables) => {
+      // Update the cache with the actual server response
+      if (data.success) {
+        // Update events list cache with new counts and user status
+        queryClient.setQueriesData<EventsData>(
+          { queryKey: eventsKeys.lists() },
+          (oldData) => {
+            if (!oldData) return oldData;
 
-      // Snapshot the previous values
-      const previousEventsData = queryClient.getQueriesData({
-        queryKey: eventsKeys.lists(),
-      });
-
-      // Optimistically update all events query caches
-      queryClient.setQueriesData<EventsData>(
-        { queryKey: eventsKeys.lists() },
-        (oldData) => {
-          if (!oldData) return oldData;
-
-          return {
-            ...oldData,
-            events: oldData.events.map(event => {
-              if (event.id === eventId) {
-                // Update user status
-                const newUserStatuses = { ...oldData.userStatuses };
-                if (status === 'remove') {
-                  delete newUserStatuses[eventId];
-                } else {
-                  newUserStatuses[eventId] = status;
+            return {
+              ...oldData,
+              events: oldData.events.map(event => {
+                if (event.id === variables.eventId) {
+                  return {
+                    ...event,
+                    attendeeCount: data.attendeeCount,
+                    interestedCount: data.interestedCount,
+                  };
                 }
+                return event;
+              }),
+              userStatuses: data.userStatus 
+                ? { ...oldData.userStatuses, [variables.eventId]: data.userStatus }
+                : Object.fromEntries(Object.entries(oldData.userStatuses).filter(([id]) => id !== variables.eventId)),
+            };
+          }
+        );
 
-                // Calculate optimistic count changes
-                const currentStatus = oldData.userStatuses[eventId];
-                let attendeeCountChange = 0;
-                let interestedCountChange = 0;
+        // Update event detail cache with new counts and user status
+        queryClient.setQueryData<EventDetailData>(
+          eventsKeys.detail(variables.eventId),
+          (oldData) => {
+            if (!oldData) return oldData;
 
-                // Calculate changes based on status transitions
-                if (currentStatus === 'going' && status !== 'going') {
-                  attendeeCountChange = -1;
-                }
-                if (currentStatus === 'interested' && status !== 'interested') {
-                  interestedCountChange = -1;
-                }
-                if (status === 'going' && currentStatus !== 'going') {
-                  attendeeCountChange = 1;
-                }
-                if (status === 'interested' && currentStatus !== 'interested') {
-                  interestedCountChange = 1;
-                }
-
-                return {
-                  ...event,
-                  attendeeCount: Math.max(0, (event.attendeeCount || 0) + attendeeCountChange),
-                  interestedCount: Math.max(0, (event.interestedCount || 0) + interestedCountChange),
-                };
+            return {
+              ...oldData,
+              userStatus: data.userStatus || null,
+              event: {
+                ...oldData.event,
+                attendeeCount: data.attendeeCount,
+                interestedCount: data.interestedCount,
               }
-              return event;
-            }),
-            userStatuses: status === 'remove' 
-              ? Object.fromEntries(Object.entries(oldData.userStatuses).filter(([id]) => id !== eventId))
-              : { ...oldData.userStatuses, [eventId]: status },
-          };
-        }
-      );
-
-      return { previousEventsData };
-    },
-    onError: (err, variables, context) => {
-      // Revert the optimistic updates on error
-      if (context?.previousEventsData) {
-        context.previousEventsData.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey, data);
-        });
+            };
+          }
+        );
       }
     },
-    onSettled: () => {
-      // Refetch events data to ensure consistency
-      queryClient.invalidateQueries({ queryKey: eventsKeys.lists() });
+    onError: (error) => {
+      console.error('Event attendance error:', error);
     },
   });
 }

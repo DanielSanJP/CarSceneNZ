@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,22 +23,14 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { Club } from "@/types/club";
 import type { User } from "@/types/user";
+import type { Club } from "@/types/club";
 import { Pagination, PaginationInfo } from "@/components/ui/pagination";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
+import { useClubsGallery } from "@/hooks/use-clubs";
 
 interface ClubGalleryProps {
-  clubs: (Club & { memberCount: number })[];
   currentUser: User | null;
-  userClubIds: Set<string>;
-  pagination?: {
-    currentPage: number;
-    totalPages: number;
-    totalCount: number;
-    itemsPerPage: number;
-  };
   joinClubAction?: (
     clubId: string,
     userId: string
@@ -47,43 +39,102 @@ interface ClubGalleryProps {
     clubId: string,
     message?: string
   ) => Promise<{ success: boolean; error?: string }>;
+  // URL search params for filters
+  initialFilters?: {
+    search?: string;
+    location?: string;
+    club_type?: string;
+    sortBy?: string;
+    page?: number;
+  };
 }
 
 export const ClubGallery = memo(function ClubGallery({
-  clubs: propClubs,
   currentUser,
-  userClubIds,
-  pagination,
   joinClubAction,
   sendClubJoinRequestAction,
+  initialFilters = {},
 }: ClubGalleryProps) {
-  const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [locationFilter, setLocationFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("likes");
-  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
-  const [clubs, setClubs] = useState<(Club & { memberCount: number })[]>(
-    propClubs || []
+  const [searchTerm, setSearchTerm] = useState(initialFilters.search || "");
+  const [locationFilter, setLocationFilter] = useState<string>(
+    initialFilters.location || "all"
   );
+  const [typeFilter, setTypeFilter] = useState<string>(
+    initialFilters.club_type || "all"
+  );
+  const [sortBy, setSortBy] = useState<string>(
+    initialFilters.sortBy || "likes"
+  );
+  const [currentPage, setCurrentPage] = useState(initialFilters.page || 1);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Update clubs when propClubs changes
-  useEffect(() => {
-    if (propClubs) {
-      setClubs(propClubs);
-    }
-  }, [propClubs]);
+  // Use React Query to fetch clubs data with filters
+  const {
+    data: clubsData,
+    isLoading,
+    error,
+    refetch,
+  } = useClubsGallery({
+    search: searchTerm || undefined,
+    location: locationFilter !== "all" ? locationFilter : undefined,
+    club_type: typeFilter !== "all" ? typeFilter : undefined,
+    sortBy,
+    page: currentPage,
+    limit: 12,
+  });
 
-  // Handle pagination navigation
-  const handlePageChange = (page: number) => {
-    const params = new URLSearchParams(window.location.search);
-    params.set("page", page.toString());
-    router.push(`/clubs?tab=gallery&${params.toString()}`);
-  };
+  // Handle loading state - show skeleton
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-10 bg-muted animate-pulse rounded" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <div className="h-32 bg-muted animate-pulse" />
+              <CardContent className="p-4 space-y-3">
+                <div className="h-6 bg-muted animate-pulse rounded" />
+                <div className="h-4 bg-muted animate-pulse rounded" />
+                <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error || !clubsData) {
+    return (
+      <div className="text-center py-12">
+        <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-medium mb-2">Failed to load clubs</h3>
+        <p className="text-muted-foreground mb-6">
+          There was an error loading the clubs.
+        </p>
+        <Button onClick={() => refetch()}>Try Again</Button>
+      </div>
+    );
+  }
+
+  const clubs = clubsData?.clubs || [];
+  const totalCount = clubsData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / 12);
 
   // Check if current user is a member of a club
   const isUserMemberOfClub = (clubId: string) => {
-    return userClubIds.has(clubId);
+    // TODO: Add user membership check if needed via React Query
+    console.log("Checking membership for club:", clubId);
+    return false;
   };
 
   // Get club type icon and styling
@@ -116,77 +167,15 @@ export const ClubGallery = memo(function ClubGallery({
     }
   };
 
-  // Filter and sort clubs
-  const getFilteredClubs = () => {
-    let filtered = clubs;
-
-    // Search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((club: Club) => {
-        // Check if search term starts with # for ID search
-        if (searchTerm.startsWith("#")) {
-          const idSearch = searchTerm.substring(1); // Remove the # symbol
-          return club.id.toLowerCase().includes(idSearch.toLowerCase());
-        }
-
-        // Regular search in name and description
-        return (
-          club.name.toLowerCase().includes(searchLower) ||
-          (club.description?.toLowerCase().includes(searchLower) ?? false) ||
-          club.id.toLowerCase().includes(searchLower) // Also allow ID search without #
-        );
-      });
-    }
-
-    // Location filter
-    if (locationFilter !== "all") {
-      filtered = filtered.filter(
-        (club: Club) => club.location === locationFilter
-      );
-    }
-
-    // Type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter((club: Club) => club.club_type === typeFilter);
-    }
-
-    // Sort
-    switch (sortBy) {
-      case "likes":
-        filtered.sort((a: Club, b: Club) => b.total_likes - a.total_likes);
-        break;
-      case "members":
-        filtered.sort(
-          (
-            a: Club & { memberCount: number },
-            b: Club & { memberCount: number }
-          ) => b.memberCount - a.memberCount
-        );
-        break;
-      case "newest":
-        filtered.sort(
-          (a: Club, b: Club) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        break;
-      case "name":
-        filtered.sort((a: Club, b: Club) => a.name.localeCompare(b.name));
-        break;
-    }
-
-    return filtered;
-  };
-
   const handleImageError = (clubId: string) => {
     setFailedImages((prev) => new Set(prev).add(clubId));
   };
 
-  // Get unique locations for filter
+  // Get unique locations for filter dropdown from current clubs
   const locations = [
     ...new Set(
       clubs
-        .map((club: Club) => club.location)
+        .map((club) => club.location)
         .filter((loc): loc is string => Boolean(loc))
     ),
   ].sort();
@@ -265,7 +254,7 @@ export const ClubGallery = memo(function ClubGallery({
           {(searchTerm || locationFilter !== "all" || typeFilter !== "all") && (
             <div className="flex items-center justify-between pt-4 border-t">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Showing {getFilteredClubs().length} clubs</span>
+                <span>Showing {clubs.length} clubs</span>
                 {searchTerm && (
                   <span className="bg-primary/10 text-primary px-2 py-1 rounded-md">
                     Search: &quot;{searchTerm}&quot;
@@ -301,7 +290,7 @@ export const ClubGallery = memo(function ClubGallery({
 
       {/* Clubs Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {getFilteredClubs().map((club: Club & { memberCount: number }) => {
+        {clubs.map((club: Club & { memberCount: number }) => {
           const memberCount = club.memberCount; // Use real member count from server
           const typeInfo = getClubTypeInfo(club.club_type || "general");
           const leader = club.leader; // Use real leader from server
@@ -491,7 +480,7 @@ export const ClubGallery = memo(function ClubGallery({
         })}
       </div>
 
-      {getFilteredClubs().length === 0 && (
+      {clubs.length === 0 && (
         <div className="text-center py-12">
           <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">No clubs found</h3>
@@ -502,18 +491,18 @@ export const ClubGallery = memo(function ClubGallery({
       )}
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
+      {totalPages > 1 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <PaginationInfo
-              currentPage={pagination.currentPage}
-              totalItems={pagination.totalCount}
-              itemsPerPage={pagination.itemsPerPage}
+              currentPage={currentPage}
+              totalItems={totalCount}
+              itemsPerPage={12}
             />
             <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              onPageChange={handlePageChange}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
             />
           </div>
         </div>

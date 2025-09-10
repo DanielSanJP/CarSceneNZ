@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/utils/supabase/server";
-import { uploadProfileImage } from "@/lib/server/image-upload";
+import { uploadProfileImage } from "@/lib/utils/image-upload";
 
 async function signupAction(formData: FormData) {
   "use server";

@@ -8,31 +8,29 @@ import { OwnerRankings } from "@/components/leaderboard/owner-rankings";
 import { ClubRankings } from "@/components/leaderboard/club-rankings";
 import { CarRankings } from "@/components/leaderboard/car-rankings";
 import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
-import type {
-  OwnerRanking,
-  ClubRanking,
-  CarRanking,
-} from "@/types/leaderboard";
+import { useLeaderboards } from "@/hooks/use-leaderboards";
 
 type TabType = "owners" | "clubs" | "cars";
 
 interface LeaderboardsViewProps {
-  ownersData: OwnerRanking[];
-  clubsData: ClubRanking[];
-  carsData: CarRanking[];
   defaultTab?: TabType;
 }
 
 export function LeaderboardsView({
-  ownersData,
-  clubsData,
-  carsData,
   defaultTab = "owners",
 }: LeaderboardsViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
   const [isTabLoading, setIsTabLoading] = useState(false);
+
+  // Use React Query to fetch leaderboards data
+  const {
+    data: leaderboardsData,
+    isLoading,
+    error,
+    refetch,
+  } = useLeaderboards();
 
   // Get tab from URL parameters
   useEffect(() => {
@@ -41,6 +39,34 @@ export function LeaderboardsView({
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+
+  // Handle loading state - let loading.tsx handle this
+  if (isLoading) {
+    return null; // loading.tsx will show the skeleton
+  }
+
+  // Handle error state
+  if (error || !leaderboardsData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">
+            Failed to load leaderboards
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            There was an error loading the leaderboards data.
+          </p>
+          <Button onClick={() => refetch()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const {
+    cars: carsData,
+    owners: ownersData,
+    clubs: clubsData,
+  } = leaderboardsData;
 
   const handleTabChange = (tab: TabType) => {
     if (tab === activeTab) return; // Don't change if same tab

@@ -2,8 +2,9 @@ import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CreateEventForm } from "@/components/events/create-event-form";
-import { createEvent } from "@/lib/server/events";
-import { uploadEventImage } from "@/lib/server/image-upload";
+import { uploadEventImage } from "@/lib/utils/image-upload";
+import { createClient } from "@/lib/utils/supabase/server";
+import { Event } from "@/types";
 
 // Helper function to format date in local timezone (avoids UTC conversion issues)
 function formatDateToLocal(date: Date): string {
@@ -11,6 +12,63 @@ function formatDateToLocal(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+// Inline server function from events.ts
+async function createEvent(eventData: {
+  host_id: string;
+  title: string;
+  description?: string;
+  poster_image_url?: string;
+  location?: string;
+  daily_schedule: unknown[];
+}): Promise<Event> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("events")
+      .insert({
+        host_id: eventData.host_id,
+        title: eventData.title,
+        description: eventData.description,
+        poster_image_url: eventData.poster_image_url,
+        location: eventData.location,
+        daily_schedule: eventData.daily_schedule,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating event:", error);
+      throw new Error("Failed to create event");
+    }
+
+    if (!data) {
+      throw new Error("No data returned from event creation");
+    }
+
+    return {
+      id: data.id,
+      host_id: data.host_id,
+      title: data.title,
+      description: data.description,
+      poster_image_url: data.poster_image_url,
+      location: data.location,
+      daily_schedule: data.daily_schedule || [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      host: {
+        id: data.host_id,
+        username: "",
+        display_name: "",
+        profile_image_url: undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Error creating event:", error);
+    throw error;
+  }
 }
 
 async function uploadEventImageServerAction(formData: FormData) {

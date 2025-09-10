@@ -1,13 +1,131 @@
 import { getUser } from "@/lib/auth";
-import {
-  updateCarWithComponents,
-  getCarById,
-  deleteCar,
-} from "@/lib/server/cars";
 import { revalidatePath } from "next/cache";
 import { redirect, notFound } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
-import { uploadCarImages } from "@/lib/server/image-upload";
+import { uploadCarImages } from "@/lib/utils/image-upload";
+import { createClient } from "@/lib/utils/supabase/server";
+import { Car } from "@/types";
+
+// Inline server functions from cars.ts
+async function getCarById(carId: string): Promise<Car | null> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("cars")
+      .select(
+        `
+        *,
+        users!cars_owner_id_fkey (
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `
+      )
+      .eq("id", carId)
+      .single();
+
+    if (error || !data) {
+      console.error("Error getting car by ID:", error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      owner_id: data.owner_id,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      images: data.images || [],
+      total_likes: data.total_likes || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      owner: {
+        id: data.users.id,
+        username: data.users.username,
+        display_name: data.users.display_name || data.users.username,
+        profile_image_url: data.users.profile_image_url,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting car by ID:", error);
+    return null;
+  }
+}
+
+async function updateCarWithComponents(
+  carId: string,
+  carData: Record<string, string | number | unknown[] | undefined>
+): Promise<Car | null> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("cars")
+      .update({
+        brand: carData.brand,
+        model: carData.model,
+        year: carData.year,
+        images: carData.images,
+        engine: carData.engine,
+        suspension: carData.suspension,
+        wheels_tires: carData.wheels_tires,
+        braking_system: carData.braking_system,
+        exterior_mods: carData.exterior_mods,
+        interior_mods: carData.interior_mods,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", carId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error("Error updating car:", error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      owner_id: data.owner_id,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      images: data.images || [],
+      total_likes: data.total_likes || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      owner: {
+        id: data.owner_id,
+        username: "",
+        display_name: "",
+        profile_image_url: undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Error updating car:", error);
+    return null;
+  }
+}
+
+async function deleteCar(carId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase.from("cars").delete().eq("id", carId);
+
+    if (error) {
+      console.error("Error deleting car:", error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting car:", error);
+    return false;
+  }
+}
 
 interface EditCarPageProps {
   params: Promise<{ id: string }>;

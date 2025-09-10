@@ -91,10 +91,9 @@ const userNavItems = [
 
 interface AppSidebarProps {
   user: UserType | null;
-  unreadCount: number;
 }
 
-export function AppSidebar({ user, unreadCount }: AppSidebarProps) {
+export function AppSidebar({ user }: AppSidebarProps) {
   const { setOpenMobile } = useSidebar();
   const pathname = usePathname();
 
@@ -197,9 +196,7 @@ export function AppSidebar({ user, unreadCount }: AppSidebarProps) {
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
-                          {item.title === "Inbox" && (
-                            <InboxUnreadBadge unreadCount={unreadCount} />
-                          )}
+                          {item.title === "Inbox" && <InboxUnreadBadge />}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

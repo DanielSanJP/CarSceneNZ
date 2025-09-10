@@ -23,8 +23,11 @@ import {
 import Link from "next/link";
 import type { Event } from "@/types/event";
 import { toast } from "sonner";
-import { useEventDetail, useEventAttendance } from "@/hooks/use-events";
-import type { AttendeeData } from "@/lib/server/events";
+import {
+  useEventDetail,
+  useEventAttendance,
+  type AttendeeData,
+} from "@/hooks/use-events";
 
 interface EventDetailViewProps {
   // Optimized mode props

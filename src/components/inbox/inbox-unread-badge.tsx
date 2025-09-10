@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { useInboxSafe } from "@/hooks/use-inbox-safe";
+import { useUnreadCount } from "@/hooks/use-inbox";
 import { usePathname } from "next/navigation";
 
 interface InboxUnreadBadgeProps {
@@ -13,17 +13,17 @@ interface InboxUnreadBadgeProps {
 
 /**
  * Client component that displays the unread message count badge
- * Now uses global inbox context for real-time updates
+ * Now uses React Query for optimized data fetching
  */
 export function InboxUnreadBadge({
   unreadCount: propUnreadCount,
   className,
 }: InboxUnreadBadgeProps) {
-  const { unreadCount: contextUnreadCount } = useInboxSafe();
+  const { data: unreadData } = useUnreadCount();
   const pathname = usePathname();
 
-  // Use context count if available, fall back to prop for backward compatibility
-  const displayCount = contextUnreadCount ?? propUnreadCount ?? 0;
+  // Use React Query count if available, fall back to prop for backward compatibility
+  const displayCount = unreadData?.count ?? propUnreadCount ?? 0;
 
   // Don't show badge if user is currently on the inbox page
   const isOnInboxPage = pathname === "/inbox";

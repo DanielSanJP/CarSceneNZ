@@ -30,7 +30,7 @@ import {
   useFollowToggle,
 } from "@/hooks/use-profile";
 import { InviteToClub } from "@/components/clubs/invite-to-club";
-import type { ProfileData } from "@/lib/api/profile";
+import type { ProfileData } from "@/lib/profile-api";
 
 interface UserProfileDisplayProps {
   userId: string;

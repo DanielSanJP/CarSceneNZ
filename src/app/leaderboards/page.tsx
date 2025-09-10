@@ -1,9 +1,7 @@
-import {
-  getTopOwners,
-  getTopClubs,
-  getTopCars,
-} from "@/lib/server/leaderboards";
 import { LeaderboardsView } from "@/components/leaderboard/leaderboards-view";
+
+// Force dynamic rendering for real-time leaderboards
+export const dynamic = "force-dynamic";
 
 export default async function LeaderboardsPage({
   searchParams,
@@ -11,14 +9,6 @@ export default async function LeaderboardsPage({
   searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const itemsPerPage = 200; // Show top 200 in each category
-
-  // Fetch all leaderboard data on server with increased limit
-  const [ownersData, clubsData, carsData] = await Promise.all([
-    getTopOwners(itemsPerPage),
-    getTopClubs(itemsPerPage),
-    getTopCars(itemsPerPage),
-  ]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,9 +24,6 @@ export default async function LeaderboardsPage({
           </div>
 
           <LeaderboardsView
-            ownersData={ownersData}
-            clubsData={clubsData}
-            carsData={carsData}
             defaultTab={params.tab as "owners" | "clubs" | "cars"}
           />
         </div>

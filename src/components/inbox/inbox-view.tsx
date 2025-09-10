@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo, useCallback } from "react";
+import { useState, memo } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Check, X, Clock, Users } from "lucide-react";
 import Link from "next/link";
 import type { InboxMessage } from "@/types/inbox";
-import { useInboxRealtime } from "@/hooks/use-inbox-realtime";
+import {
+  useInboxMessages,
+  useInboxRealtime,
+  useHandleJoinRequest,
+  useHandleClubInvitation,
+} from "@/hooks/use-inbox";
 import { useInboxPageActive } from "@/hooks/use-inbox-page-active";
-import { useInboxSafe } from "@/hooks/use-inbox-safe";
 import { toast } from "sonner";
 
 // Helper function to format relative time
@@ -64,55 +68,60 @@ function getRelativeTime(date: string | Date): string {
 
 interface InboxViewProps {
   userId: string;
-  initialMessages: InboxMessage[];
-  refreshMessages: () => Promise<void>;
-  handleJoinRequestAction?: (
-    messageId: string,
-    action: "approve" | "reject",
-    clubId: string,
-    senderId: string
-  ) => Promise<{ success: boolean; error?: string }>;
-  handleClubInvitationAction?: (
-    messageId: string,
-    action: "accept" | "reject",
-    clubId: string,
-    inviterId: string
-  ) => Promise<{ success: boolean; error?: string }>;
 }
 
-function InboxViewComponent({
-  userId,
-  initialMessages,
-  refreshMessages,
-  handleJoinRequestAction,
-  handleClubInvitationAction,
-}: InboxViewProps) {
+function InboxViewComponent({}: InboxViewProps) {
   const [processingRequest, setProcessingRequest] = useState<string | null>(
     null
   );
 
+  // Use React Query hooks for optimized data fetching with real-time updates
+  const { data: inboxData, isLoading, error } = useInboxMessages();
+  const messages = inboxData?.messages || [];
+
   // Use the inbox page active hook for automatic read state management
   useInboxPageActive();
 
-  // Get inbox context for badge coordination
-  const { refreshUnreadCount } = useInboxSafe();
+  // Enable real-time updates for live inbox functionality
+  useInboxRealtime();
 
-  // Handle new message coordination between realtime and badge counting
-  const handleNewMessage = useCallback((newMessage: InboxMessage) => {
-    console.log("New message received in inbox view:", newMessage);
+  // Optimistic mutation hooks for interactive actions
+  const handleJoinRequestMutation = useHandleJoinRequest();
+  const handleClubInvitationMutation = useHandleClubInvitation();
 
-    // The useInboxPageActive hook and context will handle auto-read behavior
-    // We just need to ensure the message appears in the list (which it will)
-  }, []);
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">Inbox</h1>
+          <p className="text-muted-foreground mt-2">
+            Stay connected with your car community
+          </p>
+        </div>
+        <div className="text-center py-8 text-muted-foreground">
+          Loading messages...
+        </div>
+      </div>
+    );
+  }
 
-  // Use Supabase real-time inbox updates with coordination callback
-  const { messages } = useInboxRealtime({
-    userId,
-    initialMessages,
-    refreshMessages,
-    onNewMessage: handleNewMessage,
-    refreshUnreadCount,
-  });
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">Inbox</h1>
+          <p className="text-muted-foreground mt-2">
+            Stay connected with your car community
+          </p>
+        </div>
+        <div className="text-center py-8 text-destructive">
+          Failed to load messages. Please try again.
+        </div>
+      </div>
+    );
+  }
 
   // Function to clean message content by removing metadata
   const getCleanMessage = (message: string): string => {
@@ -126,60 +135,35 @@ function InboxViewComponent({
     msg: InboxMessage,
     action: "approve" | "reject"
   ) => {
-    if (!handleJoinRequestAction) {
-      toast.error("Join request action not available");
-      return;
-    }
-
     setProcessingRequest(msg.id);
     try {
-      const result = await handleJoinRequestAction(
-        msg.id,
+      await handleJoinRequestMutation.mutateAsync({
+        messageId: msg.id,
         action,
-        msg.club_id || "",
-        msg.sender_id
-      );
-      if (result.success) {
-        // Server action will handle revalidation, no need for manual reload
-        toast.success(`Successfully ${action}ed join request`);
-      } else {
-        toast.error(
-          `Failed to ${action} join request: ${result.error || "Unknown error"}`
-        );
-      }
+        clubId: msg.club_id || "",
+        senderId: msg.sender_id,
+      });
+      toast.success(`Successfully ${action}ed join request`);
     } catch {
       toast.error(`Failed to ${action} join request`);
     } finally {
       setProcessingRequest(null);
     }
   };
+
   const handleClubInvitation = async (
     msg: InboxMessage,
     action: "accept" | "reject"
   ) => {
-    if (!handleClubInvitationAction) {
-      toast.error("Club invitation action not available");
-      return;
-    }
-
     setProcessingRequest(msg.id);
     try {
-      const result = await handleClubInvitationAction(
-        msg.id,
+      await handleClubInvitationMutation.mutateAsync({
+        messageId: msg.id,
         action,
-        msg.club_id || "",
-        msg.sender_id
-      );
-      if (result.success) {
-        // Server action will handle revalidation, no need for manual reload
-        toast.success(`Successfully ${action}ed club invitation`);
-      } else {
-        toast.error(
-          `Failed to ${action} club invitation: ${
-            result.error || "Unknown error"
-          }`
-        );
-      }
+        clubId: msg.club_id || "",
+        inviterId: msg.sender_id,
+      });
+      toast.success(`Successfully ${action}ed club invitation`);
     } catch {
       toast.error(`Failed to ${action} club invitation`);
     } finally {
@@ -213,13 +197,24 @@ function InboxViewComponent({
                   <div className="flex items-start gap-3 sm:col-span-3">
                     {/* Avatar */}
                     <Link
-                      href={`/profile/${msg.sender?.username}`}
+                      href={`/profile/${
+                        msg.sender?.username || msg.sender_username
+                      }`}
                       className="flex-shrink-0"
                     >
-                      {msg.sender?.profile_image_url ? (
+                      {msg.sender?.profile_image_url ||
+                      msg.sender_profile_image_url ? (
                         <Image
-                          src={msg.sender.profile_image_url}
-                          alt={msg.sender.username || "User"}
+                          src={
+                            msg.sender?.profile_image_url ||
+                            msg.sender_profile_image_url ||
+                            ""
+                          }
+                          alt={
+                            msg.sender?.username ||
+                            msg.sender_username ||
+                            "User"
+                          }
                           width={48}
                           height={48}
                           quality={100}
@@ -228,7 +223,9 @@ function InboxViewComponent({
                       ) : (
                         <Avatar className="h-12 w-12 hover:opacity-80 transition-opacity">
                           <AvatarFallback className="text-sm">
-                            {msg.sender?.username?.charAt(0) || "?"}
+                            {(
+                              msg.sender?.username || msg.sender_username
+                            )?.charAt(0) || "?"}
                           </AvatarFallback>
                         </Avatar>
                       )}
@@ -238,10 +235,15 @@ function InboxViewComponent({
                     <div className="flex-1 min-w-0">
                       {/* Name */}
                       <Link
-                        href={`/profile/${msg.sender?.username}`}
+                        href={`/profile/${
+                          msg.sender?.username || msg.sender_username
+                        }`}
                         className="font-semibold hover:underline text-sm block truncate"
                       >
-                        {msg.sender?.display_name || msg.sender?.username}
+                        {msg.sender?.display_name ||
+                          msg.sender_display_name ||
+                          msg.sender?.username ||
+                          msg.sender_username}
                       </Link>
 
                       {/* Badge and Date on same line for mobile */}

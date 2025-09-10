@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use optimized RPC function
     const supabase = await createClient();
     const { data: result, error } = await supabase.rpc('toggle_event_attendance', {
       target_event_id: eventId,
@@ -36,7 +35,7 @@ export async function POST(request: NextRequest) {
       attendance_status: status
     });
 
-    if (error || !result?.[0]?.success) {
+    if (error) {
       console.error('Event attendance RPC error:', error);
       return NextResponse.json(
         { error: 'Failed to update event attendance' },
@@ -44,13 +43,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The RPC returns an array of objects with the specified columns
+    if (!result || result.length === 0) {
+      return NextResponse.json(
+        { error: 'No response from attendance update' },
+        { status: 500 }
+      );
+    }
+
     const attendanceResult = result[0];
+    
+    if (!attendanceResult.success) {
+      return NextResponse.json(
+        { error: 'Failed to update attendance status' },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
       userStatus: attendanceResult.user_status,
-      newAttendeeCount: attendanceResult.new_attendee_count,
-      newInterestedCount: attendanceResult.new_interested_count,
+      attendeeCount: attendanceResult.new_attendee_count,
+      interestedCount: attendanceResult.new_interested_count,
     });
 
   } catch (error) {
