@@ -1,23 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Car, CarDetailData } from '@/types/car';
-import type { User } from '@/types/user';
-
-export interface GarageData {
-  cars: Car[];
-  carLikes: Record<string, boolean>;
-  userLikeCounts: Record<string, number>;
-  currentUser: User | null;
-  pagination: {
-    page: number;
-    limit: number;
-    hasMore: boolean;
-  };
-}
-
-export interface UserGarageData {
-  cars: Car[];
-  currentUser: User | null;
-}
+import type { CarDetailData, GarageData, UserGarageData } from '@/types/car';
 
 // Query keys for better cache management
 export const garageKeys = {
@@ -31,19 +13,48 @@ export const garageKeys = {
 
 // Get garage data
 async function getGarageData(page: number = 1, limit: number = 12): Promise<GarageData> {
-  const response = await fetch(`/api/garage?page=${page}&limit=${limit}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+  const { createClient } = await import('@/lib/utils/supabase/client');
+  const supabase = createClient();
+  
+  // Get current user first
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  
+  // Get user profile data if authenticated
+  let currentUser = null;
+  if (authUser) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('id, username, display_name, profile_image_url')
+      .eq('id', authUser.id)
+      .single();
+    
+    if (profile) {
+      currentUser = profile;
+    }
+  }
+  
+  const { data, error } = await supabase.rpc('get_garage_gallery_optimized', {
+    page_num: page,
+    page_limit: limit,
+    user_id_param: authUser?.id || null, // Pass actual user ID to get correct like status
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch garage data');
+  if (error) {
+    console.error('Error fetching garage gallery data:', error);
+    throw new Error(error.message || 'Failed to fetch garage data');
   }
 
-  return response.json();
+  if (!data) {
+    throw new Error('No garage data found');
+  }
+
+  // The RPC returns the garage data structure with correct is_liked status
+  return {
+    cars: data.cars,
+    currentUser,
+    pagination: data.pagination,
+    meta: data.meta,
+  };
 }
 
 // Get car detail data
@@ -70,19 +81,21 @@ async function getCarDetailData(carId: string): Promise<CarDetailData> {
 
 // Get user's garage data
 async function getUserGarageData(): Promise<UserGarageData> {
-  const response = await fetch('/api/garage/my-garage', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const { createClient } = await import('@/lib/utils/supabase/client');
+  const supabase = createClient();
+  
+  const { data, error } = await supabase.rpc('get_user_garage_optimized');
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch user garage');
+  if (error) {
+    console.error('Error fetching user garage data:', error);
+    throw new Error(error.message || 'Failed to fetch user garage');
   }
 
-  return response.json();
+  if (!data) {
+    throw new Error('No user garage data found');
+  }
+
+  return data;
 }
 
 // Toggle car like
@@ -111,17 +124,18 @@ async function toggleCarLike(carId: string) {
 }
 
 // Hook to fetch garage with optimized settings
-export function useGarage(page: number = 1, limit: number = 12) {
+export function useGarage(page: number = 1, limit: number = 12, initialData?: GarageData | null) {
   return useQuery({
     queryKey: garageKeys.list(page, limit),
     queryFn: () => getGarageData(page, limit),
-    staleTime: 5 * 60 * 1000, // 5 minutes - car data is relatively static
-    gcTime: 15 * 60 * 1000, // 15 minutes
+    staleTime: 15 * 60 * 1000, // 15 minutes - garage gallery changes infrequently
+    gcTime: 30 * 60 * 1000, // 30 minutes - keep in cache longer
     refetchOnWindowFocus: false,
     refetchOnMount: false, // Don't refetch if we have cached data
     retry: 2,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     networkMode: 'offlineFirst',
+    initialData: initialData || undefined, // Use server-provided data as initial data
   });
 }
 
@@ -143,7 +157,7 @@ export function useCarDetail(carId: string, initialData?: CarDetailData | null) 
 }
 
 // Hook to fetch user's garage with optimized settings
-export function useUserGarage() {
+export function useUserGarage(initialData?: UserGarageData | null) {
   return useQuery({
     queryKey: garageKeys.myGarage(),
     queryFn: getUserGarageData,
@@ -154,6 +168,7 @@ export function useUserGarage() {
     retry: 2,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     networkMode: 'offlineFirst',
+    initialData: initialData || undefined, // Use server-provided data as initial data
   });
 }
 
@@ -182,12 +197,11 @@ export function useCarLike() {
 
           const updatedCars = oldData.cars.map(car => {
             if (car.id === carId) {
-              const wasLiked = oldData.carLikes[carId] || false;
-              const currentLikeCount = oldData.userLikeCounts[carId] || 0;
-              
+              const wasLiked = car.is_liked || false;
               return {
                 ...car,
-                like_count: wasLiked ? currentLikeCount - 1 : currentLikeCount + 1,
+                is_liked: !wasLiked,
+                total_likes: wasLiked ? car.total_likes - 1 : car.total_likes + 1,
               };
             }
             return car;
@@ -196,16 +210,6 @@ export function useCarLike() {
           return {
             ...oldData,
             cars: updatedCars,
-            carLikes: {
-              ...oldData.carLikes,
-              [carId]: !oldData.carLikes[carId],
-            },
-            userLikeCounts: {
-              ...oldData.userLikeCounts,
-              [carId]: oldData.carLikes[carId] 
-                ? (oldData.userLikeCounts[carId] || 0) - 1
-                : (oldData.userLikeCounts[carId] || 0) + 1,
-            },
           };
         }
       );
@@ -272,7 +276,7 @@ export function usePrefetchGaragePage() {
     queryClient.prefetchQuery({
       queryKey: garageKeys.list(page, limit),
       queryFn: () => getGarageData(page, limit),
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 15 * 60 * 1000, // 15 minutes - match main query
     });
   };
 }

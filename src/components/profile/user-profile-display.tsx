@@ -28,9 +28,9 @@ import {
   useProfile,
   useLeaderClubs,
   useFollowToggle,
+  type ProfileData,
 } from "@/hooks/use-profile";
 import { InviteToClub } from "@/components/clubs/invite-to-club";
-import type { ProfileData } from "@/lib/profile-api";
 
 interface UserProfileDisplayProps {
   userId: string;

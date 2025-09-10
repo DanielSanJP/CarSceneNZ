@@ -23,11 +23,8 @@ import {
 import Link from "next/link";
 import type { Event } from "@/types/event";
 import { toast } from "sonner";
-import {
-  useEventDetail,
-  useEventAttendance,
-  type AttendeeData,
-} from "@/hooks/use-events";
+import { useEventDetail, useEventAttendance } from "@/hooks/use-events";
+import type { EventAttendee } from "@/types/event";
 
 interface EventDetailViewProps {
   // Optimized mode props
@@ -39,7 +36,7 @@ interface EventDetailViewProps {
     username: string;
     display_name?: string;
   } | null;
-  initialAttendees?: AttendeeData[];
+  initialAttendees?: EventAttendee[];
   initialUserStatus?: string | null;
   attendEventAction?: (
     eventId: string,
@@ -47,7 +44,7 @@ interface EventDetailViewProps {
     status: "interested" | "going" | "approved"
   ) => Promise<unknown>;
   unattendEventAction?: (eventId: string, userId: string) => Promise<void>;
-  getEventAttendeesAction?: (eventId: string) => Promise<AttendeeData[]>;
+  getEventAttendeesAction?: (eventId: string) => Promise<EventAttendee[]>;
   getUserEventStatusAction?: (
     eventId: string,
     userId: string
@@ -90,7 +87,7 @@ export function EventDetailView({
     initialUserStatus ?? eventDetailData?.userStatus ?? null;
 
   // Local state for optimistic updates
-  const [attendees, setAttendees] = useState<AttendeeData[]>(serverAttendees);
+  const [attendees, setAttendees] = useState<EventAttendee[]>(serverAttendees);
   const [failedImage, setFailedImage] = useState(false);
   const [userStatus, setUserStatus] = useState<string | null>(serverUserStatus);
 

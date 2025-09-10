@@ -389,3 +389,60 @@ export interface CarDetailData {
     cache_key: string;
   };
 }
+
+export interface GarageData {
+  cars: Array<{
+    id: string;
+    brand: string;
+    model: string;
+    year: number;
+    images: string[];
+    total_likes: number;
+    created_at: string;
+    updated_at: string;
+    owner_id: string;
+    is_liked: boolean;
+    owner: {
+      id: string;
+      username: string;
+      display_name?: string;
+      profile_image_url?: string;
+    };
+  }>;
+  currentUser: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  } | null;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+  meta: {
+    generated_at: string;
+    cache_key: string;
+  };
+}
+
+export interface UserGarageData {
+  cars: Array<{
+    id: string;
+    brand: string;
+    model: string;
+    year: number;
+    images: string[];
+    total_likes: number;
+    created_at: string;
+    updated_at: string;
+    owner_id: string;
+  }>;
+  total: number;
+  meta: {
+    generated_at: string;
+    cache_key: string;
+  };
+}

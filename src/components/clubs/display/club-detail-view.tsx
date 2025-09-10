@@ -27,13 +27,14 @@ import type { User } from "@/types/user";
 import { SendClubMail } from "@/components/clubs/send-club-mail";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
 import type { ClubMailData } from "@/types/inbox";
-import { useClubDetail } from "@/hooks/use-clubs";
+import { useClubDetail, type ClubDetailData } from "@/hooks/use-clubs";
 
 interface ClubDetailViewProps {
   clubId: string;
   currentUser: User | null;
   fromTab?: string;
   leaderboardTab?: string;
+  initialData?: ClubDetailData | null;
 }
 
 export const ClubDetailView = memo(function ClubDetailView({
@@ -41,13 +42,18 @@ export const ClubDetailView = memo(function ClubDetailView({
   currentUser,
   fromTab = "join",
   leaderboardTab = "clubs",
+  initialData,
 }: ClubDetailViewProps) {
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   // Fetch club data using React Query
-  const { data: clubData, isLoading, error } = useClubDetail(clubId);
+  const {
+    data: clubData,
+    isLoading,
+    error,
+  } = useClubDetail(clubId, initialData);
 
   // Loading state
   if (isLoading) {

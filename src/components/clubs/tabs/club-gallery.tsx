@@ -27,7 +27,7 @@ import type { User } from "@/types/user";
 import type { Club } from "@/types/club";
 import { Pagination, PaginationInfo } from "@/components/ui/pagination";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
-import { useClubsGallery } from "@/hooks/use-clubs";
+import { useClubsGallery, type ClubsGalleryData } from "@/hooks/use-clubs";
 
 interface ClubGalleryProps {
   currentUser: User | null;
@@ -47,6 +47,7 @@ interface ClubGalleryProps {
     sortBy?: string;
     page?: number;
   };
+  initialData?: ClubsGalleryData | null;
 }
 
 export const ClubGallery = memo(function ClubGallery({
@@ -54,6 +55,7 @@ export const ClubGallery = memo(function ClubGallery({
   joinClubAction,
   sendClubJoinRequestAction,
   initialFilters = {},
+  initialData,
 }: ClubGalleryProps) {
   const [searchTerm, setSearchTerm] = useState(initialFilters.search || "");
   const [locationFilter, setLocationFilter] = useState<string>(
@@ -74,14 +76,17 @@ export const ClubGallery = memo(function ClubGallery({
     isLoading,
     error,
     refetch,
-  } = useClubsGallery({
-    search: searchTerm || undefined,
-    location: locationFilter !== "all" ? locationFilter : undefined,
-    club_type: typeFilter !== "all" ? typeFilter : undefined,
-    sortBy,
-    page: currentPage,
-    limit: 12,
-  });
+  } = useClubsGallery(
+    {
+      search: searchTerm || undefined,
+      location: locationFilter !== "all" ? locationFilter : undefined,
+      club_type: typeFilter !== "all" ? typeFilter : undefined,
+      sortBy,
+      page: currentPage,
+      limit: 12,
+    },
+    initialData
+  );
 
   // Handle loading state - show skeleton
   if (isLoading) {

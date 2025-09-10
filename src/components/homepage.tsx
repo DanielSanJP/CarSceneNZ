@@ -12,17 +12,21 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Car as CarIcon, Users, Trophy, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useHomeDataProcessed } from "@/hooks/use-home";
+import { useHomeDataProcessed, type HomeData } from "@/hooks/use-home";
 import type { Event } from "@/types/event";
 
-export function Homepage() {
+interface HomepageProps {
+  initialData?: HomeData | null;
+}
+
+export function Homepage({ initialData }: HomepageProps) {
   const {
     data: processedData,
     rawData,
     isLoading,
     error,
     isError,
-  } = useHomeDataProcessed();
+  } = useHomeDataProcessed(initialData);
 
   // Helper function to format date with ordinal suffix
   const formatEventDate = (dateString: string) => {

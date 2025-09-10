@@ -6,6 +6,7 @@ import { getUser } from "@/lib/auth";
 import { uploadClubImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
 import { Club } from "@/types";
+import { getClubsGalleryData, type ClubsGalleryData } from "@/hooks/use-clubs";
 
 // Force dynamic rendering since we use authentication/cookies
 export const dynamic = "force-dynamic";
@@ -378,7 +379,17 @@ export default async function ClubsPage({
       typeof params.club_type === "string" ? params.club_type : undefined,
     sortBy: typeof params.sortBy === "string" ? params.sortBy : "likes",
     page: typeof params.page === "string" ? parseInt(params.page, 10) : 1,
+    limit: 12,
   };
+
+  // Fetch initial clubs data for SSR
+  let initialData: ClubsGalleryData | null = null;
+  try {
+    initialData = await getClubsGalleryData(initialFilters);
+  } catch (error) {
+    console.error("Failed to fetch clubs gallery data on server:", error);
+    // Continue without initial data, let client handle the error
+  }
 
   return (
     <ClubTabNavigation
@@ -392,6 +403,7 @@ export default async function ClubsPage({
           : null
       }
       initialFilters={initialFilters}
+      initialData={initialData}
       createClubAction={createClubAction}
       uploadAction={uploadClubImageServerAction}
       joinClubAction={joinClubAction}
@@ -399,3 +411,5 @@ export default async function ClubsPage({
     />
   );
 }
+
+export const revalidate = 300; // 5 minutes

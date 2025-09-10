@@ -7,30 +7,32 @@ import { Users, Car, Trophy } from "lucide-react";
 import { OwnerRankings } from "@/components/leaderboard/owner-rankings";
 import { ClubRankings } from "@/components/leaderboard/club-rankings";
 import { CarRankings } from "@/components/leaderboard/car-rankings";
-import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
-import { useLeaderboards } from "@/hooks/use-leaderboards";
+import {
+  useLeaderboards,
+  type LeaderboardsData,
+} from "@/hooks/use-leaderboards";
 
 type TabType = "owners" | "clubs" | "cars";
 
 interface LeaderboardsViewProps {
   defaultTab?: TabType;
+  initialData?: LeaderboardsData | null;
 }
 
 export function LeaderboardsView({
   defaultTab = "owners",
+  initialData,
 }: LeaderboardsViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
-  const [isTabLoading, setIsTabLoading] = useState(false);
 
   // Use React Query to fetch leaderboards data
   const {
     data: leaderboardsData,
-    isLoading,
     error,
     refetch,
-  } = useLeaderboards();
+  } = useLeaderboards(initialData);
 
   // Get tab from URL parameters
   useEffect(() => {
@@ -39,11 +41,6 @@ export function LeaderboardsView({
       setActiveTab(tabParam);
     }
   }, [searchParams]);
-
-  // Handle loading state - let loading.tsx handle this
-  if (isLoading) {
-    return null; // loading.tsx will show the skeleton
-  }
 
   // Handle error state
   if (error || !leaderboardsData) {
@@ -71,20 +68,12 @@ export function LeaderboardsView({
   const handleTabChange = (tab: TabType) => {
     if (tab === activeTab) return; // Don't change if same tab
 
-    // Show loading state briefly for better UX
-    setIsTabLoading(true);
-
     setActiveTab(tab);
 
     // Update URL without page refresh
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
     router.push(`/leaderboards?${params.toString()}`, { scroll: false });
-
-    // Hide loading after a brief moment
-    setTimeout(() => {
-      setIsTabLoading(false);
-    }, 150);
   };
 
   return (
@@ -121,15 +110,11 @@ export function LeaderboardsView({
 
       {/* Tab Content */}
       <div className="max-w-7xl mx-auto">
-        {isTabLoading ? (
-          <LeaderboardSkeleton count={10} />
-        ) : (
-          <>
-            {activeTab === "owners" && <OwnerRankings data={ownersData} />}
-            {activeTab === "clubs" && <ClubRankings data={clubsData} />}
-            {activeTab === "cars" && <CarRankings data={carsData} />}
-          </>
-        )}
+        <>
+          {activeTab === "owners" && <OwnerRankings data={ownersData} />}
+          {activeTab === "clubs" && <ClubRankings data={clubsData} />}
+          {activeTab === "cars" && <CarRankings data={carsData} />}
+        </>
       </div>
     </>
   );

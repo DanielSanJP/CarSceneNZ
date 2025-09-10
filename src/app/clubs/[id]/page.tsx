@@ -1,5 +1,6 @@
 import { getUserOptional } from "@/lib/auth";
 import { ClubDetailView } from "@/components/clubs/display/club-detail-view";
+import { getClubDetailData, type ClubDetailData } from "@/hooks/use-clubs";
 
 interface ClubDetailPageProps {
   params: Promise<{ id: string }>;
@@ -16,8 +17,15 @@ export default async function ClubDetailPage({
   // Get current user (optional)
   const currentUser = await getUserOptional();
 
-  // Let the client component handle all data fetching through React Query + RPC
-  // This follows the same pattern as other pages in the app
+  // Fetch initial data for SSR
+  let initialData: ClubDetailData | null = null;
+  try {
+    initialData = await getClubDetailData(id);
+  } catch (error) {
+    console.error("Failed to fetch club detail data on server:", error);
+    // Continue without initial data, let client handle the error
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -27,9 +35,12 @@ export default async function ClubDetailPage({
             currentUser={currentUser}
             fromTab={from}
             leaderboardTab={tab}
+            initialData={initialData}
           />
         </div>
       </div>
     </div>
   );
 }
+
+export const revalidate = 300; // 5 minutes

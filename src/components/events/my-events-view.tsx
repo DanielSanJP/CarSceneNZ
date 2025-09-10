@@ -17,11 +17,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useUserEvents } from "@/hooks/use-events";
+import { useUserEvents, type UserEventsData } from "@/hooks/use-events";
 import type { Event } from "@/types/event";
 
-function MyEventsViewComponent() {
-  const { data: eventsData, isLoading, error, refetch } = useUserEvents();
+interface MyEventsViewProps {
+  userId: string;
+  initialData?: UserEventsData | null;
+}
+
+function MyEventsViewComponent({ userId, initialData }: MyEventsViewProps) {
+  const {
+    data: eventsData,
+    isLoading,
+    error,
+    refetch,
+  } = useUserEvents(userId, initialData);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handleImageError = (eventId: string) => {

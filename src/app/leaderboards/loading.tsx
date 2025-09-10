@@ -1,5 +1,4 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
 
 export default function LeaderboardsLoading() {
   return (
@@ -45,7 +44,25 @@ export default function LeaderboardsLoading() {
             </div>
 
             {/* Leaderboard list skeleton */}
-            <LeaderboardSkeleton count={15} />
+            <div className="space-y-4">
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-4 p-4 border rounded-lg"
+                >
+                  <Skeleton className="h-8 w-8 rounded" />
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-5 w-48 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div className="text-right">
+                    <Skeleton className="h-6 w-16 mb-1" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {/* Load more button skeleton */}
             <div className="text-center mt-6">

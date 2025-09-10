@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/utils/supabase/client';
 import type { Club } from '@/types/club';
 
 // Clubs Gallery Data Interface
@@ -71,68 +72,117 @@ export interface ClubsGalleryFilters {
   limit?: number;
 }
 
-// Get clubs gallery data
-async function getClubsGalleryData(filters: ClubsGalleryFilters = {}): Promise<ClubsGalleryData> {
-  const params = new URLSearchParams();
-  
-  if (filters.search) params.set('search', filters.search);
-  if (filters.location) params.set('location', filters.location);
-  if (filters.club_type) params.set('club_type', filters.club_type);
-  if (filters.sortBy) params.set('sortBy', filters.sortBy);
-  if (filters.page) params.set('page', filters.page.toString());
-  if (filters.limit) params.set('limit', filters.limit.toString());
+// Get clubs gallery data (server-side function)
+export async function getClubsGalleryData(filters: ClubsGalleryFilters = {}): Promise<ClubsGalleryData> {
+  const supabase = createClient();
 
-  const response = await fetch(`/api/clubs?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const {
+    search = null,
+    location = null,
+    club_type = null,
+    sortBy = 'likes',
+    page = 1,
+    limit = 12
+  } = filters;
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch clubs gallery: ${response.status}`);
+  const offset = (page - 1) * limit;
+
+  try {
+    const { data, error } = await supabase.rpc('get_clubs_gallery', {
+      search_term: search,
+      location_filter: location,
+      club_type_filter: club_type,
+      sort_by: sortBy,
+      result_limit: limit,
+      result_offset: offset
+    });
+
+    if (error) {
+      console.error('Error fetching clubs gallery data:', error);
+      throw new Error('Failed to fetch clubs data');
+    }
+
+    return {
+      clubs: data?.clubs || [],
+      totalCount: data?.totalCount || 0,
+      meta: {
+        generated_at: new Date().toISOString(),
+        cache_key: data?.meta?.cache_key || `clubs_gallery_${page}_${limit}`
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching clubs gallery data:', error);
+    throw new Error('Failed to fetch clubs data');
   }
-
-  return response.json();
 }
 
-// Get user's clubs data
-async function getUserClubsData(): Promise<UserClubsData> {
-  const response = await fetch('/api/clubs/my-clubs', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+// Get user's clubs data (server-side function)
+export async function getUserClubsData(userId: string): Promise<UserClubsData> {
+  const supabase = createClient();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch user clubs: ${response.status}`);
+  try {
+    const { data, error } = await supabase.rpc('get_user_clubs', {
+      user_id_param: userId,
+    });
+
+    if (error) {
+      console.error('Error fetching user clubs data:', error);
+      throw new Error('Failed to fetch user clubs data');
+    }
+
+    return {
+      clubs: data?.clubs || [],
+      total: data?.total || 0,
+      meta: {
+        generated_at: new Date().toISOString(),
+        cache_key: data?.meta?.cache_key || `user_clubs_${userId}`
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching user clubs data:', error);
+    throw new Error('Failed to fetch user clubs data');
   }
-
-  return response.json();
 }
 
-// Get club detail data
-async function getClubDetailData(clubId: string): Promise<ClubDetailData> {
-  const response = await fetch(`/api/clubs/${clubId}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+// Get club detail data (server-side function)
+export async function getClubDetailData(clubId: string): Promise<ClubDetailData> {
+  const supabase = createClient();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch club detail: ${response.status}`);
+  try {
+    const { data: clubDetailResult, error } = await supabase.rpc('get_club_detail', {
+      club_id_param: clubId,
+    });
+
+    if (error) {
+      console.error('Error fetching club detail data:', error);
+      throw new Error('Failed to fetch club details');
+    }
+
+    if (!clubDetailResult) {
+      throw new Error('Club not found');
+    }
+
+    return {
+      club: clubDetailResult.club,
+      members: clubDetailResult.members || [],
+      memberCount: clubDetailResult.memberCount || 0,
+      meta: {
+        generated_at: new Date().toISOString(),
+        cache_key: `club_detail_${clubId}`
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching club detail data:', error);
+    throw new Error('Failed to fetch club details');
   }
-
-  return response.json();
 }
 
 // React Query hook for clubs gallery
-export function useClubsGallery(filters: ClubsGalleryFilters = {}) {
+export function useClubsGallery(filters: ClubsGalleryFilters = {}, initialData?: ClubsGalleryData | null) {
   return useQuery({
     queryKey: clubsKeys.gallery(filters),
     queryFn: () => getClubsGalleryData(filters),
+    initialData: initialData || undefined,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -142,23 +192,26 @@ export function useClubsGallery(filters: ClubsGalleryFilters = {}) {
 }
 
 // React Query hook for user's clubs
-export function useUserClubs() {
+export function useUserClubs(userId?: string, initialData?: UserClubsData | null) {
   return useQuery({
     queryKey: clubsKeys.userClubs(),
-    queryFn: getUserClubsData,
+    queryFn: () => getUserClubsData(userId!),
+    initialData: initialData || undefined,
     staleTime: 1 * 60 * 1000, // 1 minute
     gcTime: 3 * 60 * 1000, // 3 minutes
     refetchOnWindowFocus: false,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    enabled: !!userId,
   });
 }
 
 // React Query hook for club detail
-export function useClubDetail(clubId: string) {
+export function useClubDetail(clubId: string, initialData?: ClubDetailData | null) {
   return useQuery({
     queryKey: clubsKeys.detail(clubId),
     queryFn: () => getClubDetailData(clubId),
+    initialData: initialData || undefined,
     staleTime: 3 * 60 * 1000, // 3 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,

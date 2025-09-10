@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import type { Event } from "@/types/event";
+import type { Event, EventsData } from "@/types/event";
 import { useEvents, useEventAttendance } from "@/hooks/use-events";
 import {
   Card,
@@ -38,6 +38,8 @@ interface EventsGalleryProps {
   // Optional props for when used as a standalone optimized component
   page?: number;
   limit?: number;
+  // SSR support
+  initialData?: EventsData | null;
   // Legacy props for when used with external data
   events?: Event[];
   user?: {
@@ -253,6 +255,8 @@ export function EventsGallery({
   // Optimized mode props
   page = 1,
   limit = 12,
+  // SSR support
+  initialData,
   // Legacy mode props
   events: propEvents,
   user: propUser,
@@ -271,7 +275,7 @@ export function EventsGallery({
     isLoading,
     error,
     isError,
-  } = useEvents(page, limit);
+  } = useEvents(page, limit, initialData);
 
   const attendanceMutation = useEventAttendance();
 

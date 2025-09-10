@@ -37,3 +37,31 @@ export interface EventAttendee {
     profile_image_url?: string;
   };
 }
+
+export interface EventsData {
+  events: Event[];
+  userStatuses: Record<string, string>;
+  currentUser: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  } | null;
+  pagination: {
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  };
+}
+
+export interface EventDetailData {
+  event: Event;
+  user: {
+    id: string;
+    username: string;
+    display_name?: string;
+    profile_image_url?: string;
+  } | null;
+  attendees: EventAttendee[];
+  userStatus: string | null;
+}

@@ -7,9 +7,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, memo } from "react";
 import { useUserGarage } from "@/hooks/use-garage";
+import { UserGarageData } from "@/types/car";
 
-function MyGarageView() {
-  const { data: garageData, isLoading, error, refetch } = useUserGarage();
+interface MyGarageViewProps {
+  initialData?: UserGarageData;
+}
+
+function MyGarageView({ initialData }: MyGarageViewProps) {
+  const {
+    data: garageData,
+    isLoading,
+    error,
+    refetch,
+  } = useUserGarage(initialData);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handleImageError = (carId: string) => {

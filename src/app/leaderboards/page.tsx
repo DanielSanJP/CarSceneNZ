@@ -1,7 +1,9 @@
 import { LeaderboardsView } from "@/components/leaderboard/leaderboards-view";
+import { getLeaderboardsData } from "@/hooks/use-leaderboards";
+import type { LeaderboardsData } from "@/hooks/use-leaderboards";
 
-// Force dynamic rendering for real-time leaderboards
-export const dynamic = "force-dynamic";
+// Cache this page for 5 minutes, then revalidate in the background
+export const revalidate = 300; // 5 minutes
 
 export default async function LeaderboardsPage({
   searchParams,
@@ -9,6 +11,15 @@ export default async function LeaderboardsPage({
   searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
   const params = await searchParams;
+
+  // Fetch initial leaderboards data directly in server component
+  let initialData: LeaderboardsData | null = null;
+  try {
+    initialData = await getLeaderboardsData();
+  } catch (error) {
+    console.error("Failed to fetch leaderboards data on server:", error);
+    // We'll let the client-side hook handle the error and retry
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,6 +36,7 @@ export default async function LeaderboardsPage({
 
           <LeaderboardsView
             defaultTab={params.tab as "owners" | "clubs" | "cars"}
+            initialData={initialData}
           />
         </div>
       </div>

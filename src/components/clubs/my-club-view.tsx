@@ -7,11 +7,21 @@ import { memo } from "react";
 import { Users, MapPin, Crown, Shield, Globe, Lock, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useUserClubs } from "@/hooks/use-clubs";
+import { useUserClubs, type UserClubsData } from "@/hooks/use-clubs";
 
-function MyClubViewComponent() {
+interface MyClubViewProps {
+  userId?: string;
+  initialData?: UserClubsData | null;
+}
+
+function MyClubViewComponent({ userId, initialData }: MyClubViewProps) {
   // Use React Query to fetch user's clubs data
-  const { data: userClubsData, isLoading, error, refetch } = useUserClubs();
+  const {
+    data: userClubsData,
+    isLoading,
+    error,
+    refetch,
+  } = useUserClubs(userId, initialData);
 
   // Handle loading state - let loading.tsx handle this
   if (isLoading) {

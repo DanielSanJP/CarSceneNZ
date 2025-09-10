@@ -15,10 +15,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useMemo } from "react";
 import { useGarage, useCarLike } from "@/hooks/use-garage";
+import type { GarageData } from "@/types/car";
 
 interface GarageGalleryProps {
   page?: number;
   limit?: number;
+  initialData?: GarageData | null;
 }
 
 type SortOption =
@@ -29,13 +31,17 @@ type SortOption =
   | "recently_added"
   | "oldest_added";
 
-export function GarageGallery({ page = 1, limit = 12 }: GarageGalleryProps) {
+export function GarageGallery({
+  page = 1,
+  limit = 12,
+  initialData,
+}: GarageGalleryProps) {
   const {
     data: garageData,
     isLoading,
     error,
     isError,
-  } = useGarage(page, limit);
+  } = useGarage(page, limit, initialData);
 
   const carLikeMutation = useCarLike();
 

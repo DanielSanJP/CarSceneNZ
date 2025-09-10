@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import type { Event } from '@/types/event';
 import type { Car } from '@/types/car';
 import type { User } from '@/types/user';
+import { createClient } from '@/lib/utils/supabase/client';
 
 // Extended types for home page data
 export interface HomeEvent extends Event {
@@ -73,27 +74,31 @@ export const homeKeys = {
 };
 
 // Get home page data
-async function getHomeData(): Promise<HomeData> {
-  const response = await fetch('/api/home', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+export async function getHomeData(): Promise<HomeData> {
+  const supabase = createClient();
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch home page data');
+  const { data: homeData, error } = await supabase
+    .rpc('get_home_data_optimized')
+    .single();
+
+  if (error) {
+    console.error('Error fetching home data:', error);
+    throw new Error('Failed to fetch home page data');
   }
 
-  return response.json();
+  if (!homeData) {
+    throw new Error('No home page data found');
+  }
+
+  return homeData as HomeData;
 }
 
 // Hook to fetch home page data with optimized settings
-export function useHomeData() {
+export function useHomeData(initialData?: HomeData | null) {
   return useQuery({
     queryKey: homeKeys.data(),
     queryFn: getHomeData,
+    initialData: initialData || undefined,
     staleTime: 5 * 60 * 1000, // 5 minutes - home page data changes less frequently
     gcTime: 15 * 60 * 1000, // 15 minutes - keep cached longer
     refetchOnWindowFocus: false,
@@ -135,8 +140,8 @@ export function useHomeDataPreloader() {
 }
 
 // Utility hook to get processed data for specific sections
-export function useHomeDataProcessed() {
-  const { data: homeData, ...queryResult } = useHomeData();
+export function useHomeDataProcessed(initialData?: HomeData | null) {
+  const { data: homeData, ...queryResult } = useHomeData(initialData);
 
   const processedData = useMemo(() => {
     if (!homeData) return null;

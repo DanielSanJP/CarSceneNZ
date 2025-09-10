@@ -8,6 +8,7 @@ import { ClubGallery } from "@/components/clubs/tabs/club-gallery";
 import { CreateClubForm } from "@/components/clubs/tabs/create-club-form";
 import { ClubCardSkeleton } from "@/components/ui/content-skeletons";
 import type { User } from "@/types/user";
+import type { ClubsGalleryData } from "@/hooks/use-clubs";
 
 type MainTab = "gallery" | "create";
 
@@ -20,6 +21,7 @@ interface ClubTabNavigationProps {
     sortBy?: string;
     page?: number;
   };
+  initialData?: ClubsGalleryData | null;
   createClubAction: (formData: FormData) => Promise<void>;
   uploadAction: (
     formData: FormData
@@ -37,6 +39,7 @@ interface ClubTabNavigationProps {
 function ClubTabNavigationContent({
   currentUser,
   initialFilters = {},
+  initialData,
   createClubAction,
   uploadAction,
   joinClubAction,
@@ -145,6 +148,7 @@ function ClubTabNavigationContent({
                 <ClubGallery
                   currentUser={currentUser}
                   initialFilters={initialFilters}
+                  initialData={initialData}
                   joinClubAction={joinClubAction}
                   sendClubJoinRequestAction={sendClubJoinRequestAction}
                 />
@@ -180,6 +184,7 @@ function ClubTabNavigationContent({
 export function ClubTabNavigation({
   currentUser,
   initialFilters,
+  initialData,
   createClubAction,
   uploadAction,
   joinClubAction,
@@ -189,6 +194,7 @@ export function ClubTabNavigation({
     <ClubTabNavigationContent
       currentUser={currentUser}
       initialFilters={initialFilters}
+      initialData={initialData}
       createClubAction={createClubAction}
       uploadAction={uploadAction}
       joinClubAction={joinClubAction}
