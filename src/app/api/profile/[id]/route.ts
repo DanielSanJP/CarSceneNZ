@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserOptional } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
 
-interface ClubData {
+interface ClubMembershipData {
   club_id: string;
+  role: string;
+  joined_at: string;
   club_name: string;
   club_description: string;
-  club_banner_url: string;
+  club_banner_image_url: string;
+  club_type: string;
+  club_location: string;
+  club_leader_id: string;
+  club_total_likes: number;
   club_created_at: string;
-  user_role: string;
-  joined_at: string;
+  club_updated_at: string;
+  leader_id: string;
+  leader_username: string;
+  leader_display_name: string;
+  leader_profile_image_url: string;
   member_count: number;
 }
 
@@ -55,8 +64,8 @@ const getProfileDataOptimized = async (userId: string, currentUserId?: string) =
         page_limit: 100,
         page_offset: 0
       }),
-      supabase.rpc('get_user_clubs_optimized', {
-        target_user_id: userId
+      supabase.rpc('get_user_club_memberships_optimized', {
+        user_uuid: userId
       })
     ]);
 
@@ -81,15 +90,26 @@ const getProfileDataOptimized = async (userId: string, currentUserId?: string) =
       cars: cars || [],
       followers: followers || [],
       following: following || [],
-      clubs: (clubs || []).map((club: ClubData) => ({
+      clubs: (clubs || []).map((club: ClubMembershipData) => ({
         club: {
           id: club.club_id,
           name: club.club_name,
           description: club.club_description,
-          banner_image_url: club.club_banner_url,
+          banner_image_url: club.club_banner_image_url,
+          club_type: club.club_type,
+          location: club.club_location,
+          leader_id: club.club_leader_id,
+          total_likes: club.club_total_likes,
           created_at: club.club_created_at,
+          updated_at: club.club_updated_at,
+          leader: {
+            id: club.leader_id,
+            username: club.leader_username,
+            display_name: club.leader_display_name,
+            profile_image_url: club.leader_profile_image_url,
+          },
         },
-        role: club.user_role,
+        role: club.role,
         joined_at: club.joined_at,
         memberCount: Number(club.member_count)
       })),

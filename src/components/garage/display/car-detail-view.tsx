@@ -22,16 +22,19 @@ import {
   CarStats,
 } from "./car-detail-cards";
 import type { User } from "@/types/user";
+import type { CarDetailData } from "@/types/car";
 import { getEngineData } from "@/lib/utils/car-helpers";
 
 interface CarDetailViewProps {
   carId: string;
   user?: User | null;
+  initialData?: CarDetailData | null;
 }
 
 export const CarDetailView = React.memo(function CarDetailView({
   carId,
   user,
+  initialData,
 }: CarDetailViewProps) {
   const router = useRouter();
   const {
@@ -39,7 +42,7 @@ export const CarDetailView = React.memo(function CarDetailView({
     isLoading,
     error,
     refetch,
-  } = useCarDetail(carId);
+  } = useCarDetail(carId, initialData);
   const carLikeMutation = useCarLike();
   const [likeCount, setLikeCount] = useState(0);
 

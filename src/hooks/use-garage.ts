@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Car } from '@/types/car';
+import type { Car, CarDetailData } from '@/types/car';
 import type { User } from '@/types/user';
 
 export interface GarageData {
@@ -11,112 +11,6 @@ export interface GarageData {
     page: number;
     limit: number;
     hasMore: boolean;
-  };
-}
-
-export interface CarDetailData {
-  car: {
-    id: string;
-    brand: string;
-    model: string;
-    year: number;
-    images: string[];
-    total_likes: number;
-    created_at: string;
-    updated_at: string;
-    owner_id: string;
-    is_liked: boolean;
-    owner: {
-      id: string;
-      username: string;
-      display_name?: string;
-      profile_image_url?: string;
-    };
-  };
-  engine: {
-    engine_code?: string;
-    displacement?: string;
-    aspiration?: string;
-    power_hp?: number;
-    torque_nm?: number;
-    ecu?: string;
-    tuned_by?: string;
-    pistons?: string;
-    connecting_rods?: string;
-    valves?: string;
-    valve_springs?: string;
-    camshafts?: string;
-    header?: string;
-    exhaust?: string;
-    intake?: string;
-    turbo?: string;
-    intercooler?: string;
-    fuel_injectors?: string;
-    fuel_pump?: string;
-    fuel_rail?: string;
-  };
-  wheels: Array<{
-    position: string;
-    brand?: string;
-    model?: string;
-    size?: string;
-    offset?: number;
-    tire_brand?: string;
-    tire_model?: string;
-    tire_size?: string;
-  }>;
-  suspension: Array<{
-    position?: string;
-    suspension_type?: string;
-    brand?: string;
-    model?: string;
-    spring_rate?: string;
-    damping?: string;
-    anti_roll_bar?: string;
-    strut_brace?: string;
-  }>;
-  brakes: Array<{
-    position: string;
-    caliper_brand?: string;
-    caliper_model?: string;
-    rotor_brand?: string;
-    rotor_model?: string;
-    rotor_size?: string;
-    pad_brand?: string;
-    pad_model?: string;
-  }>;
-  exterior: {
-    front_bumper?: string;
-    front_lip?: string;
-    rear_bumper?: string;
-    rear_lip?: string;
-    side_skirts?: string;
-    rear_spoiler?: string;
-    diffuser?: string;
-    fender_flares?: string;
-    hood?: string;
-    paint_color?: string;
-    paint_finish?: string;
-    wrap_brand?: string;
-    wrap_color?: string;
-    headlights?: string;
-    taillights?: string;
-    fog_lights?: string;
-    underglow?: string;
-    interior_lighting?: string;
-  };
-  interior: {
-    front_seats?: string;
-    rear_seats?: string;
-    steering_wheel?: string;
-    head_unit?: string;
-    speakers?: string;
-    subwoofer?: string;
-    amplifier?: string;
-  };
-  meta: {
-    generated_at: string;
-    cache_key: string;
   };
 }
 
@@ -154,19 +48,24 @@ async function getGarageData(page: number = 1, limit: number = 12): Promise<Gara
 
 // Get car detail data
 async function getCarDetailData(carId: string): Promise<CarDetailData> {
-  const response = await fetch(`/api/garage/${carId}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+  const { createClient } = await import('@/lib/utils/supabase/client');
+  const supabase = createClient();
+  
+  const { data, error } = await supabase.rpc('get_car_detail_optimized', {
+    car_id_param: carId,
+    user_id_param: null, // Will be handled by RLS in client-side context
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch car details');
+  if (error) {
+    console.error('Error fetching car detail data:', error);
+    throw new Error(error.message || 'Failed to fetch car details');
   }
 
-  return response.json();
+  if (!data) {
+    throw new Error('Car not found');
+  }
+
+  return data;
 }
 
 // Get user's garage data
@@ -227,7 +126,7 @@ export function useGarage(page: number = 1, limit: number = 12) {
 }
 
 // Hook to fetch car details with optimized settings
-export function useCarDetail(carId: string) {
+export function useCarDetail(carId: string, initialData?: CarDetailData | null) {
   return useQuery({
     queryKey: garageKeys.detail(carId),
     queryFn: () => getCarDetailData(carId),
@@ -239,6 +138,7 @@ export function useCarDetail(carId: string) {
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     networkMode: 'offlineFirst',
     enabled: !!carId, // Only run query if carId exists
+    initialData: initialData || undefined, // Use server-provided data as initial data
   });
 }
 

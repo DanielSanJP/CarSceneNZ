@@ -51,33 +51,34 @@ export async function GET(
     
     const supabase = await createClient();
     
-    // Call RPC function for optimized club detail data
-    const { data, error } = await supabase.rpc('get_club_detail', {
+    // Use the comprehensive RPC function that returns all needed data
+    const { data: clubDetailResult, error: clubError } = await supabase.rpc('get_club_detail', {
       club_id_param: id,
     });
 
-    if (error) {
-      console.error('Error fetching club detail data:', error);
+    if (clubError) {
+      console.error('Error fetching club detail data:', clubError);
       return NextResponse.json(
         { error: 'Failed to fetch club details' },
         { status: 500 }
       );
     }
 
-    if (!data) {
+    if (!clubDetailResult) {
       return NextResponse.json(
         { error: 'Club not found' },
         { status: 404 }
       );
     }
 
+    // The RPC returns the complete structure we need
     const response: ClubDetailData = {
-      club: data.club,
-      members: data.members || [],
-      memberCount: data.memberCount || 0,
+      club: clubDetailResult.club,
+      members: clubDetailResult.members || [],
+      memberCount: clubDetailResult.memberCount || 0,
       meta: {
         generated_at: new Date().toISOString(),
-        cache_key: data.meta?.cache_key || `club_detail_${id}`
+        cache_key: `club_detail_${id}`
       }
     };
 

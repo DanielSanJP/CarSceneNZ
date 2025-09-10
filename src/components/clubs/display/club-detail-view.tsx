@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Users,
   MapPin,
@@ -22,61 +23,134 @@ import {
   UserMinus,
   Mail,
 } from "lucide-react";
-import type { Club, ClubMember } from "@/types/club";
 import type { User } from "@/types/user";
 import { SendClubMail } from "@/components/clubs/send-club-mail";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
 import type { ClubMailData } from "@/types/inbox";
+import { useClubDetail } from "@/hooks/use-clubs";
 
 interface ClubDetailViewProps {
-  club: Club;
-  members: (ClubMember & {
-    total_cars: number;
-    total_likes: number;
-    most_liked_car_brand?: string;
-    most_liked_car_model?: string;
-    most_liked_car_likes: number;
-  })[];
-  memberCount: number;
+  clubId: string;
   currentUser: User | null;
-  isUserMember: boolean;
-  userRole?: string;
   fromTab?: string;
   leaderboardTab?: string;
-  sendClubMailAction: (
-    mailData: ClubMailData
-  ) => Promise<{ success: boolean; error?: string }>;
-  joinClubAction: (
-    clubId: string,
-    userId: string
-  ) => Promise<{ success: boolean; message?: string }>;
-  leaveClubAction: (
-    clubId: string,
-    userId: string
-  ) => Promise<{ success: boolean; message?: string }>;
-  sendClubJoinRequestAction: (
-    clubId: string,
-    message?: string
-  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const ClubDetailView = memo(function ClubDetailView({
-  club,
-  members,
-  memberCount,
+  clubId,
   currentUser,
-  isUserMember,
-  userRole,
   fromTab = "join",
   leaderboardTab = "clubs",
-  sendClubMailAction,
-  joinClubAction,
-  leaveClubAction,
-  sendClubJoinRequestAction,
 }: ClubDetailViewProps) {
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // Fetch club data using React Query
+  const { data: clubData, isLoading, error } = useClubDetail(clubId);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            {/* Header skeleton */}
+            <div className="flex items-center gap-4 mb-8">
+              <Link
+                href={
+                  fromTab === "leaderboard"
+                    ? `/leaderboards?tab=${leaderboardTab}`
+                    : `/clubs?tab=${fromTab}`
+                }
+              >
+                <Button variant="outline" size="icon">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+              <div className="flex-1">
+                <Skeleton className="h-8 w-64 mb-2" />
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
+              </div>
+            </div>
+
+            {/* Club info skeleton */}
+            <Card className="overflow-hidden mb-8">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="sm:col-span-1">
+                    <Skeleton className="aspect-square w-full rounded-lg" />
+                  </div>
+                  <div className="sm:col-span-2 space-y-4">
+                    <div className="space-y-2">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <Card>
+              <CardContent className="p-8 text-center">
+                <h2 className="text-xl font-semibold mb-2">
+                  Error Loading Club
+                </h2>
+                <p className="text-muted-foreground">
+                  {error.message || "Failed to load club details"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!clubData) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <Card>
+              <CardContent className="p-8 text-center">
+                <h2 className="text-xl font-semibold mb-2">Club Not Found</h2>
+                <p className="text-muted-foreground">
+                  The club you&apos;re looking for doesn&apos;t exist.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { club, members, memberCount } = clubData;
+
+  // Find user's membership status
+  const userMembership = members.find(
+    (member) => member.user.id === currentUser?.id
+  );
+  const isUserMember = !!userMembership;
+  const userRole = userMembership?.role;
 
   const isLeader = userRole === "leader";
   const isCoLeader = userRole === "co-leader";
@@ -88,8 +162,19 @@ export const ClubDetailView = memo(function ClubDetailView({
 
     setIsJoining(true);
     try {
-      // Join immediately for public clubs (invite-only clubs use RequestToJoin component)
-      const result = await joinClubAction(club.id, currentUser.id);
+      // Call API route instead of server action
+      const response = await fetch("/api/clubs/join", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clubId: club.id,
+          userId: currentUser.id,
+        }),
+      });
+
+      const result = await response.json();
 
       if (result.success) {
         // Reload page to reflect changes
@@ -118,7 +203,19 @@ export const ClubDetailView = memo(function ClubDetailView({
 
     setIsLeaving(true);
     try {
-      const result = await leaveClubAction(club.id, currentUser.id);
+      // Call API route instead of server action
+      const response = await fetch("/api/clubs/leave", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clubId: club.id,
+          userId: currentUser.id,
+        }),
+      });
+
+      const result = await response.json();
 
       if (result.success) {
         if (isLeader) {
@@ -136,6 +233,47 @@ export const ClubDetailView = memo(function ClubDetailView({
       alert("Failed to leave club. Please try again.");
     } finally {
       setIsLeaving(false);
+    }
+  };
+
+  // API-based club mail function
+  const sendClubMailAction = async (
+    mailData: ClubMailData
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch("/api/clubs/mail", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(mailData),
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error sending club mail:", error);
+      return { success: false, error: "Failed to send club mail" };
+    }
+  };
+
+  // API-based join request function
+  const sendClubJoinRequestAction = async (
+    clubId: string,
+    message?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch("/api/clubs/join-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ clubId, message }),
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error sending join request:", error);
+      return { success: false, error: "Failed to send join request" };
     }
   };
 
@@ -449,7 +587,7 @@ export const ClubDetailView = memo(function ClubDetailView({
                 <div className="space-y-3">
                   {members.map((member, index) => (
                     <div
-                      key={member.user_id}
+                      key={member.user.id}
                       className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       {/* Rank Number */}
@@ -506,7 +644,7 @@ export const ClubDetailView = memo(function ClubDetailView({
                       {/* Actions - placeholder for future member management */}
                       {(canManage || canManageMembers) &&
                         member.role !== "leader" &&
-                        member.user_id !== currentUser?.id && (
+                        member.user.id !== currentUser?.id && (
                           <div className="text-xs text-muted-foreground">
                             {/* Future: Member management dropdown */}
                           </div>
