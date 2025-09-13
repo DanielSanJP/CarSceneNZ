@@ -15,14 +15,22 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Camera, Upload, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 export function RegisterForm({
   className,
   action,
+  checkUsernameAvailability,
+  checkEmailAvailability,
   ...props
 }: React.ComponentProps<"div"> & {
   action: (formData: FormData) => Promise<void>;
+  checkUsernameAvailability: (
+    username: string
+  ) => Promise<{ available: boolean; message: string }>;
+  checkEmailAvailability: (
+    email: string
+  ) => Promise<{ available: boolean; message: string }>;
 }) {
   const [profileImage, setProfileImage] = useState<string>("");
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
@@ -30,7 +38,19 @@ export function RegisterForm({
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<{
+    message: string;
+    available: boolean | null;
+    isChecking: boolean;
+  }>({ message: "", available: null, isChecking: false });
+  const [emailStatus, setEmailStatus] = useState<{
+    message: string;
+    available: boolean | null;
+    isChecking: boolean;
+  }>({ message: "", available: null, isChecking: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -60,32 +80,169 @@ export function RegisterForm({
     fileInputRef.current?.click();
   };
 
+  // Debounced username check
+  const checkUsername = useCallback(
+    async (username: string) => {
+      if (!username || username.length < 3) {
+        setUsernameStatus({ message: "", available: null, isChecking: false });
+        return;
+      }
+
+      setUsernameStatus({ message: "", available: null, isChecking: true });
+
+      try {
+        const result = await checkUsernameAvailability(username);
+        setUsernameStatus({
+          message: result.message,
+          available: result.available,
+          isChecking: false,
+        });
+      } catch {
+        setUsernameStatus({
+          message: "Error checking username",
+          available: false,
+          isChecking: false,
+        });
+      }
+    },
+    [checkUsernameAvailability]
+  );
+
+  // Email checking function
+  const checkEmail = useCallback(
+    async (email: string) => {
+      if (!email || email.length === 0) {
+        setEmailStatus({ message: "", available: null, isChecking: false });
+        return;
+      }
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setEmailStatus({
+          message: "Please enter a valid email address",
+          available: false,
+          isChecking: false,
+        });
+        return;
+      }
+
+      setEmailStatus({ message: "", available: null, isChecking: true });
+
+      try {
+        const result = await checkEmailAvailability(email);
+        setEmailStatus({
+          message: result.message,
+          available: result.available,
+          isChecking: false,
+        });
+      } catch {
+        setEmailStatus({
+          message: "Error checking email",
+          available: false,
+          isChecking: false,
+        });
+      }
+    },
+    [checkEmailAvailability]
+  );
+
+  // Debounce username checking
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const usernameInput = document.getElementById(
+        "username"
+      ) as HTMLInputElement;
+      if (usernameInput && usernameInput.value) {
+        checkUsername(usernameInput.value);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [checkUsername]);
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const username = e.target.value;
+    if (username.length >= 3) {
+      setUsernameStatus({ message: "", available: null, isChecking: true });
+      // Debounce the check
+      setTimeout(() => checkUsername(username), 500);
+    } else {
+      setUsernameStatus({ message: "", available: null, isChecking: false });
+    }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const email = e.target.value;
+    if (email.length > 0) {
+      setEmailStatus({ message: "", available: null, isChecking: true });
+      // Debounce the check
+      setTimeout(() => checkEmail(email), 500);
+    } else {
+      setEmailStatus({ message: "", available: null, isChecking: false });
+    }
+  };
+
   const handleAction = async (formData: FormData) => {
+    // Client-side validation BEFORE setting loading state
+    const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
+    const username = formData.get("username") as string;
+    const email = formData.get("email") as string;
+
+    if (!password || !confirmPassword) {
+      toast.error("Both password fields are required");
+      // Reset only password fields using refs
+      if (passwordRef.current) passwordRef.current.value = "";
+      if (confirmPasswordRef.current) confirmPasswordRef.current.value = "";
+      return;
+    }
+
+    // Check if username is available
+    if (usernameStatus.available === false) {
+      toast.error("Please choose a different username");
+      return;
+    }
+
+    // Check if email is available
+    if (emailStatus.available === false) {
+      toast.error("Please use a different email address");
+      return;
+    }
+
+    // If username hasn't been checked yet, check it now
+    if (usernameStatus.available === null && username) {
+      toast.error("Please wait while we check username availability");
+      checkUsername(username);
+      return;
+    }
+
+    // If email hasn't been checked yet, check it now
+    if (emailStatus.available === null && email) {
+      toast.error("Please wait while we check email availability");
+      checkEmail(email);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      // Reset only password fields using refs
+      if (passwordRef.current) passwordRef.current.value = "";
+      if (confirmPasswordRef.current) confirmPasswordRef.current.value = "";
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      // Reset only password fields using refs
+      if (passwordRef.current) passwordRef.current.value = "";
+      if (confirmPasswordRef.current) confirmPasswordRef.current.value = "";
+      return;
+    }
+
     try {
       setIsLoading(true);
       setUploadStatus("Creating account...");
-
-      // Client-side validation
-      const password = formData.get("password") as string;
-      const confirmPassword = formData.get("confirmPassword") as string;
-
-      if (!password || !confirmPassword) {
-        toast.error("Both password fields are required");
-        setIsLoading(false);
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match");
-        setIsLoading(false);
-        return;
-      }
-
-      if (password.length < 6) {
-        toast.error("Password must be at least 6 characters long");
-        setIsLoading(false);
-        return;
-      }
 
       // Add the image file to FormData if one was selected
       if (profileImageFile) {
@@ -94,29 +251,47 @@ export function RegisterForm({
 
       await action(formData);
 
-      setUploadStatus("Account created successfully! Redirecting...");
-
-      // Redirect handled by Server Action
+      // If we reach here without redirect, something unexpected happened
+      // In normal flow, successful registration should redirect and throw NEXT_REDIRECT
+      console.warn(
+        "Registration completed without redirect - unexpected behavior"
+      );
     } catch (error) {
-      // Check if this is a Next.js redirect (expected behavior)
+      // Check if this is a Next.js redirect (successful registration)
+      // Only check for NEXT_REDIRECT message, not just any digest
       if (
         error &&
         typeof error === "object" &&
-        ("digest" in error || error.constructor.name === "RedirectError")
+        (error.constructor.name === "RedirectError" ||
+          (error as Error).message?.includes("NEXT_REDIRECT"))
       ) {
-        // This is a redirect, which is expected - don't show error
+        // This is a successful redirect - don't show any toast
+        // The redirect will happen automatically
         return;
       }
 
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Registration failed. Please try again.";
+      // Reset upload status on error
+      setUploadStatus("");
+
+      // This is an actual registration error - no need to log since we're showing toast
+      let errorMessage = "Registration failed. Please try again.";
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
 
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    handleAction(formData);
   };
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -128,7 +303,7 @@ export function RegisterForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={handleAction}>
+          <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               {/* Profile Picture Section */}
               <div className="grid gap-3">
@@ -182,7 +357,7 @@ export function RegisterForm({
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="displayName">Display Name</Label>
+                <Label htmlFor="displayName">Display Name *</Label>
                 <Input
                   id="displayName"
                   name="displayName"
@@ -193,30 +368,81 @@ export function RegisterForm({
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  name="username"
-                  type="text"
-                  placeholder="username"
-                  required
-                />
+                <Label htmlFor="username">Username *</Label>
+                <div className="relative">
+                  <Input
+                    id="username"
+                    name="username"
+                    type="text"
+                    placeholder="username"
+                    required
+                    onChange={handleUsernameChange}
+                    className={
+                      usernameStatus.available === false
+                        ? "border-red-500 focus:border-red-500"
+                        : usernameStatus.available === true
+                        ? "border-green-500 focus:border-green-500"
+                        : ""
+                    }
+                  />
+                  {usernameStatus.isChecking && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                    </div>
+                  )}
+                </div>
+                {usernameStatus.message && (
+                  <p
+                    className={`text-sm ${
+                      usernameStatus.available
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {usernameStatus.message}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                />
-              </div>
-              <div className="grid gap-3">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="email">Email *</Label>
                 <div className="relative">
                   <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    required
+                    onChange={handleEmailChange}
+                    className={
+                      emailStatus.available === false
+                        ? "border-red-500 focus:border-red-500"
+                        : emailStatus.available === true
+                        ? "border-green-500 focus:border-green-500"
+                        : ""
+                    }
+                  />
+                  {emailStatus.isChecking && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                    </div>
+                  )}
+                </div>
+                {emailStatus.message && (
+                  <p
+                    className={`text-sm ${
+                      emailStatus.available ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {emailStatus.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="password">Password *</Label>
+                <div className="relative">
+                  <Input
+                    ref={passwordRef}
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
@@ -241,9 +467,10 @@ export function RegisterForm({
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Confirm Password *</Label>
                 <div className="relative">
                   <Input
+                    ref={confirmPasswordRef}
                     id="confirmPassword"
                     name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}

@@ -44,7 +44,22 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
   const handleLogout = async () => {
     try {
       await signOut();
-    } catch {
+      // If we reach here without redirect, something unexpected happened
+      console.warn("Sign out completed without redirect - unexpected behavior");
+    } catch (error) {
+      // Check if this is a Next.js redirect (successful sign out)
+      if (
+        error &&
+        typeof error === "object" &&
+        (error.constructor.name === "RedirectError" ||
+          (error as Error).message?.includes("NEXT_REDIRECT"))
+      ) {
+        // This is a successful redirect - don't show any toast
+        // The redirect will happen automatically
+        return;
+      }
+
+      // This is an actual sign out error
       toast.error("Error signing out. Please try again.");
     }
   };

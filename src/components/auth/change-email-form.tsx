@@ -63,7 +63,7 @@ export function ChangeEmailForm({
           email: newEmail,
         },
         {
-          emailRedirectTo: `${window.location.origin}/profile/email-confirmed`,
+          emailRedirectTo: `https://carscene.co.nz/profile/email-confirmed`,
         }
       );
 
@@ -163,34 +163,6 @@ export function ChangeEmailForm({
                   required
                   disabled={isLoading}
                 />
-              </div>
-
-              <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <CheckCircle className="h-5 w-5 text-yellow-400" />
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                      Important
-                    </h3>
-                    <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                      <ul className="list-disc list-inside space-y-1">
-                        <li>
-                          You&apos;ll receive a verification email at your new
-                          address
-                        </li>
-                        <li>
-                          Your email won&apos;t change until you verify it
-                        </li>
-                        <li>
-                          You can still use your current email to log in until
-                          verification
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div className="flex flex-col gap-3">

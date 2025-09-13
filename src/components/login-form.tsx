@@ -28,22 +28,26 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
 
     try {
       await action(formData);
-      // If we reach here, the action completed successfully
-      // The redirect will happen automatically
+      // If we reach here without redirect, something unexpected happened
+      // In normal flow, successful auth should redirect and throw NEXT_REDIRECT
+      console.warn(
+        "Authentication completed without redirect - unexpected behavior"
+      );
     } catch (error) {
-      // Check if this is a Next.js redirect (expected behavior)
+      // Check if this is a Next.js redirect (successful auth)
+      // Only check for NEXT_REDIRECT message, not just any digest
       if (
         error &&
         typeof error === "object" &&
-        ("digest" in error || error.constructor.name === "RedirectError")
+        (error.constructor.name === "RedirectError" ||
+          (error as Error).message?.includes("NEXT_REDIRECT"))
       ) {
-        // This is a redirect, which is expected - don't show error
+        // This is a successful redirect - don't show any toast
+        // The redirect will happen automatically
         return;
       }
 
-      console.error("Login error:", error);
-
-      // Extract and display the error message via toast
+      // This is an actual authentication error - no need to log since we're showing toast
       let errorMessage = "Login failed. Please try again.";
 
       if (error instanceof Error) {

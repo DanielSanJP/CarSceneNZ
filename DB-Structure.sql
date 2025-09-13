@@ -160,6 +160,7 @@ CREATE TABLE public.user_follows (
 CREATE TABLE public.users (
     id uuid NOT NULL,
     username character varying NOT NULL UNIQUE,
+    email text NOT NULL UNIQUE,
     profile_image_url text,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),

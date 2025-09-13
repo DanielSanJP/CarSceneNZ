@@ -39,17 +39,37 @@ export function ForgotPasswordForm({
     const supabase = createClient();
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `https://carscene.co.nz/reset-password`,
       });
 
+      // Enhanced logging for debugging
+      console.log("Password reset request:", { email, data, error });
+
       if (error) {
+        console.error("Supabase resetPasswordForEmail error:", error);
         throw error;
       }
 
+      console.log("Password reset email sent successfully");
       setIsSuccess(true);
     } catch (error) {
       console.error("Password reset error:", error);
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        code:
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined,
+        status:
+          error && typeof error === "object" && "status" in error
+            ? error.status
+            : undefined,
+        details:
+          error && typeof error === "object" && "details" in error
+            ? error.details
+            : undefined,
+      });
       setError(
         error instanceof Error
           ? error.message
