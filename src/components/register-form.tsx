@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Upload, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
 
@@ -28,7 +28,8 @@ export function RegisterForm({
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
-  const [error, setError] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,9 +62,30 @@ export function RegisterForm({
 
   const handleAction = async (formData: FormData) => {
     try {
-      setError("");
       setIsLoading(true);
       setUploadStatus("Creating account...");
+
+      // Client-side validation
+      const password = formData.get("password") as string;
+      const confirmPassword = formData.get("confirmPassword") as string;
+
+      if (!password || !confirmPassword) {
+        toast.error("Both password fields are required");
+        setIsLoading(false);
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match");
+        setIsLoading(false);
+        return;
+      }
+
+      if (password.length < 6) {
+        toast.error("Password must be at least 6 characters long");
+        setIsLoading(false);
+        return;
+      }
 
       // Add the image file to FormData if one was selected
       if (profileImageFile) {
@@ -86,11 +108,12 @@ export function RegisterForm({
         return;
       }
 
-      setError(
+      const errorMessage =
         error instanceof Error
           ? error.message
-          : "Registration failed. Please try again."
-      );
+          : "Registration failed. Please try again.";
+
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -159,23 +182,23 @@ export function RegisterForm({
               </div>
 
               <div className="grid gap-3">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-3">
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   name="username"
                   type="text"
                   placeholder="username"
-                  required
-                />
-              </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  name="displayName"
-                  type="text"
-                  placeholder="Your display name"
                   required
                 />
               </div>
@@ -192,17 +215,61 @@ export function RegisterForm({
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" name="password" type="password" required />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    placeholder="Enter password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <Eye className="h-4 w-4" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    placeholder="Confirm password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <Eye className="h-4 w-4" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="flex flex-col gap-3">
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating Account..." : "Create Account"}
                 </Button>
-                {error && (
-                  <p className="text-sm text-destructive text-center">
-                    {error}
-                  </p>
-                )}
                 {uploadStatus && (
                   <p className="text-sm text-muted-foreground text-center">
                     {uploadStatus}

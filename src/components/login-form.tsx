@@ -12,6 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
   action: (formData: FormData) => Promise<void>;
@@ -19,11 +21,10 @@ interface LoginFormProps extends React.ComponentProps<"div"> {
 
 export function LoginForm({ className, action, ...props }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleAction = async (formData: FormData) => {
     setIsLoading(true);
-    setError("");
 
     try {
       await action(formData);
@@ -41,11 +42,17 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
       }
 
       console.error("Login error:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Login failed. Please try again."
-      );
+
+      // Extract and display the error message via toast
+      let errorMessage = "Login failed. Please try again.";
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -77,23 +84,38 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
                   <a
-                    href="#"
+                    href="/forgot-password"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
                     Forgot your password?
                   </a>
                 </div>
-                <Input id="password" name="password" type="password" required />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <Eye className="h-4 w-4" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="flex flex-col gap-3">
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Logging in..." : "Login"}
                 </Button>
-                {error && (
-                  <p className="text-sm text-destructive text-center">
-                    {error}
-                  </p>
-                )}
               </div>
             </div>
             <div className="mt-4 text-center text-sm">

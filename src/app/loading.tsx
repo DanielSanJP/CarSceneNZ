@@ -25,7 +25,7 @@ export default function HomeLoading() {
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
+            <Card className="pt-0" key={i}>
               <div className="aspect-square">
                 <Skeleton className="h-full w-full" />
               </div>
@@ -47,7 +47,7 @@ export default function HomeLoading() {
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
+            <Card className="pt-0" key={i}>
               <div className="aspect-square">
                 <Skeleton className="h-full w-full" />
               </div>

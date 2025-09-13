@@ -24,7 +24,27 @@ async function loginAction(formData: FormData) {
 
   if (error) {
     console.error("Login error:", error);
-    throw new Error(error.message || "Login failed");
+
+    // Provide user-friendly error messages
+    let errorMessage = "Login failed";
+
+    if (error.message === "Invalid login credentials") {
+      errorMessage =
+        "Invalid email or password. Please check your credentials and try again.";
+    } else if (error.message.includes("Email not confirmed")) {
+      errorMessage =
+        "Please check your email and click the confirmation link before logging in.";
+    } else if (error.message.includes("Too many requests")) {
+      errorMessage =
+        "Too many login attempts. Please wait a moment before trying again.";
+    } else if (error.message.includes("Invalid email")) {
+      errorMessage = "Please enter a valid email address.";
+    } else {
+      // For any other errors, show the original message but make it more user-friendly
+      errorMessage = error.message || "Login failed. Please try again.";
+    }
+
+    throw new Error(errorMessage);
   }
 
   revalidatePath("/", "layout");
