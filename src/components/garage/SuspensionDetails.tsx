@@ -41,78 +41,27 @@ export default function SuspensionDetails({
   onChange,
   isLoading,
 }: SuspensionDetailsProps) {
-  /**
-   * Clean up and migrate suspension data on load:
-   * 1. Remove duplicate general entries with only suspension_type
-   * 2. Migrate accessories from general entries (position=null) to front/rear entries
-   * 3. Remove empty general entries after migration
-   *
-   * This ensures that anti-roll bars and strut braces are stored with the
-   * front and rear suspension entries instead of creating separate rows.
-   */
+  // Basic cleanup on load - remove completely empty entries
   useEffect(() => {
     const suspension = data.suspension || [];
     if (suspension.length === 0) return;
 
-    let hasChanges = false;
-    let cleanedSuspension = [...suspension];
+    const cleanedSuspension = suspension.filter((s) => {
+      // Keep entries that have at least one meaningful field
+      const hasData =
+        s.suspension_type ||
+        s.suspension ||
+        s.spring_rate ||
+        s.strut_brace ||
+        s.anti_roll_bar ||
+        s.camber_degrees !== undefined ||
+        s.caster_degrees ||
+        s.toe_degrees;
+      return hasData;
+    });
 
-    // Check if we have multiple entries with only suspension_type (duplicates)
-    const generalEntries = suspension.filter(
-      (s) =>
-        s.position === undefined &&
-        s.suspension_type &&
-        !s.suspension &&
-        !s.spring_rate &&
-        !s.camber_degrees &&
-        !s.toe_degrees &&
-        !s.caster_degrees
-    );
-
-    const positionEntries = suspension.filter((s) => s.position !== undefined);
-
-    // If we have multiple general entries with only suspension_type, keep only one
-    if (generalEntries.length > 1) {
-      cleanedSuspension = suspension.filter((s, index) => {
-        if (
-          s.position === undefined &&
-          s.suspension_type &&
-          !s.suspension &&
-          !s.spring_rate &&
-          !s.camber_degrees &&
-          !s.toe_degrees &&
-          !s.caster_degrees
-        ) {
-          // Keep only the first general entry
-          return (
-            index ===
-            suspension.findIndex(
-              (item) =>
-                item.position === undefined &&
-                item.suspension_type &&
-                !item.suspension &&
-                !item.spring_rate &&
-                !item.camber_degrees &&
-                !item.toe_degrees &&
-                !item.caster_degrees
-            )
-          );
-        }
-        return true;
-      });
-      hasChanges = true;
-    }
-
-    // If we have both general entries and position entries, remove general entries
-    // as the position entries should contain the suspension_type
-    if (generalEntries.length > 0 && positionEntries.length > 0) {
-      cleanedSuspension = cleanedSuspension.filter(
-        (s) => s.position !== undefined
-      );
-      hasChanges = true;
-    }
-
-    if (hasChanges) {
+    // Only update if something changed
+    if (cleanedSuspension.length !== suspension.length) {
       onChange({ suspension: cleanedSuspension });
     }
   }, [data.suspension, onChange]);
@@ -122,116 +71,48 @@ export default function SuspensionDetails({
     value: string | number
   ) => {
     const suspension = data.suspension || [];
-    const targetPosition = position === "general" ? undefined : position;
-
     let updatedSuspension: SuspensionData[];
 
     if (field === "suspension_type" && position === "general") {
-      // For general suspension type changes, we need special handling
-      const hasPositionSpecific = suspension.some(
-        (s) => s.position !== undefined
-      );
+      // For general suspension type, update both front and rear entries
+      updatedSuspension = [...suspension];
 
-      if (hasPositionSpecific) {
-        // If we have position-specific entries, update all of them
-        updatedSuspension = suspension.map((s) => ({
-          ...s,
-          suspension_type: value as string,
-        }));
-      } else {
-        // If no position-specific entries, update or create general entry
-        const generalIndex = suspension.findIndex(
-          (s) => s.position === undefined
+      ["front", "rear"].forEach((pos) => {
+        const existingIndex = updatedSuspension.findIndex(
+          (s) => s.position === pos
         );
-        if (generalIndex >= 0) {
-          updatedSuspension = [...suspension];
-          updatedSuspension[generalIndex] = {
-            ...updatedSuspension[generalIndex],
-            suspension_type: value as string,
-          };
+        if (existingIndex >= 0) {
+          updatedSuspension[existingIndex].suspension_type = value as string;
         } else {
-          const newEntry: SuspensionData = {
-            position: undefined,
+          updatedSuspension.push({
+            position: pos as "front" | "rear",
             suspension_type: value as string,
-          };
-          updatedSuspension = [...suspension, newEntry];
+          });
         }
-      }
+      });
     } else {
-      // For position-specific changes or non-suspension_type changes
-      const existingSuspensionIndex = suspension.findIndex(
+      // For position-specific changes
+      const targetPosition = position === "general" ? undefined : position;
+      const existingIndex = suspension.findIndex(
         (s) => s.position === targetPosition
       );
 
-      if (existingSuspensionIndex >= 0) {
-        // Update existing suspension
+      if (existingIndex >= 0) {
+        // Update existing entry
         updatedSuspension = [...suspension];
-        const updated = { ...updatedSuspension[existingSuspensionIndex] };
-
-        // Handle different field types properly
-        switch (field) {
-          case "camber_degrees":
-            updated.camber_degrees = value as number;
-            break;
-          case "suspension_type":
-            updated.suspension_type = value as string;
-            break;
-          case "suspension":
-            updated.suspension = value as string;
-            break;
-          case "spring_rate":
-            updated.spring_rate = value as string;
-            break;
-          case "toe_degrees":
-            updated.toe_degrees = value as string;
-            break;
-          case "caster_degrees":
-            updated.caster_degrees = value as string;
-            break;
-          case "anti_roll_bar":
-            updated.anti_roll_bar = value as string;
-            break;
-          case "strut_brace":
-            updated.strut_brace = value as string;
-            break;
-        }
-
-        updatedSuspension[existingSuspensionIndex] = updated;
-      } else {
-        // Create new suspension entry
-        const newSuspension: SuspensionData = {
-          position: targetPosition,
+        updatedSuspension[existingIndex] = {
+          ...updatedSuspension[existingIndex],
+          [field]: value,
         };
-
-        // Handle different field types properly
-        switch (field) {
-          case "camber_degrees":
-            newSuspension.camber_degrees = value as number;
-            break;
-          case "suspension_type":
-            newSuspension.suspension_type = value as string;
-            break;
-          case "suspension":
-            newSuspension.suspension = value as string;
-            break;
-          case "spring_rate":
-            newSuspension.spring_rate = value as string;
-            break;
-          case "toe_degrees":
-            newSuspension.toe_degrees = value as string;
-            break;
-          case "caster_degrees":
-            newSuspension.caster_degrees = value as string;
-            break;
-          case "anti_roll_bar":
-            newSuspension.anti_roll_bar = value as string;
-            break;
-          case "strut_brace":
-            newSuspension.strut_brace = value as string;
-            break;
-        }
-
-        updatedSuspension = [...suspension, newSuspension];
+      } else {
+        // Create new entry
+        updatedSuspension = [
+          ...suspension,
+          {
+            position: targetPosition,
+            [field]: value,
+          } as SuspensionData,
+        ];
       }
     }
 
@@ -245,31 +126,17 @@ export default function SuspensionDetails({
     const suspension = data.suspension || [];
 
     if (field === "suspension_type" && position === "general") {
-      // For general suspension type, check if we have position-specific entries first
-      const hasPositionSpecific = suspension.some(
-        (s) => s.position !== undefined
-      );
-
-      if (hasPositionSpecific) {
-        // If we have position-specific entries, get the suspension_type from any of them
-        // (they should all have the same suspension_type when properly managed)
-        const positionSpecific = suspension.find(
-          (s) => s.position !== undefined
-        );
-        return positionSpecific?.suspension_type || "";
-      } else {
-        // If no position-specific entries, get from general entry
-        const generalEntry = suspension.find((s) => s.position === undefined);
-        return generalEntry?.suspension_type || "";
-      }
-    } else {
-      // For position-specific values or non-suspension_type fields
-      const targetPosition = position === "general" ? undefined : position;
-      const suspensionItem = suspension.find(
-        (s) => s.position === targetPosition
-      );
-      return suspensionItem?.[field] || "";
+      // For general suspension type, get it from any position entry
+      const anyEntry = suspension.find((s) => s.position && s.suspension_type);
+      return anyEntry?.suspension_type || "";
     }
+
+    // For position-specific values
+    const targetPosition = position === "general" ? undefined : position;
+    const suspensionItem = suspension.find(
+      (s) => s.position === targetPosition
+    );
+    return suspensionItem?.[field] || "";
   };
 
   return (

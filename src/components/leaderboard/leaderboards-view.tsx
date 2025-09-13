@@ -35,17 +35,13 @@ export function LeaderboardsView({
   // Handle error state or missing data
   if (!leaderboardsData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">
-            Failed to load leaderboards
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            There was an error loading the leaderboards data.
-          </p>
-          <Button onClick={() => window.location.reload()}>Try Again</Button>
-        </div>
-      </div>
+      <>
+        <h2 className="text-2xl font-bold mb-4">Failed to load leaderboards</h2>
+        <p className="text-muted-foreground mb-6">
+          There was an error loading the leaderboards data.
+        </p>
+        <Button onClick={() => window.location.reload()}>Try Again</Button>
+      </>
     );
   }
 
@@ -99,13 +95,11 @@ export function LeaderboardsView({
       </div>
 
       {/* Tab Content */}
-      <div className="max-w-7xl mx-auto">
-        <>
-          {activeTab === "owners" && <OwnerRankings data={ownersData} />}
-          {activeTab === "clubs" && <ClubRankings data={clubsData} />}
-          {activeTab === "cars" && <CarRankings data={carsData} />}
-        </>
-      </div>
+      <>
+        {activeTab === "owners" && <OwnerRankings data={ownersData} />}
+        {activeTab === "clubs" && <ClubRankings data={clubsData} />}
+        {activeTab === "cars" && <CarRankings data={carsData} />}
+      </>
     </>
   );
 }

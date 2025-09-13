@@ -260,7 +260,7 @@ export default async function LeaderboardsPage({
     console.error("Failed to fetch leaderboards data on server:", error);
     // Return error state
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">
             Failed to load leaderboards
@@ -274,24 +274,20 @@ export default async function LeaderboardsPage({
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold tracking-tight mb-4">
-              Community Leaderboards
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              Top performers in the Car Scene NZ community
-            </p>
-          </div>
-
-          <LeaderboardsView
-            defaultTab={params.tab as "owners" | "clubs" | "cars"}
-            leaderboardsData={leaderboardsData}
-          />
-        </div>
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold tracking-tight mb-4">
+          Community Leaderboards
+        </h1>
+        <p className="text-xl text-muted-foreground">
+          Top performers in the Car Scene NZ community
+        </p>
       </div>
+
+      <LeaderboardsView
+        defaultTab={params.tab as "owners" | "clubs" | "cars"}
+        leaderboardsData={leaderboardsData}
+      />
     </div>
   );
 }

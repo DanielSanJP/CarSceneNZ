@@ -12,51 +12,39 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
+import { Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useRouter } from "next/navigation";
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function LoginForm({ className, action, ...props }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string>("");
+  const router = useRouter();
 
   const handleAction = async (formData: FormData) => {
     setIsLoading(true);
+    setError(""); // Clear any previous errors
 
     try {
-      await action(formData);
-      // If we reach here without redirect, something unexpected happened
-      // In normal flow, successful auth should redirect and throw NEXT_REDIRECT
-      console.warn(
-        "Authentication completed without redirect - unexpected behavior"
-      );
+      const result = await action(formData);
+
+      if (result.success) {
+        // Successful login - redirect on client side
+        router.push("/");
+        router.refresh(); // Refresh to update auth state
+      } else {
+        // Handle error from server action
+        setError(result.error || "Unable to sign in. Please try again.");
+      }
     } catch (error) {
-      // Check if this is a Next.js redirect (successful auth)
-      // Only check for NEXT_REDIRECT message, not just any digest
-      if (
-        error &&
-        typeof error === "object" &&
-        (error.constructor.name === "RedirectError" ||
-          (error as Error).message?.includes("NEXT_REDIRECT"))
-      ) {
-        // This is a successful redirect - don't show any toast
-        // The redirect will happen automatically
-        return;
-      }
-
-      // This is an actual authentication error - no need to log since we're showing toast
-      let errorMessage = "Login failed. Please try again.";
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
-
-      toast.error(errorMessage);
+      // Fallback error handling
+      console.error("Login error:", error);
+      setError("Unable to sign in. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +108,12 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Logging in..." : "Login"}
                 </Button>
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
               </div>
             </div>
             <div className="mt-4 text-center text-sm">

@@ -101,17 +101,11 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
     : null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          <GarageGallery
-            page={page}
-            limit={limit}
-            garageData={garageData}
-            likeCarAction={likeCarAction}
-          />
-        </div>
-      </div>
-    </div>
+    <GarageGallery
+      page={page}
+      limit={limit}
+      garageData={garageData}
+      likeCarAction={likeCarAction}
+    />
   );
 }

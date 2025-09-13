@@ -6,8 +6,8 @@ CREATE TABLE public.car_likes (
     user_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT car_likes_pkey PRIMARY KEY (id),
-    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id),
-    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
 );
 CREATE TABLE public.cars (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -115,8 +115,8 @@ CREATE TABLE public.event_attendees (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT event_attendees_pkey PRIMARY KEY (id),
-    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+    CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+    CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.events (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -160,12 +160,12 @@ CREATE TABLE public.user_follows (
 CREATE TABLE public.users (
     id uuid NOT NULL,
     username character varying NOT NULL UNIQUE,
-    email text NOT NULL UNIQUE,
     profile_image_url text,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     display_name character varying,
     last_seen_inbox timestamp with time zone DEFAULT now(),
+    email text NOT NULL UNIQUE,
     CONSTRAINT users_pkey PRIMARY KEY (id),
     CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

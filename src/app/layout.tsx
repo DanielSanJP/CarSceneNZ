@@ -51,7 +51,13 @@ export default async function RootLayout({
                 <AppSidebar user={user} />
                 <SidebarInset>
                   <Navigation user={user} />
-                  <div className="flex-1 flex flex-col min-h-0">{children}</div>
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="min-h-screen bg-background">
+                      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <div className="max-w-7xl mx-auto">{children}</div>
+                      </div>
+                    </div>
+                  </div>
                 </SidebarInset>
               </SidebarProvider>
             </InboxProvider>

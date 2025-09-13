@@ -11,9 +11,19 @@ export function SuspensionDetails({ car }: SuspensionDetailsProps) {
     return car.suspension?.[position];
   };
 
+  // Get the suspension type (prefer front, fallback to rear)
+  const getSuspensionType = () => {
+    return (
+      car.suspension?.front?.suspension_type ||
+      car.suspension?.rear?.suspension_type
+    );
+  };
+
   if (!car.suspension || (!car.suspension.front && !car.suspension.rear)) {
     return null;
   }
+
+  const suspensionType = getSuspensionType();
 
   return (
     <Card>
@@ -21,6 +31,14 @@ export function SuspensionDetails({ car }: SuspensionDetailsProps) {
         <CardTitle>Suspension</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Suspension Type - Single field at top */}
+        {suspensionType && (
+          <div className="space-y-2 pb-2">
+            <h5 className="font-medium">Type</h5>
+            <p className="text-sm font-medium capitalize">{suspensionType}</p>
+          </div>
+        )}
+
         {["front", "rear"].map((position) => {
           const susp = getSuspensionByPosition(position as "front" | "rear");
           if (!susp) return null;
@@ -29,7 +47,7 @@ export function SuspensionDetails({ car }: SuspensionDetailsProps) {
             <div key={position} className="space-y-4">
               <h4 className="font-medium capitalize">{position} Suspension</h4>
 
-              {/* Suspension Components */}
+              {/* Suspension Components - removed suspension_type from here */}
               {(susp.suspension || susp.spring_rate) && (
                 <div className="space-y-2">
                   <h5 className="font-medium text-sm">Suspension Components</h5>

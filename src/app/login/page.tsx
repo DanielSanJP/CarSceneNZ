@@ -1,10 +1,11 @@
 import { LoginForm } from "@/components/login-form";
 import { Suspense } from "react";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/utils/supabase/server";
 
-async function loginAction(formData: FormData) {
+async function loginAction(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
   "use server";
 
   const supabase = await createClient();
@@ -14,7 +15,7 @@ async function loginAction(formData: FormData) {
   const password = formData.get("password") as string;
 
   if (!email || !password) {
-    throw new Error("Email and password are required");
+    return { success: false, error: "Email and password are required" };
   }
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -26,34 +27,35 @@ async function loginAction(formData: FormData) {
     console.error("Login error:", error);
 
     // Provide user-friendly error messages
-    let errorMessage = "Login failed";
+    let errorMessage = "Incorrect username or password.";
 
     if (error.message === "Invalid login credentials") {
-      errorMessage =
-        "Invalid email or password. Please check your credentials and try again.";
+      errorMessage = "Incorrect username or password.";
     } else if (error.message.includes("Email not confirmed")) {
       errorMessage =
-        "Please check your email and click the confirmation link before logging in.";
+        "Please check your email and confirm your account before logging in.";
     } else if (error.message.includes("Too many requests")) {
       errorMessage =
         "Too many login attempts. Please wait a moment before trying again.";
     } else if (error.message.includes("Invalid email")) {
       errorMessage = "Please enter a valid email address.";
     } else {
-      // For any other errors, show the original message but make it more user-friendly
-      errorMessage = error.message || "Login failed. Please try again.";
+      // For any other errors, show generic message
+      errorMessage = "Unable to sign in. Please try again.";
     }
 
-    throw new Error(errorMessage);
+    return { success: false, error: errorMessage };
   }
 
+  // Revalidate the cache but don't redirect here
   revalidatePath("/", "layout");
-  redirect("/");
+
+  return { success: true };
 }
 
 function LoginContent() {
   return (
-    <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center">
       <div className="w-full max-w-sm">
         <LoginForm action={loginAction} />
       </div>
@@ -63,18 +65,16 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen">
-      <Suspense
-        fallback={
-          <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-6 md:p-10">
-            <div className="w-full max-w-sm text-center">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center">
+          <div className="w-full max-w-sm text-center">
+            <p className="text-muted-foreground">Loading...</p>
           </div>
-        }
-      >
-        <LoginContent />
-      </Suspense>
-    </div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

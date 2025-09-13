@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { createClient } from "@/lib/utils/supabase/client";
-import { CheckCircle, Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 interface ChangeEmailFormProps extends React.ComponentProps<"div"> {

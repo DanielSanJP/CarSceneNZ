@@ -404,449 +404,431 @@ export function EditCarForm({
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="icon" onClick={handleBackClick}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold">Edit Car</h1>
-                <p className="text-muted-foreground">
-                  Update your {car.brand} {car.model}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button onClick={handleSubmit} disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-              <InformationModal />
-            </div>
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={handleBackClick}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Edit Car</h1>
+            <p className="text-muted-foreground">
+              Update your {car.brand} {car.model}
+            </p>
           </div>
+        </div>
 
-          {/* Form Sections */}
-          <div className="space-y-8">
-            {/* Car Images */}
-            <CarImageManager
-              images={formData.images}
-              onChange={(images) =>
-                setFormData((prev) => ({ ...prev, images }))
-              }
-              carId={car.id}
-              uploadAction={uploadAction}
-            />
+        <div className="flex items-center gap-2">
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Changes"}
+          </Button>
+          <InformationModal />
+        </div>
+      </div>
 
-            {/* Basic Car Info */}
-            <BasicCarInfo
-              data={{
-                brand: formData.brand,
-                model: formData.model,
-                year: formData.year,
-              }}
-              onChange={(updates) =>
-                setFormData((prev) => ({ ...prev, ...updates }))
-              }
-            />
+      {/* Form Sections */}
+      <div className="space-y-8">
+        {/* Car Images */}
+        <CarImageManager
+          images={formData.images}
+          onChange={(images) => setFormData((prev) => ({ ...prev, images }))}
+          carId={car.id}
+          uploadAction={uploadAction}
+        />
 
-            {/* Engine Details */}
-            <EngineDetails
-              data={{
-                engine: {
-                  engine_code: formData.engine_code,
-                  displacement: formData.displacement,
-                  aspiration: formData.aspiration,
-                  power_hp: formData.power_hp,
-                  torque_nm: formData.torque_nm,
-                },
-                turbo_system: {
-                  turbo: formData.turbo,
-                  intercooler: formData.intercooler,
-                },
-                exhaust_system: {
-                  intake: formData.intake,
-                  header: formData.header,
-                  exhaust: formData.exhaust,
-                },
-                engine_management: {
-                  ecu: formData.ecu,
-                  tuned_by: formData.tuned_by,
-                },
-                internal_components: {
-                  pistons: formData.pistons,
-                  connecting_rods: formData.connecting_rods,
-                  valves: formData.valves,
-                  valve_springs: formData.valve_springs,
-                  camshafts: formData.camshafts,
-                },
-                fuel_system: {
-                  fuel_injectors: formData.fuel_injectors,
-                  fuel_pump: formData.fuel_pump,
-                  fuel_rail: formData.fuel_rail,
-                },
-              }}
-              onChange={(updates) => {
-                const flatUpdates: Partial<CompleteEditCarFormData> = {};
+        {/* Basic Car Info */}
+        <BasicCarInfo
+          data={{
+            brand: formData.brand,
+            model: formData.model,
+            year: formData.year,
+          }}
+          onChange={(updates) =>
+            setFormData((prev) => ({ ...prev, ...updates }))
+          }
+        />
 
-                if (updates.engine) {
-                  if (updates.engine.engine_code !== undefined)
-                    flatUpdates.engine_code = updates.engine.engine_code;
-                  if (updates.engine.displacement !== undefined)
-                    flatUpdates.displacement = updates.engine.displacement;
-                  if (updates.engine.aspiration !== undefined)
-                    flatUpdates.aspiration = updates.engine.aspiration;
-                  if (updates.engine.power_hp !== undefined)
-                    flatUpdates.power_hp = updates.engine.power_hp;
-                  if (updates.engine.torque_nm !== undefined)
-                    flatUpdates.torque_nm = updates.engine.torque_nm;
-                }
+        {/* Engine Details */}
+        <EngineDetails
+          data={{
+            engine: {
+              engine_code: formData.engine_code,
+              displacement: formData.displacement,
+              aspiration: formData.aspiration,
+              power_hp: formData.power_hp,
+              torque_nm: formData.torque_nm,
+            },
+            turbo_system: {
+              turbo: formData.turbo,
+              intercooler: formData.intercooler,
+            },
+            exhaust_system: {
+              intake: formData.intake,
+              header: formData.header,
+              exhaust: formData.exhaust,
+            },
+            engine_management: {
+              ecu: formData.ecu,
+              tuned_by: formData.tuned_by,
+            },
+            internal_components: {
+              pistons: formData.pistons,
+              connecting_rods: formData.connecting_rods,
+              valves: formData.valves,
+              valve_springs: formData.valve_springs,
+              camshafts: formData.camshafts,
+            },
+            fuel_system: {
+              fuel_injectors: formData.fuel_injectors,
+              fuel_pump: formData.fuel_pump,
+              fuel_rail: formData.fuel_rail,
+            },
+          }}
+          onChange={(updates) => {
+            const flatUpdates: Partial<CompleteEditCarFormData> = {};
 
-                if (updates.turbo_system) {
-                  if (updates.turbo_system.turbo !== undefined)
-                    flatUpdates.turbo = updates.turbo_system.turbo;
-                  if (updates.turbo_system.intercooler !== undefined)
-                    flatUpdates.intercooler = updates.turbo_system.intercooler;
-                }
+            if (updates.engine) {
+              if (updates.engine.engine_code !== undefined)
+                flatUpdates.engine_code = updates.engine.engine_code;
+              if (updates.engine.displacement !== undefined)
+                flatUpdates.displacement = updates.engine.displacement;
+              if (updates.engine.aspiration !== undefined)
+                flatUpdates.aspiration = updates.engine.aspiration;
+              if (updates.engine.power_hp !== undefined)
+                flatUpdates.power_hp = updates.engine.power_hp;
+              if (updates.engine.torque_nm !== undefined)
+                flatUpdates.torque_nm = updates.engine.torque_nm;
+            }
 
-                if (updates.exhaust_system) {
-                  if (updates.exhaust_system.intake !== undefined)
-                    flatUpdates.intake = updates.exhaust_system.intake;
-                  if (updates.exhaust_system.header !== undefined)
-                    flatUpdates.header = updates.exhaust_system.header;
-                  if (updates.exhaust_system.exhaust !== undefined)
-                    flatUpdates.exhaust = updates.exhaust_system.exhaust;
-                }
+            if (updates.turbo_system) {
+              if (updates.turbo_system.turbo !== undefined)
+                flatUpdates.turbo = updates.turbo_system.turbo;
+              if (updates.turbo_system.intercooler !== undefined)
+                flatUpdates.intercooler = updates.turbo_system.intercooler;
+            }
 
-                if (updates.engine_management) {
-                  if (updates.engine_management.ecu !== undefined)
-                    flatUpdates.ecu = updates.engine_management.ecu;
-                  if (updates.engine_management.tuned_by !== undefined)
-                    flatUpdates.tuned_by = updates.engine_management.tuned_by;
-                }
+            if (updates.exhaust_system) {
+              if (updates.exhaust_system.intake !== undefined)
+                flatUpdates.intake = updates.exhaust_system.intake;
+              if (updates.exhaust_system.header !== undefined)
+                flatUpdates.header = updates.exhaust_system.header;
+              if (updates.exhaust_system.exhaust !== undefined)
+                flatUpdates.exhaust = updates.exhaust_system.exhaust;
+            }
 
-                if (updates.internal_components) {
-                  if (updates.internal_components.pistons !== undefined)
-                    flatUpdates.pistons = updates.internal_components.pistons;
-                  if (updates.internal_components.connecting_rods !== undefined)
-                    flatUpdates.connecting_rods =
-                      updates.internal_components.connecting_rods;
-                  if (updates.internal_components.valves !== undefined)
-                    flatUpdates.valves = updates.internal_components.valves;
-                  if (updates.internal_components.valve_springs !== undefined)
-                    flatUpdates.valve_springs =
-                      updates.internal_components.valve_springs;
-                  if (updates.internal_components.camshafts !== undefined)
-                    flatUpdates.camshafts =
-                      updates.internal_components.camshafts;
-                }
+            if (updates.engine_management) {
+              if (updates.engine_management.ecu !== undefined)
+                flatUpdates.ecu = updates.engine_management.ecu;
+              if (updates.engine_management.tuned_by !== undefined)
+                flatUpdates.tuned_by = updates.engine_management.tuned_by;
+            }
 
-                if (updates.fuel_system) {
-                  if (updates.fuel_system.fuel_injectors !== undefined)
-                    flatUpdates.fuel_injectors =
-                      updates.fuel_system.fuel_injectors;
-                  if (updates.fuel_system.fuel_pump !== undefined)
-                    flatUpdates.fuel_pump = updates.fuel_system.fuel_pump;
-                  if (updates.fuel_system.fuel_rail !== undefined)
-                    flatUpdates.fuel_rail = updates.fuel_system.fuel_rail;
-                }
+            if (updates.internal_components) {
+              if (updates.internal_components.pistons !== undefined)
+                flatUpdates.pistons = updates.internal_components.pistons;
+              if (updates.internal_components.connecting_rods !== undefined)
+                flatUpdates.connecting_rods =
+                  updates.internal_components.connecting_rods;
+              if (updates.internal_components.valves !== undefined)
+                flatUpdates.valves = updates.internal_components.valves;
+              if (updates.internal_components.valve_springs !== undefined)
+                flatUpdates.valve_springs =
+                  updates.internal_components.valve_springs;
+              if (updates.internal_components.camshafts !== undefined)
+                flatUpdates.camshafts = updates.internal_components.camshafts;
+            }
 
-                setFormData((prev) => ({ ...prev, ...flatUpdates }));
-              }}
-            />
+            if (updates.fuel_system) {
+              if (updates.fuel_system.fuel_injectors !== undefined)
+                flatUpdates.fuel_injectors = updates.fuel_system.fuel_injectors;
+              if (updates.fuel_system.fuel_pump !== undefined)
+                flatUpdates.fuel_pump = updates.fuel_system.fuel_pump;
+              if (updates.fuel_system.fuel_rail !== undefined)
+                flatUpdates.fuel_rail = updates.fuel_system.fuel_rail;
+            }
 
-            {/* Wheels & Tires */}
-            <WheelsAndTires
-              data={{
-                wheels: formData.wheels
-                  ? [
-                      ...(formData.wheels.front
-                        ? [
-                            {
-                              position: "front" as const,
-                              ...formData.wheels.front,
-                            },
-                          ]
-                        : []),
-                      ...(formData.wheels.rear
-                        ? [
-                            {
-                              position: "rear" as const,
-                              ...formData.wheels.rear,
-                            },
-                          ]
-                        : []),
-                    ]
-                  : [],
-              }}
-              onChange={(updates) => {
-                if (updates.wheels) {
-                  const wheels = {
-                    front: updates.wheels.find(
-                      (w: { position: string }) => w.position === "front"
-                    ),
-                    rear: updates.wheels.find(
-                      (w: { position: string }) => w.position === "rear"
-                    ),
-                  };
-                  setFormData((prev) => ({ ...prev, wheels }));
-                }
-              }}
-            />
+            setFormData((prev) => ({ ...prev, ...flatUpdates }));
+          }}
+        />
 
-            {/* Suspension Details */}
-            <SuspensionDetails
-              data={{
-                suspension: formData.suspension
-                  ? [
-                      ...(formData.suspension.front
-                        ? [
-                            {
-                              position: "front" as const,
-                              ...formData.suspension.front,
-                            },
-                          ]
-                        : []),
-                      ...(formData.suspension.rear
-                        ? [
-                            {
-                              position: "rear" as const,
-                              ...formData.suspension.rear,
-                            },
-                          ]
-                        : []),
-                    ]
-                  : [],
-              }}
-              onChange={(updates) => {
-                if (updates.suspension) {
-                  const suspension = {
-                    front: updates.suspension.find(
-                      (s) => s.position === "front"
-                    ),
-                    rear: updates.suspension.find((s) => s.position === "rear"),
-                  };
-                  setFormData((prev) => ({ ...prev, suspension }));
-                }
-              }}
-            />
+        {/* Wheels & Tires */}
+        <WheelsAndTires
+          data={{
+            wheels: formData.wheels
+              ? [
+                  ...(formData.wheels.front
+                    ? [
+                        {
+                          position: "front" as const,
+                          ...formData.wheels.front,
+                        },
+                      ]
+                    : []),
+                  ...(formData.wheels.rear
+                    ? [
+                        {
+                          position: "rear" as const,
+                          ...formData.wheels.rear,
+                        },
+                      ]
+                    : []),
+                ]
+              : [],
+          }}
+          onChange={(updates) => {
+            if (updates.wheels) {
+              const wheels = {
+                front: updates.wheels.find(
+                  (w: { position: string }) => w.position === "front"
+                ),
+                rear: updates.wheels.find(
+                  (w: { position: string }) => w.position === "rear"
+                ),
+              };
+              setFormData((prev) => ({ ...prev, wheels }));
+            }
+          }}
+        />
 
-            {/* Braking System */}
-            <BrakingSystem
-              data={{
-                brakes: formData.brakes
-                  ? [
-                      ...(formData.brakes.front
-                        ? [
-                            {
-                              position: "front" as const,
-                              ...formData.brakes.front,
-                            },
-                          ]
-                        : []),
-                      ...(formData.brakes.rear
-                        ? [
-                            {
-                              position: "rear" as const,
-                              ...formData.brakes.rear,
-                            },
-                          ]
-                        : []),
-                    ]
-                  : [],
-              }}
-              onChange={(updates) => {
-                if (updates.brakes) {
-                  const brakes = {
-                    front: updates.brakes.find(
-                      (b: { position: string }) => b.position === "front"
-                    ),
-                    rear: updates.brakes.find(
-                      (b: { position: string }) => b.position === "rear"
-                    ),
-                  };
-                  setFormData((prev) => ({ ...prev, brakes }));
-                }
-              }}
-            />
+        {/* Suspension Details */}
+        <SuspensionDetails
+          data={{
+            suspension: formData.suspension
+              ? [
+                  ...(formData.suspension.front
+                    ? [
+                        {
+                          position: "front" as const,
+                          ...formData.suspension.front,
+                        },
+                      ]
+                    : []),
+                  ...(formData.suspension.rear
+                    ? [
+                        {
+                          position: "rear" as const,
+                          ...formData.suspension.rear,
+                        },
+                      ]
+                    : []),
+                ]
+              : [],
+          }}
+          onChange={(updates) => {
+            if (updates.suspension) {
+              const suspension = {
+                front: updates.suspension.find((s) => s.position === "front"),
+                rear: updates.suspension.find((s) => s.position === "rear"),
+              };
+              setFormData((prev) => ({ ...prev, suspension }));
+            }
+          }}
+        />
 
-            {/* Exterior Modifications */}
-            <ExteriorMods
-              data={{
-                paint_finish: {
-                  paint_color: formData.paint_color,
-                  paint_finish: formData.paint_finish,
-                  wrap_brand: formData.wrap_brand,
-                  wrap_color: formData.wrap_color,
-                },
-                lighting_modifications: {
-                  headlights: formData.headlights,
-                  taillights: formData.taillights,
-                  fog_lights: formData.fog_lights,
-                  underglow: formData.underglow,
-                  interior_lighting: formData.interior_lighting,
-                },
-                bodykit_modifications: {
-                  front_bumper: formData.front_bumper,
-                  front_lip: formData.front_lip,
-                  rear_bumper: formData.rear_bumper,
-                  rear_lip: formData.rear_lip,
-                  side_skirts: formData.side_skirts,
-                  rear_spoiler: formData.rear_spoiler,
-                  diffuser: formData.diffuser,
-                  fender_flares: formData.fender_flares,
-                  hood: formData.hood,
-                },
-              }}
-              onChange={(updates) => {
-                const flatUpdates: Partial<CompleteEditCarFormData> = {};
+        {/* Braking System */}
+        <BrakingSystem
+          data={{
+            brakes: formData.brakes
+              ? [
+                  ...(formData.brakes.front
+                    ? [
+                        {
+                          position: "front" as const,
+                          ...formData.brakes.front,
+                        },
+                      ]
+                    : []),
+                  ...(formData.brakes.rear
+                    ? [
+                        {
+                          position: "rear" as const,
+                          ...formData.brakes.rear,
+                        },
+                      ]
+                    : []),
+                ]
+              : [],
+          }}
+          onChange={(updates) => {
+            if (updates.brakes) {
+              const brakes = {
+                front: updates.brakes.find(
+                  (b: { position: string }) => b.position === "front"
+                ),
+                rear: updates.brakes.find(
+                  (b: { position: string }) => b.position === "rear"
+                ),
+              };
+              setFormData((prev) => ({ ...prev, brakes }));
+            }
+          }}
+        />
 
-                if (updates.paint_finish) {
-                  if (updates.paint_finish.paint_color !== undefined)
-                    flatUpdates.paint_color = updates.paint_finish.paint_color;
-                  if (updates.paint_finish.paint_finish !== undefined)
-                    flatUpdates.paint_finish =
-                      updates.paint_finish.paint_finish;
-                  if (updates.paint_finish.wrap_brand !== undefined)
-                    flatUpdates.wrap_brand = updates.paint_finish.wrap_brand;
-                  if (updates.paint_finish.wrap_color !== undefined)
-                    flatUpdates.wrap_color = updates.paint_finish.wrap_color;
-                }
+        {/* Exterior Modifications */}
+        <ExteriorMods
+          data={{
+            paint_finish: {
+              paint_color: formData.paint_color,
+              paint_finish: formData.paint_finish,
+              wrap_brand: formData.wrap_brand,
+              wrap_color: formData.wrap_color,
+            },
+            lighting_modifications: {
+              headlights: formData.headlights,
+              taillights: formData.taillights,
+              fog_lights: formData.fog_lights,
+              underglow: formData.underglow,
+              interior_lighting: formData.interior_lighting,
+            },
+            bodykit_modifications: {
+              front_bumper: formData.front_bumper,
+              front_lip: formData.front_lip,
+              rear_bumper: formData.rear_bumper,
+              rear_lip: formData.rear_lip,
+              side_skirts: formData.side_skirts,
+              rear_spoiler: formData.rear_spoiler,
+              diffuser: formData.diffuser,
+              fender_flares: formData.fender_flares,
+              hood: formData.hood,
+            },
+          }}
+          onChange={(updates) => {
+            const flatUpdates: Partial<CompleteEditCarFormData> = {};
 
-                if (updates.lighting_modifications) {
-                  if (updates.lighting_modifications.headlights !== undefined)
-                    flatUpdates.headlights =
-                      updates.lighting_modifications.headlights;
-                  if (updates.lighting_modifications.taillights !== undefined)
-                    flatUpdates.taillights =
-                      updates.lighting_modifications.taillights;
-                  if (updates.lighting_modifications.fog_lights !== undefined)
-                    flatUpdates.fog_lights =
-                      updates.lighting_modifications.fog_lights;
-                  if (updates.lighting_modifications.underglow !== undefined)
-                    flatUpdates.underglow =
-                      updates.lighting_modifications.underglow;
-                  if (
-                    updates.lighting_modifications.interior_lighting !==
-                    undefined
-                  )
-                    flatUpdates.interior_lighting =
-                      updates.lighting_modifications.interior_lighting;
-                }
+            if (updates.paint_finish) {
+              if (updates.paint_finish.paint_color !== undefined)
+                flatUpdates.paint_color = updates.paint_finish.paint_color;
+              if (updates.paint_finish.paint_finish !== undefined)
+                flatUpdates.paint_finish = updates.paint_finish.paint_finish;
+              if (updates.paint_finish.wrap_brand !== undefined)
+                flatUpdates.wrap_brand = updates.paint_finish.wrap_brand;
+              if (updates.paint_finish.wrap_color !== undefined)
+                flatUpdates.wrap_color = updates.paint_finish.wrap_color;
+            }
 
-                if (updates.bodykit_modifications) {
-                  if (updates.bodykit_modifications.front_bumper !== undefined)
-                    flatUpdates.front_bumper =
-                      updates.bodykit_modifications.front_bumper;
-                  if (updates.bodykit_modifications.front_lip !== undefined)
-                    flatUpdates.front_lip =
-                      updates.bodykit_modifications.front_lip;
-                  if (updates.bodykit_modifications.rear_bumper !== undefined)
-                    flatUpdates.rear_bumper =
-                      updates.bodykit_modifications.rear_bumper;
-                  if (updates.bodykit_modifications.rear_lip !== undefined)
-                    flatUpdates.rear_lip =
-                      updates.bodykit_modifications.rear_lip;
-                  if (updates.bodykit_modifications.side_skirts !== undefined)
-                    flatUpdates.side_skirts =
-                      updates.bodykit_modifications.side_skirts;
-                  if (updates.bodykit_modifications.rear_spoiler !== undefined)
-                    flatUpdates.rear_spoiler =
-                      updates.bodykit_modifications.rear_spoiler;
-                  if (updates.bodykit_modifications.diffuser !== undefined)
-                    flatUpdates.diffuser =
-                      updates.bodykit_modifications.diffuser;
-                  if (updates.bodykit_modifications.fender_flares !== undefined)
-                    flatUpdates.fender_flares =
-                      updates.bodykit_modifications.fender_flares;
-                  if (updates.bodykit_modifications.hood !== undefined)
-                    flatUpdates.hood = updates.bodykit_modifications.hood;
-                }
+            if (updates.lighting_modifications) {
+              if (updates.lighting_modifications.headlights !== undefined)
+                flatUpdates.headlights =
+                  updates.lighting_modifications.headlights;
+              if (updates.lighting_modifications.taillights !== undefined)
+                flatUpdates.taillights =
+                  updates.lighting_modifications.taillights;
+              if (updates.lighting_modifications.fog_lights !== undefined)
+                flatUpdates.fog_lights =
+                  updates.lighting_modifications.fog_lights;
+              if (updates.lighting_modifications.underglow !== undefined)
+                flatUpdates.underglow =
+                  updates.lighting_modifications.underglow;
+              if (
+                updates.lighting_modifications.interior_lighting !== undefined
+              )
+                flatUpdates.interior_lighting =
+                  updates.lighting_modifications.interior_lighting;
+            }
 
-                setFormData((prev) => ({ ...prev, ...flatUpdates }));
-              }}
-            />
+            if (updates.bodykit_modifications) {
+              if (updates.bodykit_modifications.front_bumper !== undefined)
+                flatUpdates.front_bumper =
+                  updates.bodykit_modifications.front_bumper;
+              if (updates.bodykit_modifications.front_lip !== undefined)
+                flatUpdates.front_lip = updates.bodykit_modifications.front_lip;
+              if (updates.bodykit_modifications.rear_bumper !== undefined)
+                flatUpdates.rear_bumper =
+                  updates.bodykit_modifications.rear_bumper;
+              if (updates.bodykit_modifications.rear_lip !== undefined)
+                flatUpdates.rear_lip = updates.bodykit_modifications.rear_lip;
+              if (updates.bodykit_modifications.side_skirts !== undefined)
+                flatUpdates.side_skirts =
+                  updates.bodykit_modifications.side_skirts;
+              if (updates.bodykit_modifications.rear_spoiler !== undefined)
+                flatUpdates.rear_spoiler =
+                  updates.bodykit_modifications.rear_spoiler;
+              if (updates.bodykit_modifications.diffuser !== undefined)
+                flatUpdates.diffuser = updates.bodykit_modifications.diffuser;
+              if (updates.bodykit_modifications.fender_flares !== undefined)
+                flatUpdates.fender_flares =
+                  updates.bodykit_modifications.fender_flares;
+              if (updates.bodykit_modifications.hood !== undefined)
+                flatUpdates.hood = updates.bodykit_modifications.hood;
+            }
 
-            {/* Interior Modifications */}
-            <InteriorMods
-              data={{
-                seats: {
-                  front_seats: formData.front_seats,
-                  rear_seats: formData.rear_seats,
-                },
-                audio_system: {
-                  head_unit: formData.head_unit,
-                  speakers: formData.speakers,
-                  subwoofer: formData.subwoofer,
-                  amplifier: formData.amplifier,
-                },
-                steering_wheel: {
-                  steering_wheel: formData.steering_wheel,
-                },
-              }}
-              onChange={(updates) => {
-                const flatUpdates: Partial<CompleteEditCarFormData> = {};
+            setFormData((prev) => ({ ...prev, ...flatUpdates }));
+          }}
+        />
 
-                if (updates.seats) {
-                  if (updates.seats.front_seats !== undefined)
-                    flatUpdates.front_seats = updates.seats.front_seats;
-                  if (updates.seats.rear_seats !== undefined)
-                    flatUpdates.rear_seats = updates.seats.rear_seats;
-                }
+        {/* Interior Modifications */}
+        <InteriorMods
+          data={{
+            seats: {
+              front_seats: formData.front_seats,
+              rear_seats: formData.rear_seats,
+            },
+            audio_system: {
+              head_unit: formData.head_unit,
+              speakers: formData.speakers,
+              subwoofer: formData.subwoofer,
+              amplifier: formData.amplifier,
+            },
+            steering_wheel: {
+              steering_wheel: formData.steering_wheel,
+            },
+          }}
+          onChange={(updates) => {
+            const flatUpdates: Partial<CompleteEditCarFormData> = {};
 
-                if (updates.audio_system) {
-                  if (updates.audio_system.head_unit !== undefined)
-                    flatUpdates.head_unit = updates.audio_system.head_unit;
-                  if (updates.audio_system.speakers !== undefined)
-                    flatUpdates.speakers = updates.audio_system.speakers;
-                  if (updates.audio_system.subwoofer !== undefined)
-                    flatUpdates.subwoofer = updates.audio_system.subwoofer;
-                  if (updates.audio_system.amplifier !== undefined)
-                    flatUpdates.amplifier = updates.audio_system.amplifier;
-                }
+            if (updates.seats) {
+              if (updates.seats.front_seats !== undefined)
+                flatUpdates.front_seats = updates.seats.front_seats;
+              if (updates.seats.rear_seats !== undefined)
+                flatUpdates.rear_seats = updates.seats.rear_seats;
+            }
 
-                if (updates.steering_wheel) {
-                  if (updates.steering_wheel.steering_wheel !== undefined)
-                    flatUpdates.steering_wheel =
-                      updates.steering_wheel.steering_wheel;
-                }
+            if (updates.audio_system) {
+              if (updates.audio_system.head_unit !== undefined)
+                flatUpdates.head_unit = updates.audio_system.head_unit;
+              if (updates.audio_system.speakers !== undefined)
+                flatUpdates.speakers = updates.audio_system.speakers;
+              if (updates.audio_system.subwoofer !== undefined)
+                flatUpdates.subwoofer = updates.audio_system.subwoofer;
+              if (updates.audio_system.amplifier !== undefined)
+                flatUpdates.amplifier = updates.audio_system.amplifier;
+            }
 
-                setFormData((prev) => ({ ...prev, ...flatUpdates }));
-              }}
-            />
-          </div>
+            if (updates.steering_wheel) {
+              if (updates.steering_wheel.steering_wheel !== undefined)
+                flatUpdates.steering_wheel =
+                  updates.steering_wheel.steering_wheel;
+            }
 
-          {/* Bottom Save Button */}
-          <div className="mt-6 text-center">
-            <div className="flex items-center justify-between gap-2">
-              <Button
-                variant="destructive"
-                onClick={() => setShowDeleteDialog(true)}
-                disabled={isDeleting || isLoading}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {isDeleting ? "Deleting..." : "Delete Car"}
-              </Button>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={isLoading || isDeleting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isLoading || isDeleting}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isLoading ? "Saving..." : "Save Changes"}
-                </Button>
-              </div>
-            </div>
+            setFormData((prev) => ({ ...prev, ...flatUpdates }));
+          }}
+        />
+      </div>
+
+      {/* Bottom Save Button */}
+      <div className="mt-6 text-center">
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={isDeleting || isLoading}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {isDeleting ? "Deleting..." : "Delete Car"}
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading || isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isLoading || isDeleting}>
+              <Save className="h-4 w-4 mr-2" />
+              {isLoading ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </div>
       </div>
@@ -860,6 +842,6 @@ export function EditCarForm({
         itemName={`${car.brand} ${car.model} (${car.year})`}
         isLoading={isDeleting}
       />
-    </div>
+    </>
   );
 }

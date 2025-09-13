@@ -21,7 +21,7 @@ import {
   CarStats,
 } from "./car-detail-cards";
 import type { User } from "@/types/user";
-import type { CarDetailData } from "@/types/car";
+import type { Car, CarDetailData } from "@/types/car";
 import { getEngineData } from "@/lib/utils/car-helpers";
 
 interface CarDetailViewProps {
@@ -48,93 +48,58 @@ export const CarDetailView = React.memo(function CarDetailView({
   const carFormatted = useMemo(() => {
     if (!carDetailData) return null;
 
-    const { car, engine, wheels, suspension, brakes, exterior, interior } =
-      carDetailData;
+    const {
+      car,
+      engine,
+      wheels,
+      suspension,
+      brakes,
+      exterior,
+      interior,
+      gauges,
+    } = carDetailData;
 
-    // Convert API array formats to Car type object formats
-    const convertedBrakes = brakes?.length
-      ? {
-          front: brakes.find((b) => b.position === "front")
-            ? {
-                caliper: brakes.find((b) => b.position === "front")
-                  ?.caliper_brand,
-                pads: brakes.find((b) => b.position === "front")?.pad_brand,
-                disc_size: brakes.find((b) => b.position === "front")
-                  ?.rotor_size,
-                disc_type: brakes.find((b) => b.position === "front")
-                  ?.rotor_model,
-              }
-            : undefined,
-          rear: brakes.find((b) => b.position === "rear")
-            ? {
-                caliper: brakes.find((b) => b.position === "rear")
-                  ?.caliper_brand,
-                pads: brakes.find((b) => b.position === "rear")?.pad_brand,
-                disc_size: brakes.find((b) => b.position === "rear")
-                  ?.rotor_size,
-                disc_type: brakes.find((b) => b.position === "rear")
-                  ?.rotor_model,
-              }
-            : undefined,
-        }
-      : undefined;
+    // DEBUG: Log the actual structure to understand what we're getting
+    console.log("🔍 CarDetailData Structure:", {
+      brakes: brakes,
+      suspension: suspension,
+      wheels: wheels,
+      gauges: gauges,
+      brakesType: Array.isArray(brakes) ? "array" : typeof brakes,
+      suspensionType: Array.isArray(suspension) ? "array" : typeof suspension,
+      wheelsType: Array.isArray(wheels) ? "array" : typeof wheels,
+      gaugesType: Array.isArray(gauges) ? "array" : typeof gauges,
+    });
 
-    const convertedSuspension = suspension?.length
-      ? {
-          front: suspension.find((s) => s.position === "front")
-            ? {
-                suspension: suspension.find((s) => s.position === "front")
-                  ?.brand,
-                spring_rate: suspension.find((s) => s.position === "front")
-                  ?.spring_rate,
-                strut_brace: suspension.find((s) => s.position === "front")
-                  ?.strut_brace,
-                anti_roll_bar: suspension.find((s) => s.position === "front")
-                  ?.anti_roll_bar,
-              }
-            : undefined,
-          rear: suspension.find((s) => s.position === "rear")
-            ? {
-                suspension: suspension.find((s) => s.position === "rear")
-                  ?.brand,
-                spring_rate: suspension.find((s) => s.position === "rear")
-                  ?.spring_rate,
-                strut_brace: suspension.find((s) => s.position === "rear")
-                  ?.strut_brace,
-                anti_roll_bar: suspension.find((s) => s.position === "rear")
-                  ?.anti_roll_bar,
-              }
-            : undefined,
-        }
-      : undefined;
+    // Check if the data is already in JSONB format (direct from database)
+    // vs array format (from RPC conversion)
+    const brakesIsJsonb =
+      brakes && !Array.isArray(brakes) && typeof brakes === "object";
+    const suspensionIsJsonb =
+      suspension &&
+      !Array.isArray(suspension) &&
+      typeof suspension === "object";
+    const wheelsIsJsonb =
+      wheels && !Array.isArray(wheels) && typeof wheels === "object";
 
-    const convertedWheels = wheels?.length
-      ? {
-          front: wheels.find((w) => w.position === "front")
-            ? {
-                wheel: wheels.find((w) => w.position === "front")?.brand,
-                wheel_size: wheels.find((w) => w.position === "front")?.size,
-                wheel_offset: wheels
-                  .find((w) => w.position === "front")
-                  ?.offset?.toString(),
-                tyre: wheels.find((w) => w.position === "front")?.tire_brand,
-                tyre_size: wheels.find((w) => w.position === "front")
-                  ?.tire_size,
-              }
-            : undefined,
-          rear: wheels.find((w) => w.position === "rear")
-            ? {
-                wheel: wheels.find((w) => w.position === "rear")?.brand,
-                wheel_size: wheels.find((w) => w.position === "rear")?.size,
-                wheel_offset: wheels
-                  .find((w) => w.position === "rear")
-                  ?.offset?.toString(),
-                tyre: wheels.find((w) => w.position === "rear")?.tire_brand,
-                tyre_size: wheels.find((w) => w.position === "rear")?.tire_size,
-              }
-            : undefined,
-        }
-      : undefined;
+    // If data is already JSONB format, use it directly
+    if (brakesIsJsonb && suspensionIsJsonb && wheelsIsJsonb) {
+      console.log("✅ Using direct JSONB format");
+      return {
+        ...car,
+        ...engine,
+        ...exterior,
+        ...interior,
+        brakes: brakes as Car["brakes"],
+        suspension: suspension as Car["suspension"],
+        wheels: wheels as Car["wheels"],
+        gauges: gauges as Car["gauges"],
+      };
+    }
+
+    console.log("🔄 Converting from array format");
+    // Note: This code path is mostly for fallback compatibility
+    // The main path now uses JSONB data directly above
 
     return {
       ...car,
@@ -144,10 +109,23 @@ export const CarDetailView = React.memo(function CarDetailView({
       ...exterior,
       // Flatten interior data
       ...interior,
-      // Convert structured data to Car type format
-      brakes: convertedBrakes,
-      suspension: convertedSuspension,
-      wheels: convertedWheels,
+      // Use JSONB data directly - suspension works, others need RPC fix
+      brakes:
+        brakes && !Array.isArray(brakes)
+          ? (brakes as Car["brakes"])
+          : undefined,
+      suspension:
+        suspension && !Array.isArray(suspension)
+          ? (suspension as Car["suspension"])
+          : undefined,
+      wheels:
+        wheels && !Array.isArray(wheels)
+          ? (wheels as Car["wheels"])
+          : undefined,
+      gauges:
+        Array.isArray(gauges) && gauges.length > 0
+          ? (gauges as Car["gauges"])
+          : undefined,
     };
   }, [carDetailData]);
 
@@ -167,7 +145,7 @@ export const CarDetailView = React.memo(function CarDetailView({
   // Handle error or missing data - simple error fallback
   if (!carDetailData || !carFormatted || !engineData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">
             Failed to load car details
@@ -231,82 +209,78 @@ export const CarDetailView = React.memo(function CarDetailView({
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="icon" onClick={handleBackClick}>
-                <ArrowLeft className="h-4 w-4" />
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={handleBackClick}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              {car.year} {car.brand} {car.model}
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <LikeButton
+            carId={car.id}
+            initialIsLiked={car.is_liked || false}
+            size="default"
+            user={user}
+            onLike={handleLike}
+            onUnlike={handleUnlike}
+            onLikeCountChange={setLikeCount}
+          />
+          {isOwner && (
+            <Link href={`/garage/edit/${car.id}`}>
+              <Button className="md:px-4">
+                <Edit3 className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Edit Car</span>
               </Button>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold">
-                  {car.year} {car.brand} {car.model}
-                </h1>
-              </div>
-            </div>
+            </Link>
+          )}
+        </div>
+      </div>
 
-            <div className="flex items-center gap-2">
-              <LikeButton
-                carId={car.id}
-                initialIsLiked={car.is_liked || false}
-                size="default"
-                user={user}
-                onLike={handleLike}
-                onUnlike={handleUnlike}
-                onLikeCountChange={setLikeCount}
-              />
-              {isOwner && (
-                <Link href={`/garage/edit/${car.id}`}>
-                  <Button className="md:px-4">
-                    <Edit3 className="h-4 w-4 md:mr-2" />
-                    <span className="hidden md:inline">Edit Car</span>
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* Images */}
+        <div className="space-y-4">
+          <CarImageGallery car={carFormatted} />
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            {/* Images */}
-            <div className="space-y-4">
-              <CarImageGallery car={carFormatted} />
+          {/* Owner Details */}
+          {owner && <OwnerDetails owner={owner} />}
+        </div>
 
-              {/* Owner Details */}
-              {owner && <OwnerDetails owner={owner} />}
-            </div>
+        {/* Car Details */}
+        <div className="space-y-6">
+          {/* Basic Info */}
+          <BasicCarInfo car={carFormatted} />
 
-            {/* Car Details */}
-            <div className="space-y-6">
-              {/* Basic Info */}
-              <BasicCarInfo car={carFormatted} />
+          {/* Engine Details */}
+          <EngineDetails engine={engineData} />
 
-              {/* Engine Details */}
-              <EngineDetails engine={engineData} />
+          {/* Engine Modifications */}
+          <EngineModifications car={carFormatted} />
 
-              {/* Engine Modifications */}
-              <EngineModifications car={carFormatted} />
+          {/* Wheels & Tires */}
+          <WheelsTires car={carFormatted} />
 
-              {/* Wheels & Tires */}
-              <WheelsTires car={carFormatted} />
+          {/* Suspension */}
+          <SuspensionDetails car={carFormatted} />
 
-              {/* Suspension */}
-              <SuspensionDetails car={carFormatted} />
+          {/* Brakes */}
+          <BrakingSystem car={carFormatted} />
 
-              {/* Brakes */}
-              <BrakingSystem car={carFormatted} />
+          {/* Exterior Modifications */}
+          <ExteriorModifications car={carFormatted} />
 
-              {/* Exterior Modifications */}
-              <ExteriorModifications car={carFormatted} />
+          {/* Interior Modifications */}
+          <InteriorModifications car={carFormatted} />
 
-              {/* Interior Modifications */}
-              <InteriorModifications car={carFormatted} />
-
-              {/* Like Section */}
-              <CarStats car={carFormatted} likeCount={likeCount} />
-            </div>
-          </div>
+          {/* Like Section */}
+          <CarStats car={carFormatted} likeCount={likeCount} />
         </div>
       </div>
     </div>

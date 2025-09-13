@@ -17,7 +17,7 @@ export const metadata = {
 
 function EmailConfirmedContent() {
   return (
-    <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center">
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader className="text-center">

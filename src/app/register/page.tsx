@@ -1,7 +1,6 @@
 import { RegisterForm } from "@/components/register-form";
 import { Suspense } from "react";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/utils/supabase/server";
 
 async function checkUsernameAvailability(username: string) {
@@ -118,7 +117,9 @@ async function checkEmailAvailability(email: string) {
   }
 }
 
-async function signupAction(formData: FormData) {
+async function signupAction(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
   "use server";
 
   const supabase = await createClient();
@@ -131,7 +132,7 @@ async function signupAction(formData: FormData) {
   // Note: Profile image upload will be handled after email confirmation
 
   if (!email || !password || !username || !displayName) {
-    throw new Error("All fields are required");
+    return { success: false, error: "All fields are required" };
   }
 
   // For now, we'll handle profile image upload after user creation
@@ -149,19 +150,37 @@ async function signupAction(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(error.message || "Registration failed");
+    console.error("Registration error:", error);
+
+    // Provide user-friendly error messages
+    let errorMessage = "Unable to create account. Please try again.";
+
+    if (error.message.includes("User already registered")) {
+      errorMessage = "This email address is already registered.";
+    } else if (error.message.includes("Password")) {
+      errorMessage = "Please choose a stronger password.";
+    } else if (error.message.includes("Invalid email")) {
+      errorMessage = "Please enter a valid email address.";
+    } else {
+      // For other errors, show generic message
+      errorMessage = "Unable to create account. Please try again.";
+    }
+
+    return { success: false, error: errorMessage };
   }
 
   // The database trigger will automatically create the user profile
   // Profile image upload can be handled after email confirmation
 
+  // Revalidate the cache but don't redirect here
   revalidatePath("/", "layout");
-  redirect("/");
+
+  return { success: true };
 }
 
 function RegisterContent() {
   return (
-    <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center">
       <div className="w-full max-w-sm">
         <RegisterForm
           action={signupAction}
@@ -175,18 +194,16 @@ function RegisterContent() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen">
-      <Suspense
-        fallback={
-          <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-6 md:p-10">
-            <div className="w-full max-w-sm text-center">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center">
+          <div className="w-full max-w-sm text-center">
+            <p className="text-muted-foreground">Loading...</p>
           </div>
-        }
-      >
-        <RegisterContent />
-      </Suspense>
-    </div>
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }

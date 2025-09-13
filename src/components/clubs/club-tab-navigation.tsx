@@ -98,86 +98,82 @@ function ClubTabNavigationContent({
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4">Car Clubs</h1>
-            <p className="text-muted-foreground mb-6">
-              Join the community, find your crew, share your passion
-            </p>
-          </div>
+    <>
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold mb-4">Car Clubs</h1>
+        <p className="text-muted-foreground mb-6">
+          Join the community, find your crew, share your passion
+        </p>
+      </div>
 
-          {/* Main Navigation Tabs */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-muted p-1 rounded-lg flex gap-1">
-              <Button
-                variant={currentTab === "gallery" ? "default" : "ghost"}
-                onClick={() => handleTabChange("gallery")}
-                className="flex items-center gap-2"
-              >
-                <Users className="h-4 w-4" />
-                Browse Clubs
-              </Button>
-              <Button
-                variant={currentTab === "create" ? "default" : "ghost"}
-                onClick={() => handleTabChange("create")}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Create Club
-              </Button>
+      {/* Main Navigation Tabs */}
+      <div className="flex justify-center mb-8">
+        <div className="bg-muted p-1 rounded-lg flex gap-1">
+          <Button
+            variant={currentTab === "gallery" ? "default" : "ghost"}
+            onClick={() => handleTabChange("gallery")}
+            className="flex items-center gap-2"
+          >
+            <Users className="h-4 w-4" />
+            Browse Clubs
+          </Button>
+          <Button
+            variant={currentTab === "create" ? "default" : "ghost"}
+            onClick={() => handleTabChange("create")}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create Club
+          </Button>
+        </div>
+      </div>
+
+      {/* Content based on current tab */}
+      {isTabLoading ? (
+        // Show appropriate skeleton based on tab type
+        <>
+          {currentTab === "gallery" && <ClubCardSkeleton count={9} />}
+          {currentTab === "create" && (
+            <div className="max-w-2xl mx-auto">
+              <ClubCardSkeleton count={1} />
             </div>
-          </div>
+          )}
+        </>
+      ) : (
+        <>
+          {currentTab === "gallery" && (
+            <ClubGallery
+              currentUser={currentUser}
+              initialFilters={initialFilters}
+              clubsData={initialData || null}
+              joinClubAction={joinClubAction}
+              sendClubJoinRequestAction={sendClubJoinRequestAction}
+            />
+          )}
 
-          {/* Content based on current tab */}
-          {isTabLoading ? (
-            // Show appropriate skeleton based on tab type
+          {currentTab === "create" && (
             <>
-              {currentTab === "gallery" && <ClubCardSkeleton count={9} />}
-              {currentTab === "create" && (
-                <div className="max-w-2xl mx-auto">
-                  <ClubCardSkeleton count={1} />
+              {currentUser ? (
+                <CreateClubForm
+                  user={currentUser}
+                  action={createClubAction}
+                  embedded={true}
+                  onSuccess={() => router.push("/clubs/my-clubs")}
+                  uploadAction={uploadAction}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Please log in to create a club.
+                  </p>
                 </div>
               )}
             </>
-          ) : (
-            <>
-              {currentTab === "gallery" && (
-                <ClubGallery
-                  currentUser={currentUser}
-                  initialFilters={initialFilters}
-                  clubsData={initialData || null}
-                  joinClubAction={joinClubAction}
-                  sendClubJoinRequestAction={sendClubJoinRequestAction}
-                />
-              )}
-
-              {currentTab === "create" && (
-                <>
-                  {currentUser ? (
-                    <CreateClubForm
-                      user={currentUser}
-                      action={createClubAction}
-                      embedded={true}
-                      onSuccess={() => router.push("/clubs/my-clubs")}
-                      uploadAction={uploadAction}
-                    />
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">
-                        Please log in to create a club.
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
           )}
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </>
   );
 }
 

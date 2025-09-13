@@ -261,15 +261,15 @@ export function EventDetailView({
         </Button>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="space-y-8">
           {/* Event Image */}
           <Card className="py-0">
             <CardContent className="p-0">
-              <div className="relative w-full overflow-hidden rounded-lg flex items-center justify-center">
+              <div className="relative aspect-square overflow-hidden rounded-lg flex items-center justify-center">
                 {failedImage || !event.poster_image_url ? (
-                  <div className="w-full min-h-[300px] flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center">
                     <div className="text-center">
                       <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground font-medium">
@@ -281,11 +281,10 @@ export function EventDetailView({
                   <Image
                     src={event.poster_image_url}
                     alt={event.title}
-                    width={800}
-                    height={600}
-                    className="object-contain w-full h-auto max-h-[600px]"
-                    sizes="(max-width: 1024px) 100vw, 66vw"
-                    quality={100}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    quality={75}
                     priority
                     onError={handleImageError}
                   />

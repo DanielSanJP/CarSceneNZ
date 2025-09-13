@@ -97,6 +97,7 @@ export interface Car {
 
   suspension?: {
     front?: {
+      suspension_type?: string;
       suspension?: string;
       spring_rate?: string;
       strut_brace?: string;
@@ -106,6 +107,7 @@ export interface Car {
       toe_degrees?: string;
     };
     rear?: {
+      suspension_type?: string;
       suspension?: string;
       spring_rate?: string;
       strut_brace?: string;
@@ -384,6 +386,11 @@ export interface CarDetailData {
     subwoofer?: string;
     amplifier?: string;
   };
+  gauges: Array<{
+    id?: string;
+    gauge_type?: string;
+    brand?: string;
+  }>;
   meta: {
     generated_at: string;
     cache_key: string;

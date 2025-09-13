@@ -184,188 +184,184 @@ export function EditProfileClient({
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Link href={`/profile/${username || "user"}`}>
-              <Button variant="outline" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold">Edit Profile</h1>
-              <p className="text-muted-foreground">
-                Update your personal information
-              </p>
+    <>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <Link href={`/profile/${username || "user"}`}>
+          <Button variant="outline" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold">Edit Profile</h1>
+          <p className="text-muted-foreground">
+            Update your personal information
+          </p>
+        </div>
+      </div>
+
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-destructive text-sm">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-6 p-4 bg-green-100 border border-green-200 rounded-lg">
+          <p className="text-green-800 text-sm">{success}</p>
+        </div>
+      )}
+
+      {/* Edit Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserIcon className="h-5 w-5" />
+            Profile Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Profile Image */}
+          <div className="space-y-4">
+            <Label>Profile Image</Label>
+            <div className="flex items-center gap-4">
+              <div className="relative h-20 w-20 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+                {previewUrl ? (
+                  <Image
+                    src={previewUrl}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    quality={25}
+                    priority={true}
+                    unoptimized={false}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-lg font-medium">
+                    {displayName
+                      ? displayName.slice(0, 2).toUpperCase()
+                      : username.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-image" className="cursor-pointer">
+                  <Button variant="outline" type="button" asChild>
+                    <span>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Image
+                    </span>
+                  </Button>
+                </Label>
+                <Input
+                  id="profile-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG up to 5MB
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Error/Success Messages */}
-          {error && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive text-sm">{error}</p>
+          {/* Display Name */}
+          <div className="space-y-2">
+            <Label htmlFor="display-name">Display Name</Label>
+            <Input
+              id="display-name"
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your display name"
+              maxLength={50}
+            />
+            <p className="text-xs text-muted-foreground">
+              This is your public display name. It can be your real name or a
+              pseudonym.
+            </p>
+          </div>
+
+          {/* Username */}
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) =>
+                setUsername(
+                  e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
+                )
+              }
+              placeholder="your_username"
+              maxLength={30}
+            />
+            <p className="text-xs text-muted-foreground">
+              This is your unique username. Only lowercase letters, numbers, and
+              underscores allowed.
+            </p>
+          </div>
+
+          {/* Email (read-only) */}
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="flex gap-2">
+              <Input
+                id="email"
+                type="email"
+                value={user.email}
+                disabled
+                className="bg-muted flex-1"
+              />
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/profile/change-email">Change</Link>
+              </Button>
             </div>
-          )}
+            <p className="text-xs text-muted-foreground">
+              Click &quot;Change&quot; to update your email address. You&apos;ll
+              need to verify the new email.
+            </p>
+          </div>
 
-          {success && (
-            <div className="mb-6 p-4 bg-green-100 border border-green-200 rounded-lg">
-              <p className="text-green-800 text-sm">{success}</p>
-            </div>
-          )}
+          {/* Save Button */}
+          <div className="flex items-center gap-4 pt-4">
+            <Button
+              onClick={handleSave}
+              disabled={
+                saving ||
+                uploadingImage ||
+                !displayName.trim() ||
+                !username.trim()
+              }
+              className="min-w-[120px]"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
 
-          {/* Edit Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserIcon className="h-5 w-5" />
-                Profile Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Profile Image */}
-              <div className="space-y-4">
-                <Label>Profile Image</Label>
-                <div className="flex items-center gap-4">
-                  <div className="relative h-20 w-20 flex-shrink-0 rounded-full overflow-hidden bg-muted">
-                    {previewUrl ? (
-                      <Image
-                        src={previewUrl}
-                        alt="Profile"
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        quality={25}
-                        priority={true}
-                        unoptimized={false}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg font-medium">
-                        {displayName
-                          ? displayName.slice(0, 2).toUpperCase()
-                          : username.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-image" className="cursor-pointer">
-                      <Button variant="outline" type="button" asChild>
-                        <span>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Image
-                        </span>
-                      </Button>
-                    </Label>
-                    <Input
-                      id="profile-image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      JPG, PNG up to 5MB
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {uploadingImage && (
+              <p className="text-sm text-muted-foreground">
+                Uploading image...
+              </p>
+            )}
 
-              {/* Display Name */}
-              <div className="space-y-2">
-                <Label htmlFor="display-name">Display Name</Label>
-                <Input
-                  id="display-name"
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your display name"
-                  maxLength={50}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This is your public display name. It can be your real name or
-                  a pseudonym.
-                </p>
-              </div>
-
-              {/* Username */}
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) =>
-                    setUsername(
-                      e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
-                    )
-                  }
-                  placeholder="your_username"
-                  maxLength={30}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This is your unique username. Only lowercase letters, numbers,
-                  and underscores allowed.
-                </p>
-              </div>
-
-              {/* Email (read-only) */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="email"
-                    type="email"
-                    value={user.email}
-                    disabled
-                    className="bg-muted flex-1"
-                  />
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/profile/change-email">Change</Link>
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Click &quot;Change&quot; to update your email address.
-                  You&apos;ll need to verify the new email.
-                </p>
-              </div>
-
-              {/* Save Button */}
-              <div className="flex items-center gap-4 pt-4">
-                <Button
-                  onClick={handleSave}
-                  disabled={
-                    saving ||
-                    uploadingImage ||
-                    !displayName.trim() ||
-                    !username.trim()
-                  }
-                  className="min-w-[120px]"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
-
-                {uploadingImage && (
-                  <p className="text-sm text-muted-foreground">
-                    Uploading image...
-                  </p>
-                )}
-
-                <Link href={`/profile/${username || "user"}`}>
-                  <Button variant="outline">Cancel</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+            <Link href={`/profile/${username || "user"}`}>
+              <Button variant="outline">Cancel</Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }

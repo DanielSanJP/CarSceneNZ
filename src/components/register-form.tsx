@@ -13,9 +13,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, Upload, Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
+import {
+  Camera,
+  Upload,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export function RegisterForm({
   className,
@@ -24,7 +32,7 @@ export function RegisterForm({
   checkEmailAvailability,
   ...props
 }: React.ComponentProps<"div"> & {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<{ success: boolean; error?: string }>;
   checkUsernameAvailability: (
     username: string
   ) => Promise<{ available: boolean; message: string }>;
@@ -36,6 +44,7 @@ export function RegisterForm({
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<{
@@ -51,22 +60,24 @@ export function RegisterForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmPasswordRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image must be less than 5MB");
+        setError("Image must be less than 5MB");
         return;
       }
 
       // Validate file type
       if (!file.type.startsWith("image/")) {
-        toast.error("Please select an image file");
+        setError("Please select an image file");
         return;
       }
 
+      setError(""); // Clear any previous errors
       setProfileImageFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -191,7 +202,7 @@ export function RegisterForm({
     const email = formData.get("email") as string;
 
     if (!password || !confirmPassword) {
-      toast.error("Both password fields are required");
+      setError("Both password fields are required");
       // Reset only password fields using refs
       if (passwordRef.current) passwordRef.current.value = "";
       if (confirmPasswordRef.current) confirmPasswordRef.current.value = "";
@@ -200,32 +211,32 @@ export function RegisterForm({
 
     // Check if username is available
     if (usernameStatus.available === false) {
-      toast.error("Please choose a different username");
+      setError("Please choose a different username");
       return;
     }
 
     // Check if email is available
     if (emailStatus.available === false) {
-      toast.error("Please use a different email address");
+      setError("Please use a different email address");
       return;
     }
 
     // If username hasn't been checked yet, check it now
     if (usernameStatus.available === null && username) {
-      toast.error("Please wait while we check username availability");
+      setError("Please wait while we check username availability");
       checkUsername(username);
       return;
     }
 
     // If email hasn't been checked yet, check it now
     if (emailStatus.available === null && email) {
-      toast.error("Please wait while we check email availability");
+      setError("Please wait while we check email availability");
       checkEmail(email);
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      setError("Passwords do not match");
       // Reset only password fields using refs
       if (passwordRef.current) passwordRef.current.value = "";
       if (confirmPasswordRef.current) confirmPasswordRef.current.value = "";
@@ -233,7 +244,7 @@ export function RegisterForm({
     }
 
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters long");
+      setError("Password must be at least 6 characters long");
       // Reset only password fields using refs
       if (passwordRef.current) passwordRef.current.value = "";
       if (confirmPasswordRef.current) confirmPasswordRef.current.value = "";
@@ -242,6 +253,7 @@ export function RegisterForm({
 
     try {
       setIsLoading(true);
+      setError(""); // Clear any previous errors
       setUploadStatus("Creating account...");
 
       // Add the image file to FormData if one was selected
@@ -249,42 +261,23 @@ export function RegisterForm({
         formData.append("profileImage", profileImageFile);
       }
 
-      await action(formData);
+      const result = await action(formData);
 
-      // If we reach here without redirect, something unexpected happened
-      // In normal flow, successful registration should redirect and throw NEXT_REDIRECT
-      console.warn(
-        "Registration completed without redirect - unexpected behavior"
-      );
+      if (result.success) {
+        // Successful registration - redirect on client side
+        router.push("/");
+        router.refresh(); // Refresh to update auth state
+      } else {
+        // Handle error from server action
+        setError(result.error || "Unable to create account. Please try again.");
+      }
     } catch (error) {
-      // Check if this is a Next.js redirect (successful registration)
-      // Only check for NEXT_REDIRECT message, not just any digest
-      if (
-        error &&
-        typeof error === "object" &&
-        (error.constructor.name === "RedirectError" ||
-          (error as Error).message?.includes("NEXT_REDIRECT"))
-      ) {
-        // This is a successful redirect - don't show any toast
-        // The redirect will happen automatically
-        return;
-      }
-
-      // Reset upload status on error
-      setUploadStatus("");
-
-      // This is an actual registration error - no need to log since we're showing toast
-      let errorMessage = "Registration failed. Please try again.";
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
-
-      toast.error(errorMessage);
+      // Fallback error handling
+      console.error("Registration error:", error);
+      setError("Unable to create account. Please try again.");
     } finally {
       setIsLoading(false);
+      setUploadStatus("");
     }
   };
 
@@ -392,15 +385,26 @@ export function RegisterForm({
                   )}
                 </div>
                 {usernameStatus.message && (
-                  <p
-                    className={`text-sm ${
-                      usernameStatus.available
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {usernameStatus.message}
-                  </p>
+                  <>
+                    {usernameStatus.available === false ? (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          {usernameStatus.message}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert
+                        variant="default"
+                        className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/50 dark:text-green-200"
+                      >
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <AlertDescription>
+                          {usernameStatus.message}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -429,13 +433,26 @@ export function RegisterForm({
                   )}
                 </div>
                 {emailStatus.message && (
-                  <p
-                    className={`text-sm ${
-                      emailStatus.available ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {emailStatus.message}
-                  </p>
+                  <>
+                    {emailStatus.available === false ? (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          {emailStatus.message}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert
+                        variant="default"
+                        className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/50 dark:text-green-200"
+                      >
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <AlertDescription>
+                          {emailStatus.message}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
                 )}
               </div>
               <div className="grid gap-3">
@@ -501,6 +518,12 @@ export function RegisterForm({
                   <p className="text-sm text-muted-foreground text-center">
                     {uploadStatus}
                   </p>
+                )}
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
               </div>
             </div>

@@ -16,7 +16,7 @@ async function ChangeEmailContent() {
   }
 
   return (
-    <div className="container mx-auto max-w-2xl p-6">
+    <div className="max-w-2xl mx-auto">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Change Email Address</h1>

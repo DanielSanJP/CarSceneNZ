@@ -33,7 +33,7 @@ export const OwnerRankings = memo(function OwnerRankings({
       </div>
 
       {data.length === 0 ? (
-        <Card className="text-center py-12">
+        <Card className="text-center py-12 ">
           <CardContent>
             <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">No rankings yet</h3>
