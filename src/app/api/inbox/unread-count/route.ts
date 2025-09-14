@@ -55,6 +55,15 @@ export async function GET(request: NextRequest) {
       meta: {
         generated_at: new Date().toISOString(),
         cache_key: `unread_count_${userId}`,
+        last_seen_inbox: lastSeenInbox,
+      },
+    }, {
+      headers: {
+        // Prevent caching to ensure real-time data
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
       },
     });
 

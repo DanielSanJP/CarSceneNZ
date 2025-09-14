@@ -18,8 +18,8 @@ async function getHomeData(): Promise<HomeData> {
   console.log("🔍 DEBUG: About to call API route with native fetch...");
 
   // Use native fetch to call our API route - this should be cached by Next.js!
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
+    ? `https://${process.env.NEXT_PUBLIC_SITE_URL}`
     : "http://localhost:3000"; // Updated to match current dev server port
 
   const response = await fetch(`${baseUrl}/api/home-data`, {
