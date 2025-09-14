@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user
-    const user = await getUserOptional();
-    if (!user) {
+    // Get the current user (lightweight)
+    const authUser = await getAuthUser();
+    if (!authUser) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       "toggle_event_attendance",
       {
         target_event_id: eventId,
-        current_user_id: user.id,
+        current_user_id: authUser.id,
         attendance_status: status,
       }
     );
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     revalidateTag(`event-${eventId}`); // Invalidate specific event detail cache
     revalidateTag("attendees"); // Invalidate attendees cache
     revalidateTag("event-attendees"); // Invalidate user event statuses cache
-    revalidateTag(`user-${user.id}-attendees`); // Invalidate specific user attendance cache
+    revalidateTag(`user-${authUser.id}-attendees`); // Invalidate specific user attendance cache
     
     // 3. Use nuclear option to ensure my-events pages update
     revalidatePath("/", "layout"); // Revalidates entire app from root layout

@@ -1,8 +1,7 @@
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, requireAuth, getUserProfile } from "@/lib/auth";
 import { ClubTabNavigation } from "@/components/clubs/club-tab-navigation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
 import { uploadClubImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
 import { Club } from "@/types";
@@ -250,11 +249,13 @@ async function sendClubJoinRequestAction(
   "use server";
 
   try {
-    const user = await getUser();
+    const authUser = await requireAuth();
+    const user = await getUserProfile(authUser.id);
+
     if (!user) {
       return {
         success: false,
-        error: "You must be logged in to send a join request",
+        error: "Failed to load user profile",
       };
     }
 
@@ -327,8 +328,8 @@ async function createClubAction(formData: FormData) {
 
   console.log("=== Starting club creation server action (from clubs page) ===");
 
-  const user = await getUser();
-  console.log("User authenticated:", user?.id);
+  const authUser = await requireAuth();
+  console.log("User authenticated:", authUser?.id);
 
   // Extract form data
   const name = formData.get("name") as string;
@@ -372,7 +373,7 @@ async function createClubAction(formData: FormData) {
       location: location.trim(),
       club_type: club_type || "open",
       banner_image: banner_image || "",
-      leader_id: user.id, // Ensure the creator is the leader
+      leader_id: authUser.id, // Ensure the creator is the leader
     };
 
     console.log("Calling createClub with data:", clubData);
@@ -444,7 +445,8 @@ export default async function ClubsPage({
   const params = await searchParams;
 
   // Get user (optional)
-  const currentUser = await getUserOptional();
+  const authUser = await getAuthUser();
+  const currentUser = authUser ? await getUserProfile(authUser.id) : null;
 
   // Convert search params to initial filters for client component
   const initialFilters = {

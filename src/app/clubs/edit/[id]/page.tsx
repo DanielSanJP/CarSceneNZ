@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { EditClubForm } from "@/components/clubs/edit-club-form";
 import { uploadClubImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
@@ -185,14 +185,14 @@ export default async function EditClubPage({
   const { id } = await params;
   const { from = "join" } = await searchParams;
 
-  const [currentUser, club] = await Promise.all([getUser(), getClubById(id)]);
+  const [authUser, club] = await Promise.all([requireAuth(), getClubById(id)]);
 
   if (!club) {
     notFound();
   }
 
   // Check if user is the leader of the club
-  if (club.leader_id !== currentUser.id) {
+  if (club.leader_id !== authUser.id) {
     redirect(`/clubs/${id}`);
   }
 

@@ -1,4 +1,4 @@
-import { getUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CreateCarForm } from "@/components/garage";
@@ -105,7 +105,7 @@ async function uploadCarImagesServerAction(
 async function createCarAction(formData: FormData) {
   "use server";
 
-  const user = await getUser();
+  const authUser = await requireAuth();
 
   // Extract basic car info
   const brand = formData.get("brand") as string;
@@ -128,7 +128,7 @@ async function createCarAction(formData: FormData) {
 
   // Build the flattened car data object
   const carData = {
-    owner_id: user.id,
+    owner_id: authUser.id,
     brand: brand.trim(),
     model: model.trim(),
     year,

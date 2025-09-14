@@ -1,5 +1,5 @@
 import { MyClubView } from "@/components/clubs/my-club-view";
-import { getUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import type { UserClubsData } from "@/types/club";
 import { getBaseUrl } from "@/lib/utils";
 
@@ -8,7 +8,7 @@ export const revalidate = 300; // 5 minutes
 
 export default async function MyClubsPage() {
   // Server-side auth check - redirects if not authenticated
-  const user = await getUser();
+  const authUser = await requireAuth();
 
   console.log("🚀 SSR CACHE: Fetching user clubs via cached API route...");
   const startTime = Date.now();
@@ -22,7 +22,7 @@ export default async function MyClubsPage() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        userId: user.id,
+        userId: authUser.id,
       }),
       // Leverage the API route's caching
       next: { revalidate: 60 },

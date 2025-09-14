@@ -1,5 +1,5 @@
 import MyGarageView from "@/components/garage/my-garage-view";
-import { getUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { UserGarageData } from "@/types/car";
 
 // Cache this page for 5 minutes, then revalidate in the background
@@ -9,7 +9,7 @@ import { getBaseUrl } from "@/lib/utils";
 
 export default async function MyGaragePage() {
   // Server-side auth check - this will redirect if not authenticated
-  const user = await getUser();
+  const authUser = await requireAuth();
 
   console.log(
     "🚀 SSR CACHE: Fetching user garage data via cached API route..."
@@ -23,7 +23,7 @@ export default async function MyGaragePage() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      userId: user.id,
+      userId: authUser.id,
     }),
     // Leverage the API route's caching
     next: { revalidate: 60 },

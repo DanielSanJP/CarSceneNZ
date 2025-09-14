@@ -1,5 +1,5 @@
 import { InboxView } from "@/components/inbox/inbox-view";
-import { getUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import type { InboxMessagesData } from "@/types/inbox";
 import { headers, cookies } from "next/headers";
 
@@ -10,13 +10,9 @@ import { getBaseUrl } from "@/lib/utils";
 
 export default async function InboxPage() {
   // Get the current user
-  const user = await getUser();
+  const authUser = await requireAuth();
 
-  if (!user) {
-    return <div className="text-center">Please log in to view your inbox.</div>;
-  }
-
-  console.log("📬 SSR: Fetching inbox messages for user:", user.id);
+  console.log("📬 SSR: Fetching inbox messages for user:", authUser.id);
 
   // Use cached API route for better performance
   let inboxData: InboxMessagesData | null = null;
@@ -40,12 +36,12 @@ export default async function InboxPage() {
         "User-Agent": headersList.get("user-agent") || "",
       },
       body: JSON.stringify({
-        userId: user.id,
+        userId: authUser.id,
       }),
       // Enable Next.js caching with 1 minute revalidation
       next: {
         revalidate: 60,
-        tags: [`inbox-${user.id}`],
+        tags: [`inbox-${authUser.id}`],
       },
     });
 

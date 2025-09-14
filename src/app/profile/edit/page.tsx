@@ -1,4 +1,4 @@
-import { getUser } from "@/lib/auth";
+import { requireAuth, getUserProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { EditProfileClient } from "@/components/profile/edit-profile-client";
 import { uploadProfileImage } from "@/lib/utils/image-upload";
@@ -101,7 +101,12 @@ async function updateProfileAction(formData: FormData) {
   "use server";
 
   try {
-    const user = await getUser();
+    const authUser = await requireAuth();
+    const user = await getUserProfile(authUser.id);
+
+    if (!user) {
+      return { success: false, error: "Failed to load user profile" };
+    }
 
     // Extract form data
     const username = formData.get("username") as string;
@@ -158,7 +163,12 @@ async function updateProfileAction(formData: FormData) {
 
 export default async function EditProfilePage() {
   // Require authentication on the server
-  const user = await getUser();
+  const authUser = await requireAuth();
+  const user = await getUserProfile(authUser.id);
+
+  if (!user) {
+    throw new Error("Failed to load user profile");
+  }
 
   return (
     <EditProfileClient

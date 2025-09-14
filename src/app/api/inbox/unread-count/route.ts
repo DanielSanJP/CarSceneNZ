@@ -1,24 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
+import { requireAuth } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
+    // Use authenticated user instead of accepting userId parameter
+    const currentUser = await requireAuth();
+    const userId = currentUser.id;
 
     console.log(`🔢 Fetching unread count for user: ${userId}`);
 
     const supabase = await createClient();
-    
-    // Debug: Check if we have an authenticated user in this context
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    console.log(`🔍 UNREAD AUTH - User: ${authUser?.id}, Error:`, authError);
-    console.log(`🔍 UNREAD - Requested userId: ${userId}`);
-    console.log(`🔍 UNREAD - Auth user matches requested: ${authUser?.id === userId}`);
 
     // Get user's last_seen_inbox timestamp
     const { data: userData, error: userError } = await supabase

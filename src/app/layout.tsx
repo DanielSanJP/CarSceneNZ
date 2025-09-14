@@ -8,7 +8,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, getUserProfile } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +31,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Get user on server side following Next.js 15 DAL pattern
-  const user = await getUserOptional();
+  const authUser = await getAuthUser();
+  const user = authUser ? await getUserProfile(authUser.id) : null;
 
   return (
     <html lang="en" suppressHydrationWarning>

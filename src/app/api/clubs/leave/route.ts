@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getUser();
-    if (!currentUser) {
-      return NextResponse.json(
-        { success: false, message: 'You must be logged in' },
-        { status: 401 }
-      );
-    }
+    const currentUser = await requireAuth();
 
     const { clubId, userId } = await request.json();
 

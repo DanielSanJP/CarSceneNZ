@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { EditEventForm } from "@/components/events/edit-event-form";
-import { getUser } from "@/lib/auth";
+import { requireAuth, getUserProfile } from "@/lib/auth";
 import { uploadEventImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
 import { Event } from "@/types";
@@ -221,7 +221,12 @@ export default async function EditEventPage({
   searchParams,
 }: EditEventPageProps) {
   // Server-side auth check
-  const user = await getUser();
+  const authUser = await requireAuth();
+  const user = await getUserProfile(authUser.id);
+
+  if (!user) {
+    throw new Error("Failed to load user profile");
+  }
 
   const { id: eventId } = await params;
   const { from } = await searchParams;
@@ -236,7 +241,7 @@ export default async function EditEventPage({
     notFound();
   }
 
-  if (event.host_id !== user.id) {
+  if (event.host_id !== authUser.id) {
     redirect("/events");
   }
 

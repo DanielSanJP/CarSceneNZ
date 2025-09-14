@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser } from '@/lib/auth';
+import { requireAuth, getUserProfile } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
 import { revalidateTag } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getUser();
+    const authUser = await requireAuth();
+    const currentUser = await getUserProfile(authUser.id);
+    
     if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: 'You must be logged in to send invitations' },
-        { status: 401 }
+        { success: false, error: 'Failed to load user profile' },
+        { status: 500 }
       );
     }
 

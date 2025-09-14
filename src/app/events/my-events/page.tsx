@@ -1,5 +1,5 @@
 import { MyEventsView } from "@/components/events/my-events-view";
-import { getUser } from "@/lib/auth";
+import { requireAuth, getUserProfile } from "@/lib/auth";
 import type { Event } from "@/types/event";
 import { getBaseUrl } from "@/lib/utils";
 
@@ -8,7 +8,12 @@ export const revalidate = 300; // 5 minutes
 
 export default async function MyEventsPage() {
   // Server-side auth check - redirects if not authenticated
-  const user = await getUser();
+  const authUser = await requireAuth();
+  const user = await getUserProfile(authUser.id);
+
+  if (!user) {
+    throw new Error("Failed to load user profile");
+  }
 
   console.log("� SSR CACHE: Fetching user events via cached API route...");
   const startTime = Date.now();

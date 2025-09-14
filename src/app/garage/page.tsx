@@ -1,4 +1,4 @@
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, getUserProfile } from "@/lib/auth";
 import { GarageGallery } from "@/components/garage/display/garage-gallery";
 import type { GarageData } from "@/types/car";
 import { getBaseUrl } from "@/lib/utils";
@@ -74,7 +74,8 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
   const limit = 12; // Show 12 cars per page
 
   // Get user (optional - not required to view garage)
-  const user = await getUserOptional();
+  const authUser = await getAuthUser();
+  const user = authUser ? await getUserProfile(authUser.id) : null;
 
   try {
     // Get garage data using our cached API route

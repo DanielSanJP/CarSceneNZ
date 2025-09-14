@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth";
 import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user authentication
-    const user = await getUserOptional();
-    if (!user) {
+    // Get user authentication (lightweight)
+    const authUser = await getAuthUser();
+    if (!authUser) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `🔄 API Route: Toggling like for car ${carId}, user ${user.id}`
+      `🔄 API Route: Toggling like for car ${carId}, user ${authUser.id}`
     );
 
     // Call the RPC function for car likes using native fetch
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           car_id_param: carId,
-          user_id_param: user.id,
+          user_id_param: authUser.id,
         }),
       }
     );

@@ -1,4 +1,4 @@
-import { getUser } from "@/lib/auth";
+import { requireAuth, getUserProfile } from "@/lib/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { CreateEventForm } from "@/components/events/create-event-form";
 import { uploadEventImage } from "@/lib/utils/image-upload";
@@ -96,7 +96,7 @@ async function uploadEventImageServerAction(formData: FormData) {
 async function createEventAction(formData: FormData) {
   "use server";
 
-  const user = await getUser();
+  const authUser = await requireAuth();
 
   // Extract form data
   const title = formData.get("title") as string;
@@ -135,7 +135,7 @@ async function createEventAction(formData: FormData) {
 
   // Create the event
   const eventData = {
-    host_id: user.id,
+    host_id: authUser.id,
     title: title.trim(),
     description: description?.trim() || undefined,
     poster_image_url: poster_image_url || undefined,
@@ -158,8 +158,13 @@ async function createEventAction(formData: FormData) {
 }
 
 export default async function CreateEventPage() {
-  // Ensure user is authenticated (getUser will redirect if not)
-  const user = await getUser();
+  // Ensure user is authenticated (requireAuth will redirect if not)
+  const authUser = await requireAuth();
+  const user = await getUserProfile(authUser.id);
+
+  if (!user) {
+    throw new Error("Failed to load user profile");
+  }
 
   return (
     <div className="min-h-screen bg-background">

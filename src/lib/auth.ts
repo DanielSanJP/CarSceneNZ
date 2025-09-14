@@ -6,87 +6,23 @@ import { redirect } from 'next/navigation'
 import type { User } from '@/types/user'
 
 /**
- * Get authenticated user with profile data (cached per request)
- * Redirects to login if not authenticated
+ * Lightweight auth check - only validates authentication, no profile fetch
+ * Use this when you only need to know if user is authenticated
  */
-export const getUser = cache(async (): Promise<User> => {
-  const supabase = await createClient();
-  
-  // SECURE: Use getUser() not getSession() on server-side
-  const { data: { user }, error } = await supabase.auth.getUser();
+export const getAuthUser = cache(async () => {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
   
   if (error || !user) {
-    redirect('/login');
+    return null
   }
-
-  // Fetch profile data using proper RLS
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('id, username, display_name, profile_image_url, created_at, updated_at')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile) {
-    console.error("❌ Error fetching user profile:", profileError);
-    redirect('/login');
-  }
-
-  return {
-    id: profile.id,
-    username: profile.username,
-    display_name: profile.display_name,
-    email: user.email || '',
-    profile_image_url: profile.profile_image_url,
-    created_at: profile.created_at,
-    updated_at: profile.updated_at,
-  };
+  
+  return user // Just return Supabase auth user, no profile
 })
 
 /**
- * Get authenticated user with profile data (cached per request)
- * Returns null if not authenticated (doesn't redirect)
- */
-export const getUserOptional = cache(async (): Promise<User | null> => {
-  try {
-    const supabase = await createClient();
-    
-    // SECURE: Use getUser() not getSession()
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error || !user) {
-      return null;
-    }
-
-    // Fetch profile data using proper RLS
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('id, username, display_name, profile_image_url, created_at, updated_at')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      console.error("❌ Error fetching user profile:", profileError);
-      return null;
-    }
-
-    return {
-      id: profile.id,
-      username: profile.username,
-      display_name: profile.display_name,
-      email: user.email || '',
-      profile_image_url: profile.profile_image_url,
-      created_at: profile.created_at,
-      updated_at: profile.updated_at,
-    };
-  } catch (error) {
-    console.error("❌ Error in getUserOptional:", error);
-    return null;
-  }
-})
-
-/**
- * Check if user is authenticated (auth only, no profile fetch)
- * Use this when you only need to check auth status
+ * Require authentication (lightweight) - redirects if not authenticated
+ * Use this when you need to protect a page but don't need profile data immediately
  */
 export const requireAuth = cache(async () => {
   const supabase = await createClient()
@@ -100,16 +36,95 @@ export const requireAuth = cache(async () => {
 })
 
 /**
+ * Fetch user profile data for a specific user ID
+ * Use this separately when you actually need profile information
+ */
+export const getUserProfile = cache(async (userId: string): Promise<User | null> => {
+  try {
+    const supabase = await createClient()
+    
+    // Get auth user to ensure we have permission
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser) return null
+
+    // Fetch profile data using proper RLS
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('id, username, display_name, profile_image_url, created_at, updated_at')
+      .eq('id', userId)
+      .single()
+
+    if (profileError || !profile) {
+      console.error("❌ Error fetching user profile:", profileError)
+      return null
+    }
+
+    return {
+      id: profile.id,
+      username: profile.username,
+      display_name: profile.display_name,
+      email: authUser.email || '',
+      profile_image_url: profile.profile_image_url,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    }
+  } catch (error) {
+    console.error("❌ Error in getUserProfile:", error)
+    return null
+  }
+})
+
+/**
+ * Get current user's profile (auth + profile data combined)
+ * Use this only when you need both auth validation AND profile data
+ */
+export const getCurrentUserProfile = cache(async (): Promise<User | null> => {
+  const authUser = await getAuthUser()
+  if (!authUser) return null
+  
+  return await getUserProfile(authUser.id)
+})
+
+/**
+ * LEGACY: Get authenticated user with profile data (cached per request)
+ * Redirects to login if not authenticated
+ * @deprecated Use requireAuth() + getUserProfile() for better performance
+ */
+export const getUser = cache(async (): Promise<User> => {
+  const authUser = await requireAuth() // This handles redirect
+  const profile = await getUserProfile(authUser.id)
+  
+  if (!profile) {
+    console.error("❌ Error fetching user profile for authenticated user")
+    redirect('/login')
+  }
+  
+  return profile
+})
+
+/**
+ * LEGACY: Get authenticated user with profile data (cached per request)  
+ * Returns null if not authenticated (doesn't redirect)
+ * @deprecated Use getAuthUser() + getUserProfile() for better performance
+ */
+export const getUserOptional = cache(async (): Promise<User | null> => {
+  const authUser = await getAuthUser()
+  if (!authUser) return null
+  
+  return await getUserProfile(authUser.id)
+})
+
+/**
  * Sign out the current user and redirect to home page
  */
 export async function signOut() {
-  const supabase = await createClient();
+  const supabase = await createClient()
   
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut()
   if (error) {
-    return { error: error.message };
+    return { error: error.message }
   }
 
   // Redirect to home page
-  redirect("/");
+  redirect("/")
 }

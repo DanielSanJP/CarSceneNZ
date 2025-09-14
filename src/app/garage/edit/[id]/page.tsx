@@ -1,4 +1,4 @@
-import { getUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect, notFound } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
@@ -466,7 +466,7 @@ async function updateCarAction(carId: string, formData: FormData) {
 async function deleteCarAction(carId: string) {
   "use server";
 
-  const user = await getUser();
+  const authUser = await requireAuth();
 
   // Use same RPC to get car data for permission check
   const supabase = await createClient();
@@ -474,11 +474,11 @@ async function deleteCarAction(carId: string) {
     "get_car_detail_optimized",
     {
       car_id_param: carId,
-      user_id_param: user.id,
+      user_id_param: authUser.id,
     }
   );
 
-  if (!carDetailData || carDetailData.car.owner_id !== user.id) {
+  if (!carDetailData || carDetailData.car.owner_id !== authUser.id) {
     throw new Error("Car not found or unauthorized");
   }
 
@@ -495,7 +495,7 @@ async function deleteCarAction(carId: string) {
 
 export default async function EditCarPage({ params }: EditCarPageProps) {
   const { id } = await params;
-  const user = await getUser();
+  const authUser = await requireAuth();
 
   // Use same RPC as detail view to get complete car data
   const supabase = await createClient();
@@ -503,7 +503,7 @@ export default async function EditCarPage({ params }: EditCarPageProps) {
     "get_car_detail_optimized",
     {
       car_id_param: id,
-      user_id_param: user.id,
+      user_id_param: authUser.id,
     }
   );
 
@@ -515,7 +515,7 @@ export default async function EditCarPage({ params }: EditCarPageProps) {
   const car = transformCarDetailDataToCarFormat(carDetailData);
 
   // Check if user owns this car
-  if (car.owner_id !== user.id) {
+  if (car.owner_id !== authUser.id) {
     redirect("/garage");
   }
 

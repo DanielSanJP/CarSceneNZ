@@ -1,5 +1,5 @@
 import { ChangeEmailForm } from "@/components/auth/change-email-form";
-import { getUser } from "@/lib/auth";
+import { requireAuth, getUserProfile } from "@/lib/auth";
 import { Suspense } from "react";
 
 export const metadata = {
@@ -8,7 +8,12 @@ export const metadata = {
 };
 
 async function ChangeEmailContent() {
-  const user = await getUser(); // This will redirect if not authenticated
+  const authUser = await requireAuth(); // This will redirect if not authenticated
+  const user = await getUserProfile(authUser.id);
+
+  if (!user) {
+    throw new Error("Failed to load user profile");
+  }
 
   // Ensure user has an email address
   if (!user.email) {

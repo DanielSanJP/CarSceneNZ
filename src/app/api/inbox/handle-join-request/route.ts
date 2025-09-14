@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
-import { getUser } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 async function addMemberToClub(supabase: SupabaseClient, clubId: string, userId: string): Promise<{ success: boolean; error?: string }> {
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient()
-    const currentUser = await getUser()
+    const currentUser = await requireAuth()
 
     // Verify the current user is the club leader
     const { data: club, error: clubError } = await supabase

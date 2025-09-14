@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
-import { getUser } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 
 async function getUserLeaderClubs(userId: string) {
   try {
@@ -57,15 +57,11 @@ async function getUserLeaderClubs(userId: string) {
 async function sendClubInvitation(
   targetUserId: string,
   clubId: string,
-  message: string = ''
+  message: string = '',
+  currentUser: { id: string }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const currentUser = await getUser()
-
-    if (!currentUser) {
-      return { success: false, error: 'You must be logged in' }
-    }
 
     // Get club info and verify leadership
     const { data: club, error: clubError } = await supabase
@@ -132,13 +128,7 @@ async function sendClubInvitation(
 
 export async function GET() {
   try {
-    const currentUser = await getUser();
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const currentUser = await requireAuth();
 
     const leaderClubsRaw = await getUserLeaderClubs(currentUser.id);
     const leaderClubs = leaderClubsRaw.map((club) =>
@@ -166,13 +156,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getUser();
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const currentUser = await requireAuth();
 
     const { targetUserId, clubId, message } = await request.json();
 
@@ -183,7 +167,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await sendClubInvitation(targetUserId, clubId, message);
+    const result = await sendClubInvitation(targetUserId, clubId, message, currentUser);
 
     return NextResponse.json(result);
 
