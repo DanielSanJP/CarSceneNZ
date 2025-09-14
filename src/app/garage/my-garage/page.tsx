@@ -5,6 +5,8 @@ import { UserGarageData } from "@/types/car";
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
 
+import { getBaseUrl } from "@/lib/utils";
+
 export default async function MyGaragePage() {
   // Server-side auth check - this will redirect if not authenticated
   const user = await getUser();
@@ -15,22 +17,17 @@ export default async function MyGaragePage() {
   const startTime = Date.now();
 
   // Use native fetch to call our cached API route
-  const response = await fetch(
-    `${
-      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    }/api/garage/my-garage`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: user.id,
-      }),
-      // Leverage the API route's caching
-      next: { revalidate: 60 },
-    }
-  );
+  const response = await fetch(`${getBaseUrl()}/api/garage/my-garage`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId: user.id,
+    }),
+    // Leverage the API route's caching
+    next: { revalidate: 60 },
+  });
 
   if (!response.ok) {
     console.error(

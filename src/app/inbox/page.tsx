@@ -6,6 +6,8 @@ import { headers, cookies } from "next/headers";
 // Enable ISR with 60 second revalidation for better performance
 export const revalidate = 60; // Cache for 1 minute, then revalidate in background
 
+import { getBaseUrl } from "@/lib/utils";
+
 export default async function InboxPage() {
   // Get the current user
   const user = await getUser();
@@ -28,29 +30,24 @@ export default async function InboxPage() {
       .map((cookie) => `${cookie.name}=${cookie.value}`)
       .join("; ");
 
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-      }/api/inbox/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: cookieHeader,
-          // Forward auth headers for RLS
-          Authorization: headersList.get("authorization") || "",
-          "User-Agent": headersList.get("user-agent") || "",
-        },
-        body: JSON.stringify({
-          userId: user.id,
-        }),
-        // Enable Next.js caching with 1 minute revalidation
-        next: {
-          revalidate: 60,
-          tags: [`inbox-${user.id}`],
-        },
-      }
-    );
+    const response = await fetch(`${getBaseUrl()}/api/inbox/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookieHeader,
+        // Forward auth headers for RLS
+        Authorization: headersList.get("authorization") || "",
+        "User-Agent": headersList.get("user-agent") || "",
+      },
+      body: JSON.stringify({
+        userId: user.id,
+      }),
+      // Enable Next.js caching with 1 minute revalidation
+      next: {
+        revalidate: 60,
+        tags: [`inbox-${user.id}`],
+      },
+    });
 
     if (!response.ok) {
       console.error(

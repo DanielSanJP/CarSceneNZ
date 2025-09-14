@@ -1,12 +1,12 @@
 import { SearchClient } from "@/components/search/search-client";
+import { getBaseUrl } from "@/lib/utils";
 
 // Force this page to be dynamic - don't try to fetch data at build time
 export const dynamic = "force-dynamic";
 
 async function getSearchData() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/search-data`, {
+    const response = await fetch(`${getBaseUrl()}/api/search-data`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

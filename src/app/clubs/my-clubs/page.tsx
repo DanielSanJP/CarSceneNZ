@@ -1,6 +1,7 @@
 import { MyClubView } from "@/components/clubs/my-club-view";
 import { getUser } from "@/lib/auth";
 import type { UserClubsData } from "@/types/club";
+import { getBaseUrl } from "@/lib/utils";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
@@ -15,22 +16,17 @@ export default async function MyClubsPage() {
   // Use native fetch to call our cached API route
   let userClubsData: UserClubsData | null = null;
   try {
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-      }/api/clubs/my-clubs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: user.id,
-        }),
-        // Leverage the API route's caching
-        next: { revalidate: 60 },
-      }
-    );
+    const response = await fetch(`${getBaseUrl()}/api/clubs/my-clubs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: user.id,
+      }),
+      // Leverage the API route's caching
+      next: { revalidate: 60 },
+    });
 
     if (!response.ok) {
       console.error(

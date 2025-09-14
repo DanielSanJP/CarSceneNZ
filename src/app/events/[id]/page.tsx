@@ -2,6 +2,7 @@ import { EventDetailView } from "@/components/events/display/event-detail-view";
 import { notFound } from "next/navigation";
 import type { EventDetailData } from "@/types/event";
 import { getUserOptional } from "@/lib/auth";
+import { getBaseUrl } from "@/lib/utils";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
@@ -19,9 +20,7 @@ async function getEventDetailData(
 
   try {
     // Use our API route with Next.js native fetch for caching
-    const url = `${
-      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-    }/api/events/${eventId}`;
+    const url = `${getBaseUrl()}/api/events/${eventId}`;
 
     console.log(`🔍 DEBUG: Calling API route: ${url}`);
 

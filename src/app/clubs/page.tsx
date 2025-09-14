@@ -7,6 +7,7 @@ import { uploadClubImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
 import { Club } from "@/types";
 import type { ClubsGalleryData } from "@/types/club";
+import { getBaseUrl } from "@/lib/utils";
 
 // Force dynamic rendering - don't try to build statically
 export const dynamic = "force-dynamic";
@@ -30,9 +31,7 @@ async function getClubsGalleryDataSSR(
 
     // Use native fetch to call our cached API route
     const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-      }/api/clubs?${new URLSearchParams({
+      `${getBaseUrl()}/api/clubs?${new URLSearchParams({
         ...(filters.search && { search: filters.search }),
         ...(filters.location && { location: filters.location }),
         ...(filters.club_type && { club_type: filters.club_type }),

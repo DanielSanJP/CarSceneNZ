@@ -1,6 +1,7 @@
 import { MyEventsView } from "@/components/events/my-events-view";
 import { getUser } from "@/lib/auth";
 import type { Event } from "@/types/event";
+import { getBaseUrl } from "@/lib/utils";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
@@ -13,24 +14,19 @@ export default async function MyEventsPage() {
   const startTime = Date.now();
 
   // Use native fetch to call our cached API route
-  const response = await fetch(
-    `${
-      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    }/api/events/my-events`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: user.id,
-        pageLimit: 50,
-        pageOffset: 0,
-      }),
-      // Leverage the API route's caching
-      next: { revalidate: 60 },
-    }
-  );
+  const response = await fetch(`${getBaseUrl()}/api/events/my-events`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId: user.id,
+      pageLimit: 50,
+      pageOffset: 0,
+    }),
+    // Leverage the API route's caching
+    next: { revalidate: 60 },
+  });
 
   if (!response.ok) {
     console.error(

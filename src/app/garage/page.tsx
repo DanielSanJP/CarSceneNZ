@@ -1,6 +1,7 @@
 import { getUserOptional } from "@/lib/auth";
 import { GarageGallery } from "@/components/garage/display/garage-gallery";
 import type { GarageData } from "@/types/car";
+import { getBaseUrl } from "@/lib/utils";
 
 interface GaragePageProps {
   searchParams: Promise<{ page?: string }>;
@@ -20,27 +21,22 @@ async function getGarageData(
 
   try {
     // Use our API route with Next.js native fetch for caching
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-      }/api/garage`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          page,
-          limit,
-          userId: userId || null,
-        }),
-        // Enable Next.js caching with 5 minute revalidation
-        next: {
-          revalidate: 300, // 5 minutes
-          tags: ["garage", `garage-page-${page}`],
-        },
-      }
-    );
+    const response = await fetch(`${getBaseUrl()}/api/garage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        page,
+        limit,
+        userId: userId || null,
+      }),
+      // Enable Next.js caching with 5 minute revalidation
+      next: {
+        revalidate: 300, // 5 minutes
+        tags: ["garage", `garage-page-${page}`],
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch garage: ${response.status}`);

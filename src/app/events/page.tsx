@@ -1,6 +1,7 @@
 import { EventsGallery } from "@/components/events";
 import type { EventsData } from "@/types/event";
 import { getUserOptional } from "@/lib/auth";
+import { getBaseUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -50,8 +51,7 @@ async function getUserEventStatuses(userId: string, eventIds: string[]) {
     );
 
     // Use our cached API route with the same pattern as event detail
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/events/user-statuses`, {
+    const response = await fetch(`${getBaseUrl()}/api/events/user-statuses`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

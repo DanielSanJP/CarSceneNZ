@@ -2,6 +2,7 @@ import { getUserOptional } from "@/lib/auth";
 import { CarDetailView } from "@/components/garage/display/car-detail-view";
 import { notFound } from "next/navigation";
 import type { CarDetailData } from "@/types/car";
+import { getBaseUrl } from "@/lib/utils";
 
 interface CarDetailPageProps {
   params: Promise<{ id: string }>;
@@ -20,25 +21,20 @@ async function getCarDetailData(
 
   try {
     // Use our API route with Next.js native fetch for caching
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-      }/api/garage/${carId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: userId || null,
-        }),
-        // Enable Next.js caching with 5 minute revalidation
-        next: {
-          revalidate: 300, // 5 minutes
-          tags: ["garage", "cars", `car-${carId}`],
-        },
-      }
-    );
+    const response = await fetch(`${getBaseUrl()}/api/garage/${carId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: userId || null,
+      }),
+      // Enable Next.js caching with 5 minute revalidation
+      next: {
+        revalidate: 300, // 5 minutes
+        tags: ["garage", "cars", `car-${carId}`],
+      },
+    });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -65,7 +61,7 @@ interface CarDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function CarDetailPage({ params }: CarDetailPageProps) {
+export default async function CarDetailsPage({ params }: CarDetailPageProps) {
   const { id } = await params;
 
   try {

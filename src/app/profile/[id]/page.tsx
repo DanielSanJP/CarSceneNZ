@@ -4,6 +4,7 @@ import { createClient } from "@/lib/utils/supabase/server";
 import type { ProfileData, LeaderClubsData } from "@/types/user";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getBaseUrl } from "@/lib/utils";
 
 interface UserProfilePageProps {
   params: Promise<{ id: string }>;
@@ -85,22 +86,17 @@ async function getLeaderClubsDataSSR(
       `🚀 SSR CACHE: Fetching leader clubs for user ${userId} via cached API route...`
     );
 
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-      }/api/profile/leader-clubs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: userId,
-        }),
-        // Leverage the API route's caching
-        next: { revalidate: 300 },
-      }
-    );
+    const response = await fetch(`${getBaseUrl()}/api/profile/leader-clubs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: userId,
+      }),
+      // Leverage the API route's caching
+      next: { revalidate: 300 },
+    });
 
     if (!response.ok) {
       console.error(

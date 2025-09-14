@@ -4,6 +4,7 @@ import {
   type ProcessedHomeData,
   type HomeUser,
 } from "@/components/homepage";
+import { getBaseUrl } from "@/lib/utils";
 
 // Force dynamic rendering - don't try to build statically
 export const dynamic = "force-dynamic";
@@ -18,11 +19,7 @@ async function getHomeData(): Promise<HomeData> {
   console.log("🔍 DEBUG: About to call API route with native fetch...");
 
   // Use native fetch to call our API route - this should be cached by Next.js!
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-    ? `https://${process.env.NEXT_PUBLIC_SITE_URL}`
-    : "http://localhost:3000"; // Updated to match current dev server port
-
-  const response = await fetch(`${baseUrl}/api/home-data`, {
+  const response = await fetch(`${getBaseUrl()}/api/home-data`, {
     // Next.js will cache this automatically
     next: {
       revalidate: 900, // 15 minutes

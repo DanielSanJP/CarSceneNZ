@@ -1,6 +1,7 @@
 import { getUserOptional } from "@/lib/auth";
 import { ClubDetailView } from "@/components/clubs/display/club-detail-view";
 import type { ClubDetailData } from "@/types/club";
+import { getBaseUrl } from "@/lib/utils";
 
 interface ClubDetailPageProps {
   params: Promise<{ id: string }>;
@@ -20,22 +21,17 @@ async function getClubDetailDataSSR(
     );
 
     // Use native fetch to call our cached API route
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-      }/api/clubs/${clubId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: currentUserId || null,
-        }),
-        // Leverage the API route's caching
-        next: { revalidate: 300 },
-      }
-    );
+    const response = await fetch(`${getBaseUrl()}/api/clubs/${clubId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: currentUserId || null,
+      }),
+      // Leverage the API route's caching
+      next: { revalidate: 300 },
+    });
 
     if (!response.ok) {
       if (response.status === 404) {

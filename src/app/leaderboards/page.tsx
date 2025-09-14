@@ -1,5 +1,6 @@
 import { LeaderboardsView } from "@/components/leaderboard/leaderboards-view";
 import type { LeaderboardsData } from "@/types/leaderboard";
+import { getBaseUrl } from "@/lib/utils";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
@@ -14,8 +15,7 @@ async function getLeaderboardsData(): Promise<LeaderboardsData> {
 
   try {
     // Use our cached API route with native fetch for caching
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/leaderboards?limit=200`, {
+    const response = await fetch(`${getBaseUrl()}/api/leaderboards?limit=200`, {
       // Enable Next.js caching with 5 minute revalidation
       next: {
         revalidate: 300, // 5 minutes
