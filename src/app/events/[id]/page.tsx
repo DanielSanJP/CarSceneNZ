@@ -1,61 +1,65 @@
 import { EventDetailView } from "@/components/events/display/event-detail-view";
+import { notFound } from "next/navigation";
+import type { EventDetailData } from "@/types/event";
 import { getUserOptional } from "@/lib/auth";
-import { createClient } from "@/lib/utils/supabase/server";
-import { notFound, redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import type { EventDetailData, Event, EventAttendee } from "@/types/event";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
 
-// Server action for event attendance
-async function attendEventAction(
+// Helper function to get event details using cached API route
+async function getEventDetailData(
   eventId: string,
-  status: "interested" | "going" | "remove"
-) {
-  "use server";
+  userId?: string
+): Promise<EventDetailData> {
+  const startTime = Date.now();
 
-  const user = await getUserOptional();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const supabase = await createClient();
+  console.log(
+    `🚀 FETCH CACHE: Fetching event ${eventId} details using API route...`
+  );
 
   try {
-    console.log(
-      `🔄 Server Action: ${
-        status === "remove" ? "Removing" : "Setting"
-      } attendance for event ${eventId}, user ${user.id}, status: ${status}`
-    );
+    // Use our API route with Next.js native fetch for caching
+    const url = `${
+      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    }/api/events/${eventId}`;
 
-    // Call the RPC function with correct parameter names
-    const { data, error } = await supabase.rpc("toggle_event_attendance", {
-      target_event_id: eventId,
-      current_user_id: user.id,
-      attendance_status: status,
+    console.log(`🔍 DEBUG: Calling API route: ${url}`);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: userId || null,
+      }),
+      // Enable Next.js caching with 5 minute revalidation
+      next: {
+        revalidate: 300, // 5 minutes
+        tags: ["events", `event-${eventId}`],
+      },
     });
 
-    if (error) {
-      console.error("❌ Server Action Error:", error);
-      return { success: false, error: error.message };
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("Event not found");
+      }
+      throw new Error(`Failed to fetch event: ${response.status}`);
     }
 
-    console.log("✅ Server Action Success:", data);
+    const eventDetailData = await response.json();
 
-    // Revalidate pages that might show this event
-    revalidatePath("/events");
-    revalidatePath(`/events/${eventId}`);
-    revalidatePath("/");
+    const endTime = Date.now();
+    console.log(
+      `✅ FETCH CACHE: Event ${eventId} details fetched in ${
+        endTime - startTime
+      }ms`
+    );
 
-    return { success: true, data };
+    return eventDetailData;
   } catch (error) {
-    console.error("❌ Server Action Exception:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to update attendance",
-    };
+    console.error("❌ Error fetching event details:", error);
+    throw error;
   }
 }
 
@@ -68,114 +72,33 @@ export default async function EventDetailPage({
 }: EventDetailPageProps) {
   const { id } = await params;
 
-  // Get user (optional - not required to view event)
-  const user = await getUserOptional();
-  const supabase = await createClient();
+  try {
+    // Get user directly in server component (like events page does)
+    const user = await getUserOptional();
 
-  console.log(
-    `🗄️ Next.js Cache: Fetching event ${id} details using optimized RPC...`
-  );
-  const startTime = Date.now();
+    // Get event details using our cached API route
+    const eventDetailData = await getEventDetailData(id, user?.id);
 
-  // Use optimized RPC function to get event details with attendee counts and user status
-  const { data: eventDetailsData, error: eventError } = await supabase.rpc(
-    "get_event_details_optimized",
-    {
-      target_event_id: id,
-      current_user_id: user?.id || null,
-    }
-  );
+    // Add user data to the response (API route doesn't handle user context)
+    const completeEventDetailData: EventDetailData = {
+      ...eventDetailData,
+      user: user
+        ? {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name,
+            profile_image_url: user.profile_image_url,
+          }
+        : null,
+    };
 
-  if (eventError || !eventDetailsData || eventDetailsData.length === 0) {
-    console.error("Event not found:", eventError);
+    return (
+      <>
+        <EventDetailView eventDetailData={completeEventDetailData} />
+      </>
+    );
+  } catch (error) {
+    console.error("Error loading event:", error);
     notFound();
   }
-
-  const eventDetail = eventDetailsData[0];
-
-  // Fetch attendees using optimized RPC
-  const { data: attendeesData } = await supabase.rpc(
-    "get_event_attendees_optimized",
-    {
-      target_event_id: id,
-      page_limit: 100, // Get up to 100 attendees
-      page_offset: 0,
-    }
-  );
-
-  console.log(
-    `✅ Next.js Cache: Event ${id} details fetched in ${
-      Date.now() - startTime
-    }ms`
-  );
-
-  // Transform RPC data to match our EventDetailData interface
-  const eventDetailData: EventDetailData = {
-    event: {
-      id: eventDetail.id,
-      host_id: eventDetail.host_id,
-      title: eventDetail.title,
-      description: eventDetail.description,
-      poster_image_url: eventDetail.poster_image_url || undefined,
-      daily_schedule: eventDetail.daily_schedule,
-      location: eventDetail.location,
-      created_at: eventDetail.created_at,
-      updated_at: eventDetail.updated_at,
-      host: {
-        id: eventDetail.host_id,
-        username: eventDetail.host_username,
-        display_name: eventDetail.host_display_name || undefined,
-        profile_image_url: eventDetail.host_profile_image_url || undefined,
-      },
-      attendeeCount: Number(eventDetail.attendee_count) || 0,
-      interestedCount: Number(eventDetail.interested_count) || 0,
-    } as Event,
-    user: user
-      ? {
-          id: user.id,
-          username: user.username,
-          display_name: user.display_name,
-          profile_image_url: user.profile_image_url,
-        }
-      : null,
-    attendees:
-      attendeesData?.map(
-        (attendee: {
-          id: string;
-          user_id: string;
-          status: string;
-          user_username: string;
-          user_display_name?: string;
-          user_profile_image_url?: string;
-          attended_at: string;
-        }) => ({
-          id: attendee.id,
-          event_id: id,
-          user_id: attendee.user_id,
-          status: attendee.status,
-          created_at: attendee.attended_at,
-          updated_at: attendee.attended_at,
-          user: {
-            id: attendee.user_id,
-            username: attendee.user_username,
-            display_name: attendee.user_display_name || undefined,
-            profile_image_url: attendee.user_profile_image_url || undefined,
-          },
-        })
-      ) || ([] as EventAttendee[]),
-    userStatus: eventDetail.user_status || null,
-  };
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          <EventDetailView
-            eventDetailData={eventDetailData}
-            attendEventAction={attendEventAction}
-          />
-        </div>
-      </div>
-    </div>
-  );
 }

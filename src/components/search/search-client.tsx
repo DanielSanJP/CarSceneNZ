@@ -15,7 +15,7 @@ interface SearchClientProps {
     users: User[];
     events: Event[];
     clubs: Club[];
-  };
+  } | null;
 }
 
 function SearchFallback() {
@@ -48,7 +48,7 @@ function SearchContent({ initialData }: SearchClientProps) {
 
   const performSearch = useCallback(
     (searchQuery: string) => {
-      if (!searchQuery.trim()) {
+      if (!initialData || !searchQuery.trim()) {
         setResults({ cars: [], users: [], events: [], clubs: [] });
         return;
       }
@@ -99,6 +99,19 @@ function SearchContent({ initialData }: SearchClientProps) {
   useEffect(() => {
     performSearch(query);
   }, [query, performSearch]);
+
+  // Show loading state if data hasn't loaded yet
+  if (!initialData) {
+    return (
+      <div className="text-center py-12">
+        <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
+        <h3 className="text-lg font-semibold mb-2">Loading search data...</h3>
+        <p className="text-muted-foreground">
+          Please wait while we prepare the search functionality.
+        </p>
+      </div>
+    );
+  }
 
   const totalResults =
     results.cars.length +

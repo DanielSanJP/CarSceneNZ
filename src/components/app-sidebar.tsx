@@ -34,6 +34,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { InboxUnreadBadge } from "@/components/inbox/inbox-unread-badge";
+
 import type { User as UserType } from "@/types/user";
 
 // Main navigation items (available to everyone)
@@ -211,7 +212,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
-                          {item.title === "Inbox" && <InboxUnreadBadge />}
+                          {item.title === "Inbox" && (
+                            <InboxUnreadBadge unreadCount={0} />
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

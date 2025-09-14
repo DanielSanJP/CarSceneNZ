@@ -1,64 +1,72 @@
 import { getUserOptional } from "@/lib/auth";
-import { createClient } from "@/lib/utils/supabase/server";
 import { GarageGallery } from "@/components/garage/display/garage-gallery";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import type { GarageData } from "@/types/car";
 
 interface GaragePageProps {
   searchParams: Promise<{ page?: string }>;
 }
 
-// Cache this page for 5 minutes, then revalidate in the background
-export const revalidate = 300; // 5 minutes
+// Helper function to get garage data using cached API route
+async function getGarageData(
+  page: number,
+  limit: number,
+  userId?: string
+): Promise<GarageData> {
+  const startTime = Date.now();
 
-// Server action for car likes
-async function likeCarAction(carId: string) {
-  "use server";
-
-  const user = await getUserOptional();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const supabase = await createClient();
+  console.log(
+    `🚀 FETCH CACHE: Fetching garage page ${page} using API route...`
+  );
 
   try {
-    console.log(
-      `🔄 Server Action: Toggling like for car ${carId}, user ${user.id}`
+    // Use our API route with Next.js native fetch for caching
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+      }/api/garage`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          page,
+          limit,
+          userId: userId || null,
+        }),
+        // Enable Next.js caching with 5 minute revalidation
+        next: {
+          revalidate: 300, // 5 minutes
+          tags: ["garage", `garage-page-${page}`],
+        },
+      }
     );
 
-    // Call the RPC function for car likes
-    const { data, error } = await supabase.rpc("toggle_car_like_optimized", {
-      car_id_param: carId,
-      user_id_param: user.id,
-    });
-
-    if (error) {
-      console.error("❌ Car Like RPC Error:", error);
-      return { success: false, error: error.message };
+    if (!response.ok) {
+      throw new Error(`Failed to fetch garage: ${response.status}`);
     }
 
-    console.log("✅ Car Like Success:", data);
+    const garageApiData = await response.json();
 
-    // Revalidate relevant pages
-    revalidatePath("/garage");
-    revalidatePath(`/garage/${carId}`);
-    revalidatePath("/");
+    const endTime = Date.now();
+    console.log(
+      `✅ FETCH CACHE: Garage page ${page} fetched in ${endTime - startTime}ms`
+    );
 
     return {
-      success: true,
-      newLikeCount: data.new_like_count,
-      isLiked: data.is_liked,
-      action: data.action,
+      cars: garageApiData.cars,
+      pagination: garageApiData.pagination,
+      meta: garageApiData.meta,
+      currentUser: null, // Will be added by the page component
     };
   } catch (error) {
-    console.error("❌ Car Like Server Action Exception:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to update like",
-    };
+    console.error("❌ Error fetching garage data:", error);
+    throw error;
   }
+}
+
+interface GaragePageProps {
+  searchParams: Promise<{ page?: string }>;
 }
 
 export default async function GaragePage({ searchParams }: GaragePageProps) {
@@ -72,40 +80,27 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
   // Get user (optional - not required to view garage)
   const user = await getUserOptional();
 
-  // Fetch initial garage data directly in server component
-  const supabase = await createClient();
-  const { data: initialData } = await supabase.rpc(
-    "get_garage_gallery_optimized",
-    {
-      page_num: page,
-      page_limit: limit,
-      user_id_param: user?.id || null,
-    }
-  );
+  try {
+    // Get garage data using our cached API route
+    const garageApiData = await getGarageData(page, limit, user?.id);
 
-  // Transform the data to match our GarageData interface
-  const garageData: GarageData | null = initialData
-    ? {
-        cars: initialData.cars,
-        currentUser: user
-          ? {
-              id: user.id,
-              username: user.username,
-              display_name: user.display_name,
-              profile_image_url: user.profile_image_url,
-            }
-          : null,
-        pagination: initialData.pagination,
-        meta: initialData.meta,
-      }
-    : null;
+    // Prepare complete garage data with user information
+    const garageData: GarageData = {
+      ...garageApiData,
+      currentUser: user
+        ? {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name,
+            profile_image_url: user.profile_image_url,
+          }
+        : null,
+    };
 
-  return (
-    <GarageGallery
-      page={page}
-      limit={limit}
-      garageData={garageData}
-      likeCarAction={likeCarAction}
-    />
-  );
+    return <GarageGallery page={page} limit={limit} garageData={garageData} />;
+  } catch (error) {
+    console.error("Error loading garage:", error);
+    // Return null data to show error state
+    return <GarageGallery page={page} limit={limit} garageData={null} />;
+  }
 }

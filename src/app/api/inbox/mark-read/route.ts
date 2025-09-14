@@ -9,38 +9,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    console.log(`📨 Marking inbox as read for user: ${userId}`);
 
-    // Update the user's last_seen_inbox timestamp
-    const { error } = await supabase
+    // Create Supabase client with request context to maintain auth
+    const supabase = await createClient();
+    
+    // Debug: Check if we have an authenticated user in this context
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    console.log(`🔍 MARK-READ AUTH - User: ${authUser?.id}, Error:`, authError);
+    console.log(`🔍 MARK-READ - Requested userId: ${userId}`);
+    console.log(`🔍 MARK-READ - Auth user matches requested: ${authUser?.id === userId}`);
+
+    // Update the user's last_seen_inbox timestamp to now
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
       .from('users')
-      .update({ last_seen_inbox: new Date().toISOString() })
-      .eq('id', userId);
+      .update({ last_seen_inbox: now })
+      .eq('id', userId)
+      .select('last_seen_inbox')
+      .single();
 
     if (error) {
-      console.error('Error updating last_seen_inbox:', error);
+      console.error('❌ Error updating last_seen_inbox:', error);
       return NextResponse.json({ error: 'Failed to mark messages as read' }, { status: 500 });
     }
 
-    // Send broadcast to clear badge count immediately
-    try {
-      await supabase.channel(`inbox-badges-${userId}`).send({
-        type: 'broadcast',
-        event: 'messages_marked_read',
-        payload: {
-          user_id: userId,
-          timestamp: new Date().toISOString()
-        }
-      });
-      console.log(`✅ Badge clear broadcast sent for user ${userId}`);
-    } catch (broadcastError) {
-      console.error('Error sending badge clear broadcast:', broadcastError);
-      // Don't fail the request if broadcast fails
-    }
+    console.log(`✅ Inbox marked as read successfully for user ${userId}`, data);
+    console.log(`🕐 Updated last_seen_inbox to: ${now}`);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true, 
+      last_seen_inbox: now,
+      meta: {
+        updated_at: now,
+        user_id: userId
+      }
+    });
   } catch (error) {
-    console.error('Unexpected error in mark-read API:', error);
+    console.error('❌ Unexpected error in mark-read API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

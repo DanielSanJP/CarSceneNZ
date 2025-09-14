@@ -1,6 +1,5 @@
 import { MyEventsView } from "@/components/events/my-events-view";
 import { getUser } from "@/lib/auth";
-import { createClient } from "@/lib/utils/supabase/server";
 import type { Event } from "@/types/event";
 
 // Cache this page for 5 minutes, then revalidate in the background
@@ -9,32 +8,50 @@ export const revalidate = 300; // 5 minutes
 export default async function MyEventsPage() {
   // Server-side auth check - redirects if not authenticated
   const user = await getUser();
-  const supabase = await createClient();
 
-  console.log("🗄️ Next.js Cache: Fetching user events using optimized RPC...");
+  console.log("� SSR CACHE: Fetching user events via cached API route...");
   const startTime = Date.now();
 
-  // Use optimized RPC function for better performance
-  const { data: userEventsData, error } = await supabase.rpc(
-    "get_user_events_optimized",
+  // Use native fetch to call our cached API route
+  const response = await fetch(
+    `${
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    }/api/events/my-events`,
     {
-      target_user_id: user.id,
-      page_limit: 50, // Get up to 50 events
-      page_offset: 0,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        pageLimit: 50,
+        pageOffset: 0,
+      }),
+      // Leverage the API route's caching
+      next: { revalidate: 60 },
     }
   );
 
-  if (error) {
-    console.error("User events RPC error:", error);
+  if (!response.ok) {
+    console.error(
+      `❌ My events API route failed: ${response.status} ${response.statusText}`
+    );
     throw new Error("Failed to load your events");
   }
 
+  const userEventsData = await response.json();
+
   console.log(
-    `✅ Next.js Cache: User events fetched in ${Date.now() - startTime}ms`
+    `✅ SSR CACHE: User events fetched via API route in ${
+      Date.now() - startTime
+    }ms`
   );
 
-  // Transform RPC result to match Event interface
-  const events: Event[] =
+  // Transform RPC result to match Event interface with attendance counts
+  const events: (Event & {
+    attendee_count?: number;
+    interested_count?: number;
+  })[] =
     userEventsData?.map(
       (event: {
         id: string;
@@ -61,6 +78,11 @@ export default async function MyEventsPage() {
         location: event.location,
         created_at: event.created_at,
         updated_at: event.updated_at,
+        // Map to both camelCase (Event interface) and snake_case (component expects)
+        attendeeCount: event.attendee_count || 0,
+        interestedCount: event.interested_count || 0,
+        attendee_count: event.attendee_count || 0,
+        interested_count: event.interested_count || 0,
         host: {
           id: user.id,
           username: user.username,

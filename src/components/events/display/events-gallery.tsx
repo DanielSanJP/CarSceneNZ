@@ -37,10 +37,6 @@ interface EventsGalleryProps {
   page: number;
   limit: number;
   eventsData: EventsData; // Direct SSR data - required
-  attendEventAction?: (
-    eventId: string,
-    status: "interested" | "going" | "remove"
-  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 // Memoized individual event card component
@@ -229,17 +225,51 @@ const EventCard = React.memo(
 
 EventCard.displayName = "EventCard";
 
-export function EventsGallery({
-  page,
-  limit,
-  eventsData,
-  attendEventAction,
-}: EventsGalleryProps) {
+export function EventsGallery({ page, limit, eventsData }: EventsGalleryProps) {
   const router = useRouter();
 
   console.log(
-    `📊 EventsGallery: Using pure SSR data (Next.js) - Page ${page}, Limit ${limit}`
+    `📊 EventsGallery: Using simple Next.js SSR - Page ${page}, Limit ${limit}`
   );
+  console.log(
+    `🔍 SSR Data: User: ${
+      eventsData?.currentUser ? "logged in" : "anonymous"
+    }, Statuses: ${Object.keys(eventsData?.userStatuses || {}).length} events`
+  );
+
+  // Client-side attendance function
+  const attendEventAction = async (
+    eventId: string,
+    status: "interested" | "going" | "remove"
+  ) => {
+    try {
+      const response = await fetch("/api/events/attendance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ eventId, status }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "Failed to update attendance",
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Client-side attendance error:", error);
+      return { success: false, error: "Network error occurred" };
+    }
+  };
+
+  // Use SSR data directly - no client-side fetching needed
+  const user = eventsData?.currentUser || null;
+  const userEventStatuses = eventsData?.userStatuses || {};
 
   // State for filters - combined into single object to reduce re-renders
   const [filters, setFilters] = useState({
@@ -250,7 +280,7 @@ export function EventsGallery({
   // State for tracking failed image loads
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // State for optimistic updates of user event statuses
+  // State for optimistic updates of user event statuses only (not counts)
   const [localUserStatuses, setLocalUserStatuses] = useState<
     Record<string, string | null>
   >({});
@@ -262,8 +292,6 @@ export function EventsGallery({
 
   // Use SSR data directly
   const events = useMemo(() => eventsData?.events || [], [eventsData?.events]);
-  const user = eventsData?.currentUser || null;
-  const userEventStatuses = eventsData?.userStatuses || {};
 
   // Convert eventsData to attendeeCounts format
   const attendeeCounts = useMemo(
@@ -352,12 +380,12 @@ export function EventsGallery({
     return { day: date, date, time, full: `${date} at ${time}` };
   };
 
-  // Helper function to get event attendees count (using real data)
+  // Helper function to get event attendees count (using SSR data only)
   const getAttendeeCount = (eventId: string) => {
     return attendeeCounts?.[eventId]?.going || 0;
   };
 
-  // Helper function to get interested count (using real data)
+  // Helper function to get interested count (using SSR data only)
   const getInterestedCount = (eventId: string) => {
     return attendeeCounts?.[eventId]?.interested || 0;
   };
@@ -382,36 +410,36 @@ export function EventsGallery({
       return;
     }
 
-    if (!attendEventAction) {
-      console.error("Server action not provided");
-      return;
-    }
-
     try {
       const currentStatus = getUserStatus(eventId);
 
-      // Optimistic update - update UI immediately
+      // Update user status optimistically (but not counts)
       if (status === "remove" || currentStatus === status) {
-        // User is removing their attendance
         setLocalUserStatuses((prev) => ({ ...prev, [eventId]: null }));
       } else {
-        // User is setting new attendance status
         setLocalUserStatuses((prev) => ({ ...prev, [eventId]: status }));
       }
 
-      // Call server action with the actual status (or 'remove' for unattending)
+      // Call server action
       const actionStatus =
         status === "remove" || currentStatus === status ? "remove" : status;
       const result = await attendEventAction(eventId, actionStatus);
 
       if (!result.success) {
-        // Revert optimistic update on failure
+        // Revert user status on failure
         setLocalUserStatuses((prev) => ({ ...prev, [eventId]: currentStatus }));
         console.error("Failed to update attendance:", result.error);
+      } else {
+        // Success! Refresh the page to get updated server data with accurate counts
+        setTimeout(() => {
+          router.refresh();
+        }, 100);
+
+        console.log(`✅ Attendance updated successfully, page will refresh`);
       }
     } catch (error) {
       console.error("Error updating attendance:", error);
-      // Revert optimistic update on error
+      // Revert user status on error
       const currentStatus = getUserStatus(eventId);
       setLocalUserStatuses((prev) => ({ ...prev, [eventId]: currentStatus }));
     }

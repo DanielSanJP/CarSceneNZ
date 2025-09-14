@@ -1,89 +1,83 @@
 import { getUserOptional } from "@/lib/auth";
-import { createClient } from "@/lib/utils/supabase/server";
 import { CarDetailView } from "@/components/garage/display/car-detail-view";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import type { CarDetailData } from "@/types/car";
 
 interface CarDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-// Server action for car likes
-async function likeCarAction(carId: string) {
-  "use server";
+// Helper function to get car details using cached API route
+async function getCarDetailData(
+  carId: string,
+  userId?: string
+): Promise<CarDetailData> {
+  const startTime = Date.now();
 
-  const user = await getUserOptional();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const supabase = await createClient();
+  console.log(
+    `🚀 FETCH CACHE: Fetching car ${carId} details using API route...`
+  );
 
   try {
-    console.log(
-      `🔄 Server Action: Toggling like for car ${carId}, user ${user.id}`
+    // Use our API route with Next.js native fetch for caching
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+      }/api/garage/${carId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: userId || null,
+        }),
+        // Enable Next.js caching with 5 minute revalidation
+        next: {
+          revalidate: 300, // 5 minutes
+          tags: ["garage", "cars", `car-${carId}`],
+        },
+      }
     );
 
-    // Call the RPC function for car likes
-    const { data, error } = await supabase.rpc("toggle_car_like_optimized", {
-      car_id_param: carId,
-      user_id_param: user.id,
-    });
-
-    if (error) {
-      console.error("❌ Car Like RPC Error:", error);
-      return { success: false, error: error.message };
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("Car not found");
+      }
+      throw new Error(`Failed to fetch car: ${response.status}`);
     }
 
-    console.log("✅ Car Like Success:", data);
+    const carDetailData = await response.json();
 
-    // Revalidate relevant pages
-    revalidatePath("/garage");
-    revalidatePath(`/garage/${carId}`);
-    revalidatePath("/");
+    const endTime = Date.now();
+    console.log(
+      `✅ FETCH CACHE: Car ${carId} details fetched in ${endTime - startTime}ms`
+    );
 
-    return {
-      success: true,
-      newLikeCount: data.new_like_count,
-      isLiked: data.is_liked,
-      action: data.action,
-    };
+    return carDetailData;
   } catch (error) {
-    console.error("❌ Car Like Server Action Exception:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to update like",
-    };
+    console.error("❌ Error fetching car details:", error);
+    throw error;
   }
 }
 
+interface CarDetailPageProps {
+  params: Promise<{ id: string }>;
+}
+
 export default async function CarDetailPage({ params }: CarDetailPageProps) {
-  // Get user (optional - not required to view cars)
-  const user = await getUserOptional();
   const { id } = await params;
 
-  console.log(`🚀 SSR: Fetching car ${id} details using optimized RPC...`);
-  const startTime = Date.now();
+  try {
+    // Get user directly in server component
+    const user = await getUserOptional();
 
-  // Fetch initial car data directly in server component
-  const supabase = await createClient();
-  const { data: carDetailData } = await supabase.rpc(
-    "get_car_detail_optimized",
-    {
-      car_id_param: id,
-      user_id_param: user?.id || null,
-    }
-  );
+    // Get car details using our cached API route
+    const carDetailData = await getCarDetailData(id, user?.id);
 
-  console.log(
-    `✅ SSR: Car ${id} details fetched in ${Date.now() - startTime}ms`
-  );
-
-  return (
-    <CarDetailView
-      user={user}
-      carDetailData={carDetailData || null}
-      likeCarAction={likeCarAction}
-    />
-  );
+    return <CarDetailView user={user} carDetailData={carDetailData} />;
+  } catch (error) {
+    console.error("Error loading car:", error);
+    notFound();
+  }
 }

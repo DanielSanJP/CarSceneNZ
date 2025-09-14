@@ -4,29 +4,67 @@ import {
   type ProcessedHomeData,
   type HomeUser,
 } from "@/components/homepage";
-import { createClient } from "@/lib/utils/supabase/server";
 
-// Cache this page for 15 minutes like other pages
-export const revalidate = 900; // 15 minutes
+// Force dynamic rendering - don't try to build statically
+export const dynamic = "force-dynamic";
 
-// Server-side function to get home data using optimized RPC
+// Add debugging for ISR behavior
+console.log("🔍 DEBUG: Module-level code executing - page.tsx loaded");
+console.log("🔍 DEBUG: Revalidate setting:", 900);
+
+// Server-side function to get home data using native fetch (Next.js caching!)
 async function getHomeData(): Promise<HomeData> {
-  const supabase = await createClient();
+  console.log("🔍 DEBUG: getHomeData() function called");
+  console.log("🔍 DEBUG: About to call API route with native fetch...");
 
-  const { data: homeData, error } = await supabase
-    .rpc("get_home_data_optimized")
-    .single();
+  // Use native fetch to call our API route - this should be cached by Next.js!
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000"; // Updated to match current dev server port
 
-  if (error) {
-    console.error("Error fetching home data:", error);
-    throw new Error("Failed to fetch home page data");
+  const response = await fetch(`${baseUrl}/api/home-data`, {
+    // Next.js will cache this automatically
+    next: {
+      revalidate: 900, // 15 minutes
+      tags: ["home-data"],
+    },
+  });
+
+  console.log("🔍 DEBUG: Fetch response status:", response.status);
+  console.log("🔍 DEBUG: Fetch cache headers:", {
+    cacheControl: response.headers.get("cache-control"),
+    age: response.headers.get("age"),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("❌ Homepage: API call failed:", {
+      status: response.status,
+      statusText: response.statusText,
+      errorText,
+    });
+
+    if (response.status === 408) {
+      throw new Error("Request timed out. Please refresh the page.");
+    } else if (response.status === 503) {
+      throw new Error("Database connection failed. Please try again later.");
+    } else {
+      throw new Error(
+        `Failed to fetch data: ${response.status} ${response.statusText}`
+      );
+    }
   }
+
+  const homeData: HomeData = await response.json();
+
+  console.log("🔍 DEBUG: API route call completed");
 
   if (!homeData) {
     throw new Error("No home page data found");
   }
 
-  return homeData as HomeData;
+  console.log("🔍 DEBUG: getHomeData() returning data");
+  return homeData;
 }
 
 // Server-side function to process home data
@@ -67,21 +105,35 @@ function processHomeData(homeData: HomeData): ProcessedHomeData {
 }
 
 export default async function HomePage() {
-  // Fetch and process home data directly on server
+  // Add debugging to understand ISR behavior
+  console.log("🔍 DEBUG: HomePage component is executing");
+  console.log("🔍 DEBUG: Current time:", new Date().toISOString());
+  console.log("🔍 DEBUG: Revalidate setting:", 900);
+
+  // Fetch and process home data once on server (ISR pattern)
   let processedHomeData: ProcessedHomeData | null = null;
   const startTime = Date.now();
 
   try {
-    console.log("🚀 SSR: Fetching home data using optimized RPC...");
+    console.log(
+      "🚀 FETCH CACHE: Fetching home data using API route with native fetch..."
+    );
+    console.log("🔍 DEBUG: About to call getHomeData()");
     const rawHomeData = await getHomeData();
+    console.log("🔍 DEBUG: getHomeData() completed, now processing...");
     processedHomeData = processHomeData(rawHomeData);
     console.log(
-      `✅ SSR: Home data fetched and processed in ${Date.now() - startTime}ms`
+      `✅ FETCH CACHE: Home data fetched and processed in ${
+        Date.now() - startTime
+      }ms`
     );
+    console.log("🔍 DEBUG: Data processing complete");
   } catch (error) {
     console.error("Failed to fetch home data on server:", error);
     // Return null and let the component handle the error state
   }
 
+  console.log("🔍 DEBUG: About to return Homepage component");
+  // FETCH CACHE: Pass data directly to client component (using Next.js fetch caching)
   return <Homepage homeData={processedHomeData} />;
 }

@@ -14,6 +14,7 @@ import { Car as CarIcon, Eye, Star, User, Plus } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { GarageData } from "@/types/car";
 
 interface GarageGalleryProps {
@@ -41,6 +42,7 @@ export function GarageGallery({
   garageData,
   likeCarAction,
 }: GarageGalleryProps) {
+  const router = useRouter();
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [carLikeCounts, setCarLikeCounts] = useState<Record<string, number>>(
     {}
@@ -175,18 +177,47 @@ export function GarageGallery({
     }));
   };
 
-  // Handle car like/unlike with server action
+  // Handle car like/unlike with API route
   const handleLike = async (carId: string) => {
-    if (!currentUser || !likeCarAction) {
+    if (!currentUser) {
       return { success: false, error: "Not authenticated" };
     }
 
     try {
-      const result = await likeCarAction(carId);
-      if (result.success && result.newLikeCount !== undefined) {
-        handleLikeCountChange(carId, result.newLikeCount);
+      // Use server action if provided, otherwise use API route
+      if (likeCarAction) {
+        const result = await likeCarAction(carId);
+        if (result.success && result.newLikeCount !== undefined) {
+          handleLikeCountChange(carId, result.newLikeCount);
+        }
+        return result;
+      } else {
+        // Use API route
+        const response = await fetch("/api/garage/like", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ carId }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: result.error || "Failed to like car",
+          };
+        }
+
+        if (result.success && result.newLikeCount !== undefined) {
+          handleLikeCountChange(carId, result.newLikeCount);
+          // Refresh the page to get updated server data
+          router.refresh();
+        }
+
+        return result;
       }
-      return result;
     } catch (error) {
       console.error("Error liking car:", error);
       return { success: false, error: "Failed to like car" };
@@ -194,16 +225,47 @@ export function GarageGallery({
   };
 
   const handleUnlike = async (carId: string) => {
-    if (!currentUser || !likeCarAction) {
+    if (!currentUser) {
       return { success: false, error: "Not authenticated" };
     }
 
     try {
-      const result = await likeCarAction(carId);
-      if (result.success && result.newLikeCount !== undefined) {
-        handleLikeCountChange(carId, result.newLikeCount);
+      // Use server action if provided, otherwise use API route
+      if (likeCarAction) {
+        const result = await likeCarAction(carId);
+        if (result.success && result.newLikeCount !== undefined) {
+          handleLikeCountChange(carId, result.newLikeCount);
+          // Refresh the page to get updated server data
+          router.refresh();
+        }
+        return result;
+      } else {
+        // Use API route
+        const response = await fetch("/api/garage/like", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ carId }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: result.error || "Failed to unlike car",
+          };
+        }
+
+        if (result.success && result.newLikeCount !== undefined) {
+          handleLikeCountChange(carId, result.newLikeCount);
+          // Refresh the page to get updated server data
+          router.refresh();
+        }
+
+        return result;
       }
-      return result;
     } catch (error) {
       console.error("Error unliking car:", error);
       return { success: false, error: "Failed to unlike car" };

@@ -8,10 +8,10 @@ import { createClient } from "@/lib/utils/supabase/server";
 import { Club } from "@/types";
 import type { ClubsGalleryData } from "@/types/club";
 
-// Cache this page for 5 minutes, then revalidate in the background
-export const revalidate = 300; // 5 minutes
+// Force dynamic rendering - don't try to build statically
+export const dynamic = "force-dynamic";
 
-// Server-side clubs gallery data fetching using RPC function
+// Server-side clubs gallery data fetching using cached API route
 async function getClubsGalleryDataSSR(
   filters: {
     search?: string;
@@ -23,27 +23,47 @@ async function getClubsGalleryDataSSR(
   },
   currentUserId?: string
 ): Promise<ClubsGalleryData> {
-  const supabase = await createClient();
   const startTime = Date.now();
 
   try {
-    const { data, error } = await supabase.rpc("get_clubs_gallery", {
-      search_term: filters.search || null,
-      location_filter: filters.location || null,
-      club_type_filter: filters.club_type || null,
-      sort_by: filters.sortBy || "likes",
-      result_limit: filters.limit || 12,
-      result_offset: ((filters.page || 1) - 1) * (filters.limit || 12),
-      current_user_id: currentUserId || null,
-    });
+    console.log(`🚀 SSR CACHE: Fetching clubs gallery via cached API route...`);
 
-    if (error) {
-      console.error("Error fetching clubs gallery:", error);
-      throw new Error("Failed to fetch clubs gallery data");
+    // Use native fetch to call our cached API route
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      }/api/clubs?${new URLSearchParams({
+        ...(filters.search && { search: filters.search }),
+        ...(filters.location && { location: filters.location }),
+        ...(filters.club_type && { club_type: filters.club_type }),
+        sortBy: filters.sortBy || "likes",
+        page: (filters.page || 1).toString(),
+        limit: (filters.limit || 12).toString(),
+        ...(currentUserId && { userId: currentUserId }),
+      })}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // Leverage the API route's caching
+        next: { revalidate: 300 },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        `❌ Clubs API route failed: ${response.status} ${response.statusText}`
+      );
+      throw new Error(`Failed to fetch clubs gallery data: ${response.status}`);
     }
 
+    const data = await response.json();
+
     console.log(
-      `✅ SSR: Clubs gallery data fetched in ${Date.now() - startTime}ms`
+      `✅ SSR CACHE: Clubs gallery data fetched via API route in ${
+        Date.now() - startTime
+      }ms`
     );
 
     return {

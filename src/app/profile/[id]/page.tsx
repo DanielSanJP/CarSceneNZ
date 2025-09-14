@@ -1,13 +1,16 @@
 import { UserProfileDisplay } from "@/components/profile/user-profile-display";
 import { getUserOptional } from "@/lib/auth";
 import { createClient } from "@/lib/utils/supabase/server";
-import type { ProfileData } from "@/types/user";
+import type { ProfileData, LeaderClubsData } from "@/types/user";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 interface UserProfilePageProps {
   params: Promise<{ id: string }>;
 }
+
+// Force dynamic rendering - don't try to build these pages statically
+export const dynamic = "force-dynamic";
 
 // Server action for following/unfollowing users
 async function followUserAction(
@@ -71,54 +74,97 @@ async function followUserAction(
   }
 }
 
-// Server-side profile data fetching using RPC function
-async function getProfileDataSSR(
-  usernameOrId: string,
-  currentUserId?: string
-): Promise<ProfileData> {
-  const supabase = await createClient();
+// Server-side leader clubs data fetching using cached API route
+async function getLeaderClubsDataSSR(
+  userId: string
+): Promise<LeaderClubsData | null> {
   const startTime = Date.now();
 
   try {
     console.log(
-      `🚀 SSR: Fetching profile ${usernameOrId} using optimized RPC...`
+      `🚀 SSR CACHE: Fetching leader clubs for user ${userId} via cached API route...`
     );
 
-    // Check if the input looks like a UUID (36 characters with hyphens)
-    const isUUID =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        usernameOrId
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      }/api/profile/leader-clubs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: userId,
+        }),
+        // Leverage the API route's caching
+        next: { revalidate: 300 },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        `❌ Leader clubs API route failed: ${response.status} ${response.statusText}`
       );
-
-    let profileData;
-    if (isUUID) {
-      // Call RPC function with UUID
-      const { data, error } = await supabase.rpc("get_profile_data_optimized", {
-        target_user_id_param: usernameOrId,
-        current_user_id_param: currentUserId || null,
-      });
-
-      if (error) {
-        console.error("Error fetching profile by ID:", error);
-        throw new Error("User not found");
-      }
-      profileData = data;
-    } else {
-      // Call RPC function with username
-      const { data, error } = await supabase.rpc("get_profile_data_optimized", {
-        username_param: usernameOrId,
-        current_user_id_param: currentUserId || null,
-      });
-
-      if (error) {
-        console.error("Error fetching profile by username:", error);
-        throw new Error("User not found");
-      }
-      profileData = data;
+      return null; // Don't fail the whole page, just don't show invite buttons
     }
 
+    const leaderClubsData = await response.json();
+
     console.log(
-      `✅ SSR: Profile ${usernameOrId} data fetched in ${
+      `✅ SSR CACHE: Leader clubs for user ${userId} fetched via API route in ${
+        Date.now() - startTime
+      }ms - ${leaderClubsData.leaderClubs?.length || 0} clubs`
+    );
+
+    return leaderClubsData as LeaderClubsData;
+  } catch (error) {
+    console.error("Error fetching leader clubs data:", error);
+    return null; // Don't fail the whole page, just don't show invite buttons
+  }
+}
+
+// Server-side profile data fetching using cached API route
+async function getProfileDataSSR(
+  usernameOrId: string,
+  currentUserId?: string
+): Promise<ProfileData> {
+  const startTime = Date.now();
+
+  try {
+    console.log(
+      `🚀 SSR CACHE: Fetching profile ${usernameOrId} via cached API route...`
+    );
+
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      }/api/profile/${usernameOrId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentUserId: currentUserId || null,
+        }),
+        // Leverage the API route's caching
+        next: { revalidate: 300 },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        `❌ Profile API route failed: ${response.status} ${response.statusText}`
+      );
+      throw new Error("User not found");
+    }
+
+    const responseData = await response.json();
+    const profileData = responseData.profileData;
+
+    console.log(
+      `✅ SSR CACHE: Profile ${usernameOrId} data fetched via API route in ${
         Date.now() - startTime
       }ms`
     );
@@ -138,7 +184,7 @@ export default async function UserProfilePage({
   // Get current user (optional)
   const currentUser = await getUserOptional();
 
-  // Fetch profile data using RPC functions
+  // Fetch profile data using cached API route
   let profileData: ProfileData | null = null;
 
   try {
@@ -158,9 +204,18 @@ export default async function UserProfilePage({
     );
   }
 
+  // Fetch leader clubs data if current user is viewing someone else's profile
+  let leaderClubsData: LeaderClubsData | null = null;
+  const isOwnProfile = currentUser?.id === profileData.profileUser.id;
+
+  if (currentUser && !isOwnProfile) {
+    leaderClubsData = await getLeaderClubsDataSSR(currentUser.id);
+  }
+
   return (
     <UserProfileDisplay
       profileData={profileData}
+      leaderClubsData={leaderClubsData}
       currentUser={currentUser}
       followUserAction={followUserAction}
     />

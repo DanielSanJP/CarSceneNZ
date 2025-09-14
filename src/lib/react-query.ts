@@ -18,6 +18,10 @@ export const queryClient = new QueryClient({
 
 // Enhanced Query Keys for consistent caching across the app
 export const queryKeys = {
+  auth: {
+    all: ['auth'] as const,
+    currentUser: () => [...queryKeys.auth.all, 'currentUser'] as const,
+  },
   home: {
     all: ['home'] as const,
     data: () => [...queryKeys.home.all, 'data'] as const,
@@ -29,6 +33,7 @@ export const queryKeys = {
     details: () => [...queryKeys.events.all, 'detail'] as const,
     detail: (eventId: string) => [...queryKeys.events.details(), eventId] as const,
     myEvents: (userId?: string) => [...queryKeys.events.all, 'myEvents', userId] as const,
+    userStatuses: (eventIds: string[]) => [...queryKeys.events.all, 'userStatuses', eventIds] as const,
   },
   profile: {
     all: ['profile'] as const,
@@ -38,5 +43,10 @@ export const queryKeys = {
     cars: (userId: string) => [...queryKeys.profile.all, 'cars', userId] as const,
     clubs: (userId: string) => [...queryKeys.profile.all, 'clubs', userId] as const,
     leaderClubs: (userId: string) => [...queryKeys.profile.all, 'leader-clubs', userId] as const,
+  },
+  inbox: {
+    all: ['inbox'] as const,
+    messages: (userId: string) => [...queryKeys.inbox.all, 'messages', userId] as const,
+    unreadCount: (userId: string) => [...queryKeys.inbox.all, 'unreadCount', userId] as const,
   },
 } as const;

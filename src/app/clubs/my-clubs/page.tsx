@@ -1,45 +1,51 @@
 import { MyClubView } from "@/components/clubs/my-club-view";
 import { getUser } from "@/lib/auth";
-import { createClient } from "@/lib/utils/supabase/server";
 import type { UserClubsData } from "@/types/club";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
 
-// Server-side user clubs data fetching using RPC function
-async function getUserClubsDataSSR(userId: string): Promise<UserClubsData> {
-  const supabase = await createClient();
-  const startTime = Date.now();
-
-  try {
-    const { data, error } = await supabase.rpc("get_user_clubs", {
-      user_id_param: userId,
-    });
-
-    if (error) {
-      console.error("Error fetching user clubs:", error);
-      throw new Error("Failed to fetch user clubs data");
-    }
-
-    console.log(
-      `✅ SSR: User ${userId} clubs fetched in ${Date.now() - startTime}ms`
-    );
-
-    return data;
-  } catch (error) {
-    console.error("Error fetching user clubs data:", error);
-    throw new Error("Failed to fetch user clubs data");
-  }
-}
-
 export default async function MyClubsPage() {
   // Server-side auth check - redirects if not authenticated
   const user = await getUser();
 
-  // Fetch user clubs data using RPC
+  console.log("🚀 SSR CACHE: Fetching user clubs via cached API route...");
+  const startTime = Date.now();
+
+  // Use native fetch to call our cached API route
   let userClubsData: UserClubsData | null = null;
   try {
-    userClubsData = await getUserClubsDataSSR(user.id);
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      }/api/clubs/my-clubs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id,
+        }),
+        // Leverage the API route's caching
+        next: { revalidate: 60 },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        `❌ My clubs API route failed: ${response.status} ${response.statusText}`
+      );
+      throw new Error("Failed to load your clubs");
+    }
+
+    userClubsData = await response.json();
+
+    console.log(
+      `✅ SSR CACHE: User clubs fetched via API route in ${
+        Date.now() - startTime
+      }ms`
+    );
   } catch (error) {
     console.error("Failed to fetch user clubs data on server:", error);
     // Return error state
@@ -55,5 +61,5 @@ export default async function MyClubsPage() {
     );
   }
 
-  return <MyClubView userClubsData={userClubsData} />;
+  return <MyClubView userClubsData={userClubsData!} />;
 }

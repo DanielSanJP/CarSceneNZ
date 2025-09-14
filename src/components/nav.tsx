@@ -25,7 +25,7 @@ import {
 import { SearchBar, MobileSearchButton } from "@/components/search-bar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeButton } from "@/components/theme-button";
-import { InboxUnreadBadge } from "@/components/inbox/inbox-unread-badge";
+import { RealtimeUnreadBadge } from "@/components/inbox/realtime-unread-badge";
 import type { User as UserType } from "@/types/user";
 
 function ProfileDropdown({ user }: { user: UserType | null }) {
@@ -136,7 +136,7 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
           <Link href="/inbox" className="cursor-pointer relative">
             <Mail className="mr-2 h-4 w-4" />
             <span>Inbox</span>
-            <InboxUnreadBadge />
+            <RealtimeUnreadBadge userId={user?.id} />
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -150,6 +150,9 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
 }
 
 export function Navigation({ user }: { user: UserType | null }) {
+  // DEBUG: Check if Navigation component is rendering
+  console.log("🧭 NAVIGATION: Component rendering with user:", user?.id);
+
   const pathname = usePathname();
 
   const isActivePath = (path: string) => {
@@ -299,7 +302,7 @@ export function Navigation({ user }: { user: UserType | null }) {
                         >
                           <Mail className="h-4 w-4" />
                           <span>Inbox</span>
-                          <InboxUnreadBadge />
+                          <RealtimeUnreadBadge userId={user?.id} />
                         </Link>
                       </NavigationMenuLink>
                     </NavigationMenuItem>

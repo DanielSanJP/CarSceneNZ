@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Check, X, Clock, Users } from "lucide-react";
 import Link from "next/link";
-import type { InboxMessage } from "@/types/inbox";
-import {
-  useInboxMessages,
-  useInboxRealtime,
-  useHandleJoinRequest,
-  useHandleClubInvitation,
-} from "@/hooks/use-inbox";
-import { useInboxPageActive } from "@/hooks/use-inbox-page-active";
+import { createClient } from "@/lib/utils/supabase/client";
+import type { InboxMessage, InboxMessagesData } from "@/types/inbox";
 import { toast } from "sonner";
 
 // Helper function to format relative time
@@ -67,61 +61,136 @@ function getRelativeTime(date: string | Date): string {
 }
 
 interface InboxViewProps {
-  userId: string;
+  inboxData: InboxMessagesData;
 }
 
-function InboxViewComponent({}: InboxViewProps) {
+function InboxViewComponent({ inboxData }: InboxViewProps) {
   const [processingRequest, setProcessingRequest] = useState<string | null>(
     null
   );
 
-  // Use React Query hooks for optimized data fetching with real-time updates
-  const { data: inboxData, isLoading, error } = useInboxMessages();
-  const messages = inboxData?.messages || [];
+  // Local state for real-time updates - start with server data
+  const [messages, setMessages] = useState<InboxMessage[]>(
+    inboxData.messages || []
+  );
 
-  // Use the inbox page active hook for automatic read state management
-  useInboxPageActive();
+  // Update local state when server data changes (on page refresh/navigation)
+  useEffect(() => {
+    setMessages(inboxData.messages || []);
+  }, [inboxData.messages]);
 
-  // Enable real-time updates for live inbox functionality
-  useInboxRealtime();
+  // Mark inbox as read when component mounts (client-side for immediate feedback)
+  useEffect(() => {
+    const markAsReadClientSide = async () => {
+      const supabase = createClient();
 
-  // Optimistic mutation hooks for interactive actions
-  const handleJoinRequestMutation = useHandleJoinRequest();
-  const handleClubInvitationMutation = useHandleClubInvitation();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Inbox</h1>
-          <p className="text-muted-foreground mt-2">
-            Stay connected with your car community
-          </p>
-        </div>
-        <div className="text-center py-8 text-muted-foreground">
-          Loading messages...
-        </div>
-      </div>
-    );
-  }
+        console.log(
+          "📬 Client-side: Marking inbox as read for immediate UI feedback"
+        );
 
-  // Show error state
-  if (error) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Inbox</h1>
-          <p className="text-muted-foreground mt-2">
-            Stay connected with your car community
-          </p>
-        </div>
-        <div className="text-center py-8 text-destructive">
-          Failed to load messages. Please try again.
-        </div>
-      </div>
-    );
-  }
+        const response = await fetch("/api/inbox/mark-read", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.id,
+          }),
+        });
+
+        if (response.ok) {
+          console.log("✅ Client-side: Inbox marked as read successfully");
+        } else {
+          console.error("❌ Client-side: Failed to mark inbox as read");
+        }
+      } catch (error) {
+        console.error("❌ Client-side mark-read error:", error);
+      }
+    };
+
+    // Small delay to ensure component is mounted and user is authenticated
+    const timeoutId = setTimeout(markAsReadClientSide, 500);
+    return () => clearTimeout(timeoutId);
+  }, []); // Only run once when component mounts
+
+  // Set up real-time subscription for new messages
+  useEffect(() => {
+    const supabase = createClient();
+
+    // Get current user to filter messages
+    const getCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log(`🔄 Setting up real-time subscription for user: ${user.id}`);
+
+      // Subscribe to new messages for this user
+      const channel = supabase
+        .channel(`inbox-messages-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("📨 New message received via real-time:", payload.new);
+
+            // Add new message to the top of the list
+            const newMessage = payload.new as InboxMessage;
+            setMessages((prev) => {
+              // Prevent duplicates
+              const exists = prev.some((msg) => msg.id === newMessage.id);
+              if (exists) return prev;
+
+              return [newMessage, ...prev];
+            });
+
+            // Show toast notification
+            toast.success("New message received!");
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "messages",
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log("🗑️ Message deleted via real-time:", payload.old);
+
+            // Remove deleted message from list
+            const deletedId = payload.old?.id;
+            if (deletedId) {
+              setMessages((prev) => prev.filter((msg) => msg.id !== deletedId));
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log("📡 Real-time subscription status:", status);
+        });
+
+      // Cleanup subscription
+      return () => {
+        console.log("🧹 Cleaning up real-time subscription");
+        supabase.removeChannel(channel);
+      };
+    };
+
+    getCurrentUser();
+  }, []);
 
   // Function to clean message content by removing metadata
   const getCleanMessage = (message: string): string => {
@@ -137,13 +206,26 @@ function InboxViewComponent({}: InboxViewProps) {
   ) => {
     setProcessingRequest(msg.id);
     try {
-      await handleJoinRequestMutation.mutateAsync({
-        messageId: msg.id,
-        action,
-        clubId: msg.club_id || "",
-        senderId: msg.sender_id,
+      const response = await fetch("/api/inbox/handle-join-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messageId: msg.id,
+          action,
+          clubId: msg.club_id || "",
+          senderId: msg.sender_id,
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to handle join request");
+      }
+
       toast.success(`Successfully ${action}ed join request`);
+      // Refresh the page to show updated data
+      window.location.reload();
     } catch {
       toast.error(`Failed to ${action} join request`);
     } finally {
@@ -157,13 +239,34 @@ function InboxViewComponent({}: InboxViewProps) {
   ) => {
     setProcessingRequest(msg.id);
     try {
-      await handleClubInvitationMutation.mutateAsync({
+      console.log("🔍 DEBUG - Message object:", msg);
+      console.log("🔍 DEBUG - Message club_id:", msg.club_id);
+      console.log("🔍 DEBUG - Message sender_id:", msg.sender_id);
+
+      const requestData = {
         messageId: msg.id,
         action,
         clubId: msg.club_id || "",
         inviterId: msg.sender_id,
+      };
+
+      console.log("🔍 DEBUG - Sending request data:", requestData);
+
+      const response = await fetch("/api/inbox/handle-club-invitation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestData),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to handle club invitation");
+      }
+
       toast.success(`Successfully ${action}ed club invitation`);
+      // Refresh the page to show updated data
+      window.location.reload();
     } catch {
       toast.error(`Failed to ${action} club invitation`);
     } finally {

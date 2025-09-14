@@ -1,7 +1,7 @@
 import type { Message } from './message';
 
 export interface InboxMessage extends Omit<Message, 'sender' | 'receiver'> {
-  message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'club_invitation' | 'system';
+  message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'club_invitation' | 'club_notification' | 'system';
   club_id?: string;
   club_name?: string;
   // Flat sender fields from RPC function
@@ -56,6 +56,15 @@ export interface ClubJoinRequest {
     username: string;
     display_name?: string;
     profile_image_url?: string;
+  };
+}
+
+// Inbox Messages Data Interface
+export interface InboxMessagesData {
+  messages: InboxMessage[];
+  meta: {
+    generated_at: string;
+    cache_key: string;
   };
 }
 

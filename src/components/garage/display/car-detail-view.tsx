@@ -173,18 +173,43 @@ export const CarDetailView = React.memo(function CarDetailView({
     }
   };
 
-  // Optimized like/unlike handlers using server action
+  // Optimized like/unlike handlers using API route
   const handleLike = async (carId: string) => {
-    if (!likeCarAction) {
-      return { success: false, error: "Like action not available" };
-    }
-
     try {
-      const result = await likeCarAction(carId);
-      if (result.success && result.newLikeCount !== undefined) {
-        setLikeCount(result.newLikeCount);
+      // Use server action if provided, otherwise use API route
+      if (likeCarAction) {
+        const result = await likeCarAction(carId);
+        if (result.success && result.newLikeCount !== undefined) {
+          setLikeCount(result.newLikeCount);
+        }
+        return result;
+      } else {
+        // Use API route
+        const response = await fetch("/api/garage/like", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ carId }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: result.error || "Failed to like car",
+          };
+        }
+
+        if (result.success && result.newLikeCount !== undefined) {
+          setLikeCount(result.newLikeCount);
+          // Refresh the page to get updated server data
+          router.refresh();
+        }
+
+        return result;
       }
-      return result;
     } catch (error) {
       console.error("Failed to like car:", error);
       return { success: false, error: "Failed to like car" };
@@ -192,16 +217,41 @@ export const CarDetailView = React.memo(function CarDetailView({
   };
 
   const handleUnlike = async (carId: string) => {
-    if (!likeCarAction) {
-      return { success: false, error: "Unlike action not available" };
-    }
-
     try {
-      const result = await likeCarAction(carId);
-      if (result.success && result.newLikeCount !== undefined) {
-        setLikeCount(result.newLikeCount);
+      // Use server action if provided, otherwise use API route
+      if (likeCarAction) {
+        const result = await likeCarAction(carId);
+        if (result.success && result.newLikeCount !== undefined) {
+          setLikeCount(result.newLikeCount);
+        }
+        return result;
+      } else {
+        // Use API route
+        const response = await fetch("/api/garage/like", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ carId }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: result.error || "Failed to unlike car",
+          };
+        }
+
+        if (result.success && result.newLikeCount !== undefined) {
+          setLikeCount(result.newLikeCount);
+          // Refresh the page to get updated server data
+          router.refresh();
+        }
+
+        return result;
       }
-      return result;
     } catch (error) {
       console.error("Failed to unlike car:", error);
       return { success: false, error: "Failed to unlike car" };

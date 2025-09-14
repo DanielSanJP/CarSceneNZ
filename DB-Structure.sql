@@ -6,8 +6,8 @@ CREATE TABLE public.car_likes (
     user_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT car_likes_pkey PRIMARY KEY (id),
-    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+    CONSTRAINT car_likes_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id),
+    CONSTRAINT car_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.cars (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -82,8 +82,8 @@ CREATE TABLE public.club_members (
     ),
     joined_at timestamp with time zone DEFAULT now(),
     CONSTRAINT club_members_pkey PRIMARY KEY (id),
-    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
+    CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
+    CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.clubs (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -141,12 +141,14 @@ CREATE TABLE public.messages (
     updated_at timestamp with time zone DEFAULT now(),
     message_type character varying DEFAULT 'general'::character varying CHECK (
         message_type::text = ANY (
-            ARRAY ['general'::character varying::text, 'club_join_request'::character varying::text, 'club_announcement'::character varying::text, 'club_invitation'::character varying::text, 'system'::character varying::text]
+            ARRAY ['general'::character varying::text, 'club_join_request'::character varying::text, 'club_announcement'::character varying::text, 'club_invitation'::character varying::text, 'club_notification'::character varying::text, 'system'::character varying::text]
         )
     ),
+    club_id uuid,
     CONSTRAINT messages_pkey PRIMARY KEY (id),
+    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id),
     CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id),
-    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id)
+    CONSTRAINT messages_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
 );
 CREATE TABLE public.user_follows (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),

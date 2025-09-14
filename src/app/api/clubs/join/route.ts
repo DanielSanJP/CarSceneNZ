@@ -31,6 +31,36 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
+    // Get club info to check type and permissions
+    const { data: club, error: clubError } = await supabase
+      .from('clubs')
+      .select('id, name, club_type')
+      .eq('id', clubId)
+      .single();
+
+    if (clubError || !club) {
+      return NextResponse.json(
+        { success: false, message: 'Club not found' },
+        { status: 404 }
+      );
+    }
+
+    // Security check: Only allow direct joining for open clubs
+    if (club.club_type !== 'open') {
+      const typeMessages = {
+        'invite': 'This is an invite-only club. Please request to join or wait for an invitation.',
+        'closed': 'This club is currently closed and not accepting new members.'
+      };
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: typeMessages[club.club_type as keyof typeof typeMessages] || 'You cannot join this club directly.' 
+        },
+        { status: 403 }
+      );
+    }
+
     // Check if already a member
     const { data: existingMember, error: checkError } = await supabase
       .from('club_members')

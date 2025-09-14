@@ -99,14 +99,14 @@ export function UserProfileDisplay({
   } = profileData;
   const isOwnProfile = currentUser?.id === profileUser.id;
 
-  // Server action wrapper for club invitations
+  // API wrapper for club invitations
   const sendClubInvitationAction = async (
     targetUserId: string,
     clubId: string,
     message?: string
   ) => {
     try {
-      const response = await fetch("/api/profile/clubs", {
+      const response = await fetch("/api/clubs/invite", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

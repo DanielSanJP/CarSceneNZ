@@ -44,7 +44,8 @@ async function sendClubNotification(
   senderId: string,
   receiverId: string,
   subject: string,
-  message: string
+  message: string,
+  clubId?: string
 ): Promise<void> {
   await supabase
     .from('messages')
@@ -54,6 +55,7 @@ async function sendClubNotification(
       subject,
       message,
       message_type: 'club_notification',
+      club_id: clubId, // Include club_id if provided
       created_at: new Date().toISOString()
     })
 }
@@ -127,7 +129,8 @@ export async function POST(request: Request) {
         currentUser.id,
         senderId,
         `Welcome to ${clubData?.name}!`,
-        `Congratulations! Your request to join ${clubData?.name} has been approved. Welcome to the club!`
+        `Congratulations! Your request to join ${clubData?.name} has been approved. Welcome to the club!`,
+        clubId
       )
     } else {
       // Get club name for rejection message
@@ -143,7 +146,8 @@ export async function POST(request: Request) {
         currentUser.id,
         senderId,
         `${clubData?.name} - Join Request Update`,
-        `Thank you for your interest in ${clubData?.name}. Unfortunately, we cannot accept your membership request at this time.`
+        `Thank you for your interest in ${clubData?.name}. Unfortunately, we cannot accept your membership request at this time.`,
+        clubId
       )
     }
 

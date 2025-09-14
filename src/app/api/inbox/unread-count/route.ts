@@ -10,9 +10,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    console.log(`🔢 Fetching unread count for user: ${userId}`);
 
-    // Get the user's last seen inbox timestamp
+    const supabase = await createClient();
+    
+    // Debug: Check if we have an authenticated user in this context
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    console.log(`🔍 UNREAD AUTH - User: ${authUser?.id}, Error:`, authError);
+    console.log(`🔍 UNREAD - Requested userId: ${userId}`);
+    console.log(`🔍 UNREAD - Auth user matches requested: ${authUser?.id === userId}`);
+
+    // Get user's last_seen_inbox timestamp
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('last_seen_inbox')
@@ -20,27 +28,41 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (userError) {
-      console.error('Error fetching user:', userError);
-      return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
+      console.error('❌ Error fetching user data:', userError);
+      return NextResponse.json({ error: 'Failed to get user data' }, { status: 500 });
     }
 
     const lastSeenInbox = userData?.last_seen_inbox || new Date(0).toISOString();
+    console.log(`🔍 User last seen inbox: ${lastSeenInbox}`);
 
-    // Count messages received after last seen timestamp
+    // Count unread messages (messages created after last_seen_inbox)
     const { count, error: countError } = await supabase
       .from('messages')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('receiver_id', userId)
       .gt('created_at', lastSeenInbox);
 
     if (countError) {
-      console.error('Error counting unread messages:', countError);
+      console.error('❌ Error counting unread messages:', countError);
       return NextResponse.json({ error: 'Failed to count unread messages' }, { status: 500 });
     }
 
-    return NextResponse.json({ count: count || 0 });
+    const unreadCount = count || 0;
+    console.log(`✅ Unread count for user ${userId}: ${unreadCount}`);
+
+    return NextResponse.json({
+      count: unreadCount,
+      meta: {
+        generated_at: new Date().toISOString(),
+        cache_key: `unread_count_${userId}`,
+      },
+    });
+
   } catch (error) {
-    console.error('Unexpected error in unread-count API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('❌ Error in unread count API:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch unread count' }, 
+      { status: 500 }
+    );
   }
 }

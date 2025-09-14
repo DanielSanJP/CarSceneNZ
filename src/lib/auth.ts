@@ -7,41 +7,57 @@ import { revalidatePath } from 'next/cache'
 import type { User } from '@/types/user'
 
 /**
+ * Helper function to get user via cached API route
+ */
+async function getUserViaAPI(): Promise<User | null> {
+  try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return null;
+    }
+
+    // Use our API route with Next.js native fetch for caching
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/auth`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        // Enable Next.js caching
+        next: {
+          revalidate: 60, // 1 minute for auth data
+          tags: ["auth", "user"],
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const userData = await response.json();
+    return userData;
+  } catch (error) {
+    console.error("❌ Error fetching user via API:", error);
+    return null;
+  }
+}
+
+/**
  * Get authenticated user with profile data (cached per request)
  * Redirects to login if not authenticated
  */
 export const getUser = cache(async (): Promise<User> => {
-  const supabase = await createClient()
+  const user = await getUserViaAPI();
   
-  // Get auth user
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !authUser) {
+  if (!user) {
     redirect('/login')
   }
 
-  // Get profile data
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('id, username, display_name, profile_image_url, created_at, updated_at')
-    .eq('id', authUser.id)
-    .single()
-
-  if (profileError || !profile) {
-    // User exists in auth but not in profile table - this shouldn't happen
-    // but handle gracefully
-    redirect('/login')
-  }
-
-  return {
-    id: profile.id,
-    username: profile.username,
-    display_name: profile.display_name,
-    email: authUser.email || '',
-    profile_image_url: profile.profile_image_url,
-    created_at: profile.created_at,
-    updated_at: profile.updated_at,
-  }
+  return user;
 })
 
 /**
@@ -49,35 +65,7 @@ export const getUser = cache(async (): Promise<User> => {
  * Returns null if not authenticated (doesn't redirect)
  */
 export const getUserOptional = cache(async (): Promise<User | null> => {
-  const supabase = await createClient()
-  
-  // Get auth user
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !authUser) {
-    return null
-  }
-
-  // Get profile data
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('id, username, display_name, profile_image_url, created_at, updated_at')
-    .eq('id', authUser.id)
-    .single()
-
-  if (profileError || !profile) {
-    return null
-  }
-
-  return {
-    id: profile.id,
-    username: profile.username,
-    display_name: profile.display_name,
-    email: authUser.email || '',
-    profile_image_url: profile.profile_image_url,
-    created_at: profile.created_at,
-    updated_at: profile.updated_at,
-  }
+  return await getUserViaAPI();
 })
 
 /**
@@ -106,7 +94,10 @@ export async function signOut() {
     return { error: error.message };
   }
 
-  // Revalidate the cache for the entire app
+  // Revalidate auth cache and the entire app
+  const { revalidateTag } = await import('next/cache');
+  revalidateTag("auth");
+  revalidateTag("user");
   revalidatePath("/", "layout");
   
   // Redirect to home page

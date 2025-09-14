@@ -27,21 +27,44 @@ import type { EventAttendee } from "@/types/event";
 
 interface EventDetailViewProps {
   eventDetailData: EventDetailData; // Direct SSR data - required
-  attendEventAction?: (
-    eventId: string,
-    status: "interested" | "going" | "remove"
-  ) => Promise<{ success: boolean; error?: string; data?: unknown }>;
 }
 
-export function EventDetailView({
-  eventDetailData,
-  attendEventAction,
-}: EventDetailViewProps) {
+export function EventDetailView({ eventDetailData }: EventDetailViewProps) {
   const router = useRouter();
 
   // Extract data from SSR props
   const event = eventDetailData.event;
   const user = eventDetailData.user;
+
+  // Client-side attendance function using our API route
+  const attendEventAction = async (
+    eventId: string,
+    status: "interested" | "going" | "remove"
+  ) => {
+    try {
+      const response = await fetch("/api/events/attendance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ eventId, status }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "Failed to update attendance",
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Client-side attendance error:", error);
+      return { success: false, error: "Network error occurred" };
+    }
+  };
 
   // Local state for client-side interactions
   const [attendees] = useState<EventAttendee[]>(
@@ -52,46 +75,57 @@ export function EventDetailView({
     eventDetailData.userStatus
   );
 
-  // Handle attendance actions with server actions
+  // Loading states for better UX without optimistic updates
+  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false);
+
+  // Handle attendance actions with immediate server response
   const handleAttendance = async (
     status: "interested" | "going"
   ): Promise<void> => {
     if (!event || !user || !attendEventAction) return;
 
+    setIsUpdatingAttendance(true);
+
     try {
       const result = await attendEventAction(event.id, status);
 
       if (result.success) {
-        // Update local state optimistically
+        // Update user status immediately from server response
         setUserStatus(status);
-        toast.success(
-          status === "interested" ? "Marked as interested!" : "Marked as going!"
-        );
+        // Refresh the page to get updated server data with accurate counts
+        router.refresh();
       } else {
         toast.error(result.error || "Failed to update attendance");
       }
     } catch (error) {
       console.error("Error updating event attendance:", error);
       toast.error("Failed to update attendance");
+    } finally {
+      setIsUpdatingAttendance(false);
     }
   };
 
   const handleUnattendance = async (): Promise<void> => {
     if (!event || !user || !attendEventAction) return;
 
+    setIsUpdatingAttendance(true);
+
     try {
       const result = await attendEventAction(event.id, "remove");
 
       if (result.success) {
-        // Update local state optimistically
+        // Update user status immediately from server response
         setUserStatus(null);
-        toast.success("Removed from event!");
+        // Refresh the page to get updated server data with accurate counts
+        router.refresh();
       } else {
         toast.error(result.error || "Failed to remove attendance");
       }
     } catch (error) {
       console.error("Error removing event attendance:", error);
       toast.error("Failed to remove attendance");
+    } finally {
+      setIsUpdatingAttendance(false);
     }
   };
 
@@ -103,7 +137,7 @@ export function EventDetailView({
     );
   }
 
-  // Get attendee counts
+  // Get attendee counts - use actual data from server (no optimistic updates)
   const goingCount = attendees.filter(
     (a) => a.status === "going" || a.status === "approved"
   ).length;
@@ -132,22 +166,17 @@ export function EventDetailView({
       return;
     }
 
-    const originalStatus = userStatus;
-
     try {
       if (userStatus === status) {
-        // User is removing their attendance - optimistic update
-        setUserStatus(null);
+        // User is removing their attendance - optimistic update handled in handleUnattendance
         await handleUnattendance();
       } else {
-        // User is setting/changing their attendance - optimistic update
-        setUserStatus(status);
+        // User is setting/changing their attendance - optimistic update handled in handleAttendance
         await handleAttendance(status as "interested" | "going");
       }
     } catch {
-      // Revert optimistic update on error
-      setUserStatus(originalStatus);
-      toast.error("Failed to update attendance. Please try again.");
+      // Error handling is done in individual functions
+      // This catch is just to prevent unhandled promise rejections
     }
   };
 
@@ -239,7 +268,7 @@ export function EventDetailView({
   const dateInfo = getEventDateInfo(event.daily_schedule || []);
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <>
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="icon" onClick={handleBackClick}>
@@ -449,25 +478,27 @@ export function EventDetailView({
                 className="w-full"
                 onClick={() => handleStatusChange("going")}
                 variant={userStatus === "going" ? "default" : "outline"}
+                disabled={isUpdatingAttendance}
               >
                 {userStatus === "going" ? (
                   <Check className="h-4 w-4 mr-2" />
                 ) : (
                   <Users className="h-4 w-4 mr-2" />
                 )}
-                I&apos;m Going
+                {isUpdatingAttendance ? "Updating..." : "I'm Going"}
               </Button>
               <Button
                 className="w-full"
                 onClick={() => handleStatusChange("interested")}
                 variant={userStatus === "interested" ? "default" : "outline"}
+                disabled={isUpdatingAttendance}
               >
                 {userStatus === "interested" ? (
                   <Check className="h-4 w-4 mr-2" />
                 ) : (
                   <Star className="h-4 w-4 mr-2" />
                 )}
-                Interested
+                {isUpdatingAttendance ? "Updating..." : "Interested"}
               </Button>
 
               <div className="flex gap-2">
@@ -554,6 +585,6 @@ export function EventDetailView({
           </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 }

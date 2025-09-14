@@ -1,81 +1,37 @@
 import { SearchClient } from "@/components/search/search-client";
-import { createClient } from "@/lib/utils/supabase/server";
-import type { Car } from "@/types/car";
-import type { Event } from "@/types/event";
-import type { Club } from "@/types/club";
-import type { User } from "@/types/user";
-import { cache } from "react";
 
-const getAllCars = cache(async (): Promise<Car[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("cars")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) {
-    return [];
+// Force this page to be dynamic - don't try to fetch data at build time
+export const dynamic = "force-dynamic";
+
+async function getSearchData() {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const response = await fetch(`${baseUrl}/api/search-data`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // Cache for 5 minutes for better performance
+      next: { revalidate: 300 },
+    });
+
+    if (!response.ok) {
+      console.error(
+        `❌ Search data API failed: ${response.status} ${response.statusText}`
+      );
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch search data:", error);
+    return null;
   }
-
-  return data as Car[];
-});
-
-const getAllEvents = cache(async (): Promise<Event[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) {
-    return [];
-  }
-
-  return data as Event[];
-});
-
-const getAllUsers = cache(async (): Promise<User[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) {
-    return [];
-  }
-
-  return data as User[];
-});
-
-const getAllClubs = cache(async (): Promise<Club[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("clubs")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) {
-    return [];
-  }
-
-  return data as Club[];
-});
-
-// Cache this page for 5 minutes, then revalidate in the background
-export const revalidate = 300; // 5 minutes
+}
 
 export default async function SearchPage() {
-  // Fetch all data on the server
-  const [carsData, usersData, eventsData, clubsData] = await Promise.all([
-    getAllCars(),
-    getAllUsers(),
-    getAllEvents(),
-    getAllClubs(),
-  ]);
+  const searchData = await getSearchData();
 
-  const initialData = {
-    cars: carsData,
-    users: usersData,
-    events: eventsData,
-    clubs: clubsData,
-  };
-
-  return <SearchClient initialData={initialData} />;
+  return <SearchClient initialData={searchData} />;
 }

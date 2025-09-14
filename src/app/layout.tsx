@@ -6,8 +6,8 @@ import { Navigation } from "@/components/nav";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { InboxProvider } from "@/contexts/inbox-context";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
+
 import { getUserOptional } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -46,21 +46,19 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <ReactQueryProvider>
-            <InboxProvider userId={user?.id || null}>
-              <SidebarProvider defaultOpen={false}>
-                <AppSidebar user={user} />
-                <SidebarInset>
-                  <Navigation user={user} />
-                  <div className="flex-1 flex flex-col min-h-0">
-                    <div className="min-h-screen bg-background">
-                      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                        <div className="max-w-7xl mx-auto">{children}</div>
-                      </div>
+            <SidebarProvider defaultOpen={false}>
+              <AppSidebar user={user} />
+              <SidebarInset>
+                <Navigation user={user} />
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="min-h-screen bg-background">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                      <div className="max-w-7xl mx-auto">{children}</div>
                     </div>
                   </div>
-                </SidebarInset>
-              </SidebarProvider>
-            </InboxProvider>
+                </div>
+              </SidebarInset>
+            </SidebarProvider>
           </ReactQueryProvider>
           <Toaster position="top-center" />
         </ThemeProvider>
