@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
 import { requireAuth, getUserProfile } from '@/lib/auth';
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 
 export async function POST(request: Request) {
   try {
@@ -115,8 +115,20 @@ export async function POST(request: Request) {
 
     // Also invalidate club-related caches if accepted
     if (action === 'accept') {
+      // Critical: Invalidate the club detail page cache
+      revalidateTag(`club-${clubId}`);
+      revalidateTag('clubs');
+      
+      // Invalidate related pages
+      revalidatePath(`/clubs/${clubId}`);
+      revalidatePath('/clubs/my-clubs');
+      revalidatePath('/clubs');
+      
+      // Legacy tags (keeping for compatibility)
       revalidateTag(`club-${clubId}-members`);
       revalidateTag(`user-${currentUser.id}-clubs`);
+      
+      console.log(`🔄 Cache invalidated for club ${clubId} after invitation acceptance`);
     }
 
     console.log(`✅ Club invitation ${action}ed successfully`);

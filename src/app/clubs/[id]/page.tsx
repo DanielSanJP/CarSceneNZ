@@ -29,8 +29,11 @@ async function getClubDetailDataSSR(
       body: JSON.stringify({
         userId: currentUserId || null,
       }),
-      // Leverage the API route's caching
-      next: { revalidate: 300 },
+      // Enable Next.js caching with 5 minute revalidation
+      next: {
+        revalidate: 300, // 5 minutes
+        tags: ["clubs", `club-${clubId}`],
+      },
     });
 
     if (!response.ok) {

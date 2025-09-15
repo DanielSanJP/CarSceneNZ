@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { createClient } from '@/lib/utils/supabase/server';
 import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function POST(request: NextRequest) {
@@ -22,47 +23,80 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get environment variables for direct Supabase fetch
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    const supabase = await createClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("❌ Missing Supabase environment variables");
-      throw new Error("Server configuration error");
-    }
+    console.log(`🔄 SIMPLE: Toggling like for car ${carId}, user ${authUser.id}`);
 
-    console.log(
-      `🔄 API Route: Toggling like for car ${carId}, user ${authUser.id}`
-    );
+    // 1. Check if user already liked this car
+    const { data: existingLike } = await supabase
+      .from('car_likes')
+      .select('id')
+      .eq('car_id', carId)
+      .eq('user_id', authUser.id)
+      .single();
 
-    // Call the RPC function for car likes using native fetch
-    const likeResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/toggle_car_like_optimized`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          car_id_param: carId,
-          user_id_param: authUser.id,
-        }),
+    let isLiked;
+
+    if (existingLike) {
+      // User already liked it - remove like
+      const { error: deleteError } = await supabase
+        .from('car_likes')
+        .delete()
+        .eq('car_id', carId)
+        .eq('user_id', authUser.id);
+
+      if (deleteError) {
+        console.error("❌ Error removing like:", deleteError);
+        throw deleteError;
       }
-    );
 
-    if (!likeResponse.ok) {
-      console.error(`❌ Car Like RPC failed: ${likeResponse.status}`);
-      return NextResponse.json(
-        { error: "Failed to toggle like" },
-        { status: 500 }
-      );
+      isLiked = false;
+      console.log("👎 Like removed");
+    } else {
+      // User hasn't liked it - add like
+      const { error: insertError } = await supabase
+        .from('car_likes')
+        .insert({
+          car_id: carId,
+          user_id: authUser.id
+        });
+
+      if (insertError) {
+        console.error("❌ Error adding like:", insertError);
+        throw insertError;
+      }
+
+      isLiked = true;
+      console.log("👍 Like added");
     }
 
-    const data = await likeResponse.json();
+    // 2. Get updated total likes count
+    const { count } = await supabase
+      .from('car_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('car_id', carId);
 
-    console.log("✅ Car Like Success:", data);
+    const totalLikes = count || 0;
+
+    // 3. Update car's total_likes field
+    const { error: updateError } = await supabase
+      .from('cars')
+      .update({ total_likes: totalLikes })
+      .eq('id', carId);
+
+    if (updateError) {
+      console.error("❌ Error updating car total_likes:", updateError);
+      // Don't throw here - the like was still processed
+    }
+
+    const data = {
+      success: true,
+      isLiked,
+      totalLikes,
+      message: isLiked ? "Car liked!" : "Like removed"
+    };
+
+    console.log(`✅ SIMPLE: Like toggled - isLiked: ${isLiked}, totalLikes: ${totalLikes}`);
 
     // Car likes are displayed throughout the app (garage, profiles, clubs, homepage, my-pages, etc.)
     // We use a comprehensive revalidation strategy to ensure consistency everywhere
@@ -72,6 +106,7 @@ export async function POST(request: NextRequest) {
     revalidateTag("garage");
     revalidateTag("cars");
     revalidateTag("user-garage"); // This will invalidate ALL user garage caches
+    revalidateTag(`car-${carId}`);
     revalidateTag("profile");
     revalidateTag("clubs");
     revalidateTag("user-clubs"); // This will invalidate ALL user club caches
@@ -83,9 +118,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      newLikeCount: data.new_like_count,
-      isLiked: data.is_liked,
-      action: data.action,
+      totalLikes: totalLikes,
+      isLiked: isLiked,
+      message: data.message,
     });
   } catch (error) {
     console.error("❌ Car Like API Route Exception:", error);

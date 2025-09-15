@@ -4,205 +4,8 @@ import { redirect, notFound } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
 import { uploadCarImages } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
+import { getBaseUrl } from "@/lib/utils";
 import { Car } from "@/types";
-
-// Transform CarDetailData to Car format using proper JSONB format conversion
-function transformCarDetailDataToCarFormat(
-  carDetailData: Record<string, unknown>
-): Car {
-  const {
-    car,
-    engine,
-    exterior,
-    interior,
-    brakes,
-    suspension,
-    wheels,
-    gauges,
-  } = carDetailData;
-
-  // DEBUG: Log the actual structure to understand what we're getting
-  console.log("🔍 Edit Page CarDetailData Structure:", {
-    brakes: brakes,
-    suspension: suspension,
-    wheels: wheels,
-    gauges: gauges,
-    brakesType: Array.isArray(brakes) ? "array" : typeof brakes,
-    suspensionType: Array.isArray(suspension) ? "array" : typeof suspension,
-    wheelsType: Array.isArray(wheels) ? "array" : typeof wheels,
-    gaugesType: Array.isArray(gauges) ? "array" : typeof gauges,
-  });
-
-  // Check if the data is already in JSONB format (direct from database)
-  // vs array format (from RPC conversion)
-  const brakesIsJsonb =
-    brakes && !Array.isArray(brakes) && typeof brakes === "object";
-  const suspensionIsJsonb =
-    suspension && !Array.isArray(suspension) && typeof suspension === "object";
-  const wheelsIsJsonb =
-    wheels && !Array.isArray(wheels) && typeof wheels === "object";
-
-  let convertedBrakes: Car["brakes"];
-  let convertedSuspension: Car["suspension"];
-  let convertedWheels: Car["wheels"];
-
-  // Handle brakes - use JSONB directly if available, otherwise convert from array
-  if (brakesIsJsonb) {
-    console.log("✅ Using brakes JSONB format directly");
-    convertedBrakes = brakes as Car["brakes"];
-  } else if (Array.isArray(brakes) && brakes.length > 0) {
-    console.log("🔄 Converting brakes from array format");
-    const brakesArray = brakes as Array<{
-      position: string;
-      caliper_brand?: string;
-      pad_brand?: string;
-      rotor_size?: string;
-      rotor_model?: string;
-    }>;
-
-    convertedBrakes = {
-      front: brakesArray.find((b) => b.position === "front")
-        ? {
-            caliper: brakesArray.find((b) => b.position === "front")
-              ?.caliper_brand,
-            pads: brakesArray.find((b) => b.position === "front")?.pad_brand,
-            disc_size: brakesArray.find((b) => b.position === "front")
-              ?.rotor_size,
-            disc_type: brakesArray.find((b) => b.position === "front")
-              ?.rotor_model,
-          }
-        : undefined,
-      rear: brakesArray.find((b) => b.position === "rear")
-        ? {
-            caliper: brakesArray.find((b) => b.position === "rear")
-              ?.caliper_brand,
-            pads: brakesArray.find((b) => b.position === "rear")?.pad_brand,
-            disc_size: brakesArray.find((b) => b.position === "rear")
-              ?.rotor_size,
-            disc_type: brakesArray.find((b) => b.position === "rear")
-              ?.rotor_model,
-          }
-        : undefined,
-    };
-  } else {
-    console.log("❌ No brakes data available");
-    convertedBrakes = undefined;
-  }
-
-  // Handle suspension - use JSONB directly if available, otherwise convert from array
-  if (suspensionIsJsonb) {
-    console.log("✅ Using suspension JSONB format directly");
-    convertedSuspension = suspension as Car["suspension"];
-  } else if (Array.isArray(suspension) && suspension.length > 0) {
-    console.log("🔄 Converting suspension from array format");
-    const suspensionArray = suspension as Array<{
-      position?: string;
-      suspension_type?: string;
-      brand?: string;
-      model?: string;
-      spring_rate?: string;
-      strut_brace?: string;
-      anti_roll_bar?: string;
-    }>;
-
-    convertedSuspension = {
-      front: suspensionArray.find((s) => s.position === "front")
-        ? {
-            suspension_type: suspensionArray.find((s) => s.position === "front")
-              ?.suspension_type,
-            suspension:
-              suspensionArray.find((s) => s.position === "front")?.brand ||
-              suspensionArray.find((s) => s.position === "front")?.model,
-            spring_rate: suspensionArray.find((s) => s.position === "front")
-              ?.spring_rate,
-            strut_brace: suspensionArray.find((s) => s.position === "front")
-              ?.strut_brace,
-            anti_roll_bar: suspensionArray.find((s) => s.position === "front")
-              ?.anti_roll_bar,
-          }
-        : undefined,
-      rear: suspensionArray.find((s) => s.position === "rear")
-        ? {
-            suspension_type: suspensionArray.find((s) => s.position === "rear")
-              ?.suspension_type,
-            suspension:
-              suspensionArray.find((s) => s.position === "rear")?.brand ||
-              suspensionArray.find((s) => s.position === "rear")?.model,
-            spring_rate: suspensionArray.find((s) => s.position === "rear")
-              ?.spring_rate,
-            strut_brace: suspensionArray.find((s) => s.position === "rear")
-              ?.strut_brace,
-            anti_roll_bar: suspensionArray.find((s) => s.position === "rear")
-              ?.anti_roll_bar,
-          }
-        : undefined,
-    };
-  } else {
-    console.log("❌ No suspension data available");
-    convertedSuspension = undefined;
-  }
-
-  // Handle wheels - use JSONB directly if available, otherwise convert from array
-  if (wheelsIsJsonb) {
-    console.log("✅ Using wheels JSONB format directly");
-    convertedWheels = wheels as Car["wheels"];
-  } else if (Array.isArray(wheels) && wheels.length > 0) {
-    console.log("🔄 Converting wheels from array format");
-    const wheelsArray = wheels as Array<{
-      position: string;
-      brand?: string;
-      size?: string;
-      offset?: number;
-      tire_brand?: string;
-      tire_size?: string;
-    }>;
-
-    convertedWheels = {
-      front: wheelsArray.find((w) => w.position === "front")
-        ? {
-            wheel: wheelsArray.find((w) => w.position === "front")?.brand,
-            wheel_size: wheelsArray.find((w) => w.position === "front")?.size,
-            wheel_offset: wheelsArray
-              .find((w) => w.position === "front")
-              ?.offset?.toString(),
-            tyre: wheelsArray.find((w) => w.position === "front")?.tire_brand,
-            tyre_size: wheelsArray.find((w) => w.position === "front")
-              ?.tire_size,
-          }
-        : undefined,
-      rear: wheelsArray.find((w) => w.position === "rear")
-        ? {
-            wheel: wheelsArray.find((w) => w.position === "rear")?.brand,
-            wheel_size: wheelsArray.find((w) => w.position === "rear")?.size,
-            wheel_offset: wheelsArray
-              .find((w) => w.position === "rear")
-              ?.offset?.toString(),
-            tyre: wheelsArray.find((w) => w.position === "rear")?.tire_brand,
-            tyre_size: wheelsArray.find((w) => w.position === "rear")
-              ?.tire_size,
-          }
-        : undefined,
-    };
-  } else {
-    console.log("❌ No wheels data available");
-    convertedWheels = undefined;
-  }
-
-  return {
-    ...(car as Record<string, unknown>),
-    // Flatten engine data
-    ...(engine as Record<string, unknown>),
-    // Flatten exterior data
-    ...(exterior as Record<string, unknown>),
-    // Flatten interior data
-    ...(interior as Record<string, unknown>),
-    // Use converted JSONB format
-    brakes: convertedBrakes,
-    suspension: convertedSuspension,
-    wheels: convertedWheels,
-    gauges: gauges as Car["gauges"], // Gauges are already in correct array format
-  } as Car;
-}
 
 async function updateCarWithComponents(
   carId: string,
@@ -468,17 +271,24 @@ async function deleteCarAction(carId: string) {
 
   const authUser = await requireAuth();
 
-  // Use same RPC to get car data for permission check
-  const supabase = await createClient();
-  const { data: carDetailData } = await supabase.rpc(
-    "get_car_detail_optimized",
+  // Use our simplified API route to get car data for permission check
+  const response = await fetch(
+    `${getBaseUrl()}/api/garage/${carId}?userId=${authUser.id}`,
     {
-      car_id_param: carId,
-      user_id_param: authUser.id,
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
     }
   );
 
-  if (!carDetailData || carDetailData.car.owner_id !== authUser.id) {
+  if (!response.ok) {
+    throw new Error("Car not found");
+  }
+
+  const carData = await response.json();
+
+  if (!carData || !carData.car || carData.car.owner_id !== authUser.id) {
     throw new Error("Car not found or unauthorized");
   }
 
@@ -497,22 +307,102 @@ export default async function EditCarPage({ params }: EditCarPageProps) {
   const { id } = await params;
   const authUser = await requireAuth();
 
-  // Use same RPC as detail view to get complete car data
-  const supabase = await createClient();
-  const { data: carDetailData } = await supabase.rpc(
-    "get_car_detail_optimized",
+  // Use our simplified API route instead of RPC
+  const response = await fetch(
+    `${getBaseUrl()}/api/garage/${id}?userId=${authUser.id}`,
     {
-      car_id_param: id,
-      user_id_param: authUser.id,
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
     }
   );
 
-  if (!carDetailData) {
+  if (!response.ok) {
+    console.error("Failed to fetch car details:", response.status);
     notFound();
   }
 
-  // Transform the structured data to Car format for the form
-  const car = transformCarDetailDataToCarFormat(carDetailData);
+  const carDetailData = await response.json();
+
+  if (!carDetailData || !carDetailData.car) {
+    notFound();
+  }
+
+  // Extract the flattened car data from the nested structure for the edit form
+  const car: Car = {
+    // Basic car info
+    id: carDetailData.car.id,
+    owner_id: carDetailData.car.owner_id,
+    brand: carDetailData.car.brand,
+    model: carDetailData.car.model,
+    year: carDetailData.car.year,
+    images: carDetailData.car.images,
+    total_likes: carDetailData.car.total_likes,
+    is_liked: carDetailData.car.is_liked,
+    created_at: carDetailData.car.created_at,
+    updated_at: carDetailData.car.updated_at,
+
+    // Flatten engine data
+    engine_code: carDetailData.engine?.engine_code,
+    displacement: carDetailData.engine?.displacement,
+    aspiration: carDetailData.engine?.aspiration,
+    power_hp: carDetailData.engine?.power_hp,
+    torque_nm: carDetailData.engine?.torque_nm,
+    ecu: carDetailData.engine?.ecu,
+    tuned_by: carDetailData.engine?.tuned_by,
+    pistons: carDetailData.engine?.pistons,
+    connecting_rods: carDetailData.engine?.connecting_rods,
+    valves: carDetailData.engine?.valves,
+    valve_springs: carDetailData.engine?.valve_springs,
+    camshafts: carDetailData.engine?.camshafts,
+    header: carDetailData.engine?.header,
+    exhaust: carDetailData.engine?.exhaust,
+    intake: carDetailData.engine?.intake,
+    turbo: carDetailData.engine?.turbo,
+    intercooler: carDetailData.engine?.intercooler,
+    fuel_injectors: carDetailData.engine?.fuel_injectors,
+    fuel_pump: carDetailData.engine?.fuel_pump,
+    fuel_rail: carDetailData.engine?.fuel_rail,
+
+    // Flatten interior data
+    front_seats: carDetailData.interior?.front_seats,
+    rear_seats: carDetailData.interior?.rear_seats,
+    steering_wheel: carDetailData.interior?.steering_wheel,
+    head_unit: carDetailData.interior?.head_unit,
+    speakers: carDetailData.interior?.speakers,
+    subwoofer: carDetailData.interior?.subwoofer,
+    amplifier: carDetailData.interior?.amplifier,
+
+    // Flatten exterior data
+    front_bumper: carDetailData.exterior?.front_bumper,
+    front_lip: carDetailData.exterior?.front_lip,
+    rear_bumper: carDetailData.exterior?.rear_bumper,
+    rear_lip: carDetailData.exterior?.rear_lip,
+    side_skirts: carDetailData.exterior?.side_skirts,
+    rear_spoiler: carDetailData.exterior?.rear_spoiler,
+    diffuser: carDetailData.exterior?.diffuser,
+    fender_flares: carDetailData.exterior?.fender_flares,
+    hood: carDetailData.exterior?.hood,
+    paint_color: carDetailData.exterior?.paint_color,
+    paint_finish: carDetailData.exterior?.paint_finish,
+    wrap_brand: carDetailData.exterior?.wrap_brand,
+    wrap_color: carDetailData.exterior?.wrap_color,
+    headlights: carDetailData.exterior?.headlights,
+    taillights: carDetailData.exterior?.taillights,
+    fog_lights: carDetailData.exterior?.fog_lights,
+    underglow: carDetailData.exterior?.underglow,
+    interior_lighting: carDetailData.exterior?.interior_lighting,
+
+    // JSON structured fields
+    brakes: carDetailData.brakes,
+    suspension: carDetailData.suspension,
+    wheels: carDetailData.wheels,
+    gauges: carDetailData.gauges,
+
+    // Owner info (optional for edit form)
+    owner: carDetailData.car.owner,
+  };
 
   // Check if user owns this car
   if (car.owner_id !== authUser.id) {

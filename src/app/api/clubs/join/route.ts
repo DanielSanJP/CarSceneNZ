@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
+import { revalidateTag, revalidatePath } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,6 +92,27 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Failed to join club' },
         { status: 500 }
       );
+    }
+
+    // Force revalidation of club pages and related data
+    try {
+      // Revalidate the specific club page
+      revalidatePath(`/clubs/${clubId}`);
+      // Revalidate the user's clubs page
+      revalidatePath('/clubs/my-clubs');
+      // Revalidate general clubs page
+      revalidatePath('/clubs');
+      
+      // Invalidate cache tags for this specific club
+      revalidateTag(`club-${clubId}`);
+      revalidateTag('clubs');
+      // Invalidate user-specific club data cache
+      revalidateTag(`user-${userId}-clubs`);
+      
+      console.log(`🔄 Cache invalidated for club ${clubId} and user ${userId} after join`);
+    } catch (revalidateError) {
+      console.error('❌ Error during cache revalidation:', revalidateError);
+      // Don't fail the request if revalidation fails
     }
 
     return NextResponse.json({ success: true });

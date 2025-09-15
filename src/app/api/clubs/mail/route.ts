@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       message_type: 'club_announcement',
       club_id: club_id, // Now include club_id in the message
       created_at: new Date().toISOString(),
+      is_read: false, // Mark new messages as unread
     }));
 
     console.log('🔍 DEBUG: About to insert messages:', JSON.stringify(messages, null, 2));
@@ -112,51 +113,35 @@ export async function POST(request: NextRequest) {
     // Revalidate inbox page for real-time updates
     revalidatePath('/inbox');
 
-    // Send real-time notifications to all recipients
-    try {
-      for (const member of members) {
-        // Find the specific message ID for this member
-        const memberMessage = insertedMessages?.find(m => m.receiver_id === member.user_id);
+    // Broadcast unread count change to all recipients (simple approach!)
+    console.log('📡 Broadcasting unread count change to all recipients...');
+    
+    // For each recipient, broadcast an unread count change event
+    for (const member of members) {
+      try {
+        const memberChannel = supabase.channel(`unread-messages-${member.user_id}`);
         
-        if (memberMessage?.id) {
-          const messageForBroadcast = {
-            id: memberMessage.id,
-            receiver_id: member.user_id,
-            sender_id: currentUser.id,
-            subject: `[${clubName}] ${subject}`,
-            message: message,
-            message_type: 'club_announcement',
-            created_at: new Date().toISOString(),
-            sender_username: currentUser.username,
-            sender_display_name: currentUser.display_name,
-            sender_profile_image_url: currentUser.profile_image_url,
-            club_name: clubName,
-          };
-
-          // Send new message broadcast for inbox real-time updates
-          await supabase.channel(`inbox-messages-${member.user_id}`).send({
-            type: 'broadcast',
-            event: 'new_message',
-            payload: messageForBroadcast,
-          });
-
-          // Send badge count broadcast for InboxProvider
-          await supabase.channel(`inbox-badges-${member.user_id}`).send({
-            type: 'broadcast',
-            event: 'new_message_badge',
-            payload: {
-              receiver_id: member.user_id,
-              message_type: 'club_announcement',
-              club_name: clubName,
-            },
-          });
-        }
+        await memberChannel.send({
+          type: 'broadcast',
+          event: 'unread_count_changed',
+          payload: {
+            userId: member.user_id,
+            clubId: club_id,
+            timestamp: new Date().toISOString()
+          }
+        });
+        
+        console.log(`📡 Broadcasted to user ${member.user_id}`);
+        
+        // Clean up the channel
+        supabase.removeChannel(memberChannel);
+      } catch (broadcastError) {
+        console.error(`❌ Failed to broadcast to user ${member.user_id}:`, broadcastError);
+        // Don't fail the whole operation if broadcast fails
       }
-      console.log(`✅ Real-time notifications sent to ${members.length} recipients (including sender)`);
-    } catch (broadcastError) {
-      console.error('Error sending real-time notifications:', broadcastError);
-      // Don't fail the request if broadcasts fail
     }
+
+    console.log('✅ Broadcast complete - clients should refresh their unread counts!');
 
     return NextResponse.json({ 
       success: true, 

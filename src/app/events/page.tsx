@@ -91,8 +91,6 @@ async function getUserEventStatuses(userId: string, eventIds: string[]) {
 
 // Helper function to get events data using the same logic as our API route
 async function getEventsData(page: number, limit: number): Promise<EventsData> {
-  const startTime = Date.now();
-
   console.log(
     `🚀 FETCH CACHE: Fetching events page ${page} using API route logic...`
   );
@@ -111,24 +109,16 @@ async function getEventsData(page: number, limit: number): Promise<EventsData> {
     }
 
     console.log(`🔍 DEBUG: Using Supabase URL: ${supabaseUrl}`);
-    console.log(`🔍 DEBUG: About to call Supabase RPC with native fetch...`);
+    console.log(`🔍 DEBUG: About to call our simplified events API...`);
 
-    const offset = (page - 1) * limit;
-
-    // Call Supabase RPC function using native fetch - this enables Next.js caching!
+    // Use our simplified API route instead of RPC - include pagination
     const eventsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/get_events_optimized`,
+      `${getBaseUrl()}/api/events?page=${page}&limit=${limit}`,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
         },
-        body: JSON.stringify({
-          page_limit: limit,
-          page_offset: offset,
-        }),
         // Enable Next.js caching with 5 minute revalidation
         next: {
           revalidate: 300, // 5 minutes
@@ -154,67 +144,29 @@ async function getEventsData(page: number, limit: number): Promise<EventsData> {
     const events = await eventsResponse.json();
     console.log(`🔍 DEBUG: getEventsData() returning data`);
 
-    // Define type for RPC result (same as API route)
-    type EventRPCResult = {
-      id: string;
-      host_id: string;
-      title: string;
-      description: string;
-      poster_image_url: string | null;
-      daily_schedule: {
-        date: string;
-        start_time?: string;
-        end_time?: string;
-      }[];
-      location: string;
-      created_at: string;
-      updated_at: string;
-      host_username: string;
-      host_display_name: string | null;
-      host_profile_image_url: string | null;
-      attendee_count: number;
-      interested_count: number;
-    };
-
-    // Transform events data to match our EventsData interface (same as API route)
-    const eventsData: EventsData = {
-      events:
-        events?.map((event: EventRPCResult) => ({
-          id: event.id,
-          host_id: event.host_id,
-          title: event.title,
-          description: event.description,
-          poster_image_url: event.poster_image_url || undefined,
-          daily_schedule: event.daily_schedule,
-          location: event.location,
-          created_at: event.created_at,
-          updated_at: event.updated_at,
-          host: {
-            id: event.host_id,
-            username: event.host_username,
-            display_name: event.host_display_name || undefined,
-            profile_image_url: event.host_profile_image_url || undefined,
-          },
-          attendeeCount: Number(event.attendee_count),
-          interestedCount: Number(event.interested_count),
-        })) || [],
-      userStatuses: {}, // Will be populated separately
-      currentUser: null, // Will be populated separately
-      pagination: {
-        page,
-        limit,
-        hasMore: (events?.length || 0) === limit,
-      },
-    };
-
-    const endTime = Date.now();
+    // The API returns an object with events array, not direct array
     console.log(
-      `✅ FETCH CACHE: Events data fetched and processed in ${
-        endTime - startTime
-      }ms`
+      `🔍 DEBUG: Events response structure:`,
+      JSON.stringify(events, null, 2)
     );
 
-    return eventsData;
+    // Return the events data directly from the API (it's already in the correct format)
+    if (events && typeof events === "object" && "events" in events) {
+      return events as EventsData;
+    }
+
+    // Fallback: if response format is unexpected, return empty data
+    console.warn("⚠️ Unexpected events response format, returning empty data");
+    return {
+      events: [],
+      userStatuses: {},
+      currentUser: null,
+      pagination: {
+        page: 1,
+        limit: 20,
+        hasMore: false,
+      },
+    };
   } catch (error) {
     console.error("❌ Error fetching events data:", error);
     throw new Error("Failed to load events data");

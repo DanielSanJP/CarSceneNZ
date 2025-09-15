@@ -1,48 +1,68 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
+import { requireAuth } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const { userId } = await request.json();
+    // Use authenticated user instead of accepting userId parameter
+    const currentUser = await requireAuth();
+    const userId = currentUser.id;
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
+    console.log(`📨 Marking all unread messages as read for user: ${userId}`);
 
-    console.log(`📨 Marking inbox as read for user: ${userId}`);
-
-    // Create Supabase client with request context to maintain auth
     const supabase = await createClient();
-    
-    // Debug: Check if we have an authenticated user in this context
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    console.log(`🔍 MARK-READ AUTH - User: ${authUser?.id}, Error:`, authError);
-    console.log(`🔍 MARK-READ - Requested userId: ${userId}`);
-    console.log(`🔍 MARK-READ - Auth user matches requested: ${authUser?.id === userId}`);
 
-    // Update the user's last_seen_inbox timestamp to now
-    const now = new Date().toISOString();
+    // Mark all unread messages as read using the new is_read column
     const { data, error } = await supabase
-      .from('users')
-      .update({ last_seen_inbox: now })
-      .eq('id', userId)
-      .select('last_seen_inbox')
-      .single();
+      .from('messages')
+      .update({ is_read: true })
+      .eq('receiver_id', userId)
+      .eq('is_read', false)
+      .select('id');
 
     if (error) {
-      console.error('❌ Error updating last_seen_inbox:', error);
+      console.error('❌ Error marking messages as read:', error);
       return NextResponse.json({ error: 'Failed to mark messages as read' }, { status: 500 });
     }
 
-    console.log(`✅ Inbox marked as read successfully for user ${userId}`, data);
-    console.log(`🕐 Updated last_seen_inbox to: ${now}`);
+    const markedCount = data?.length || 0;
+    console.log(`✅ Marked ${markedCount} messages as read for user ${userId}`);
+
+    // Broadcast unread count change if any messages were marked as read
+    if (markedCount > 0) {
+      try {
+        console.log('📡 Broadcasting unread count change after mark-read...');
+        
+        const userChannel = supabase.channel(`unread-messages-${userId}`);
+        
+        await userChannel.send({
+          type: 'broadcast',
+          event: 'unread_count_changed',
+          payload: {
+            userId: userId,
+            action: 'mark_read',
+            markedCount: markedCount,
+            timestamp: new Date().toISOString()
+          }
+        });
+        
+        console.log(`📡 Broadcasted mark-read event to user ${userId}`);
+        
+        // Clean up the channel
+        supabase.removeChannel(userChannel);
+      } catch (broadcastError) {
+        console.error(`❌ Failed to broadcast mark-read event:`, broadcastError);
+        // Don't fail the whole operation if broadcast fails
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 
-      last_seen_inbox: now,
+      marked_count: markedCount,
       meta: {
-        updated_at: now,
-        user_id: userId
+        updated_at: new Date().toISOString(),
+        user_id: userId,
+        method: 'is_read_column'
       }
     });
   } catch (error) {

@@ -1,4 +1,7 @@
+// Simplified Garage Gallery API - Direct queries instead of RPC
+
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/utils/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -6,56 +9,103 @@ export async function POST(request: NextRequest) {
     const { page, limit, userId } = body;
     const startTime = Date.now();
 
-    console.log(`🚀 FETCH CACHE: Fetching garage page ${page} via API route...`);
+    console.log(`🚀 FETCH CACHE: Fetching garage page ${page} via direct queries...`);
 
-    // Get environment variables for direct Supabase fetch
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    const supabase = await createClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("❌ Missing Supabase environment variables");
-      throw new Error("Server configuration error");
+    const offset = (page - 1) * limit;
+
+    // Get cars with owner information using direct query
+    const { data: cars, error: carsError } = await supabase
+      .from('cars')
+      .select(`
+        id,
+        brand,
+        model,
+        year,
+        images,
+        total_likes,
+        created_at,
+        updated_at,
+        owner_id,
+        owner:users!cars_owner_id_fkey(
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (carsError) {
+      console.error("❌ Error fetching cars:", carsError);
+      throw carsError;
     }
 
-    // Fetch garage data using native fetch for caching
-    const garageResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/get_garage_gallery_optimized`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          page_num: page,
-          page_limit: limit,
-          user_id_param: userId || null,
-        }),
-        // Enable Next.js caching with 5 minute revalidation
-        next: {
-          revalidate: 300, // 5 minutes
-          tags: ["garage", `garage-page-${page}`],
-        },
-      }
-    );
+    console.log(`🔍 DEBUG: Fetched ${cars?.length || 0} cars from database`);
 
-    if (!garageResponse.ok) {
-      console.error(`❌ Garage RPC failed: ${garageResponse.status}`);
-      return NextResponse.json(
-        { error: "Failed to fetch garage data" },
-        { status: garageResponse.status }
-      );
+    // Get total count for pagination
+    const { count: totalCount } = await supabase
+      .from('cars')
+      .select('*', { count: 'exact', head: true });
+
+    // Get user's like status for each car if userId is provided
+    const userLikes: Record<string, boolean> = {};
+    if (userId && cars && cars.length > 0) {
+      const carIds = cars.map(car => car.id);
+      const { data: likesData } = await supabase
+        .from('car_likes')
+        .select('car_id')
+        .eq('user_id', userId)
+        .in('car_id', carIds);
+
+      likesData?.forEach(like => {
+        userLikes[like.car_id] = true;
+      });
     }
 
-    const garageData = await garageResponse.json();
+    // Transform cars data to match interface
+    const transformedCars = cars?.map(car => {
+      const owner = Array.isArray(car.owner) ? car.owner[0] : car.owner;
+      return {
+        id: car.id,
+        brand: car.brand,
+        model: car.model,
+        year: car.year,
+        images: car.images || [],
+        total_likes: car.total_likes,
+        created_at: car.created_at,
+        updated_at: car.updated_at,
+        owner_id: car.owner_id,
+        is_liked: userId ? userLikes[car.id] || false : false,
+        owner: owner ? {
+          id: owner.id,
+          username: owner.username,
+          display_name: owner.display_name,
+          profile_image_url: owner.profile_image_url
+        } : null
+      };
+    }) || [];
 
-    if (!garageData) {
-      return NextResponse.json(
-        { error: "No garage data found" },
-        { status: 404 }
-      );
-    }
+    const totalPages = Math.ceil((totalCount || 0) / limit);
+    const hasMore = page < totalPages;
+
+    const garageData = {
+      cars: transformedCars,
+      currentUser: null, // This could be populated if needed
+      pagination: {
+        page: page,
+        limit: limit,
+        total: totalCount || 0,
+        totalPages: totalPages,
+        hasMore: hasMore,
+      },
+      meta: {
+        generated_at: new Date().toISOString(),
+        cache_key: `garage_${page}_${limit}_${Date.now()}`,
+      },
+    };
 
     const endTime = Date.now();
     console.log(
@@ -63,6 +113,8 @@ export async function POST(request: NextRequest) {
         endTime - startTime
       }ms`
     );
+
+    console.log(`📊 Final data - Cars: ${garageData.cars.length}, Total: ${garageData.pagination.total}`);
 
     return NextResponse.json({
       cars: garageData.cars,

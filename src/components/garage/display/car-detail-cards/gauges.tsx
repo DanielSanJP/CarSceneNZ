@@ -5,7 +5,10 @@ interface GaugesProps {
 }
 
 export function Gauges({ gauges }: GaugesProps) {
-  if (!gauges || gauges.length === 0) {
+  // Handle case where gauges might be an object instead of array
+  const gaugeArray = Array.isArray(gauges) ? gauges : [];
+
+  if (!gauges || gaugeArray.length === 0) {
     return null;
   }
 
@@ -13,7 +16,7 @@ export function Gauges({ gauges }: GaugesProps) {
     <div>
       <h4 className="font-medium mb-2">Gauges</h4>
       <div className="flex flex-wrap gap-2">
-        {gauges.map((gauge) => (
+        {gaugeArray.map((gauge) => (
           <span
             key={gauge.id}
             className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs"

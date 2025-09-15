@@ -1,12 +1,22 @@
 "use client";
 
 import { useState, memo } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Users,
   MapPin,
@@ -44,6 +54,8 @@ export const ClubDetailView = memo(function ClubDetailView({
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const router = useRouter();
 
   // Use data directly from props (no React Query)
   const clubData = clubDetailData;
@@ -83,8 +95,8 @@ export const ClubDetailView = memo(function ClubDetailView({
       const result = await response.json();
 
       if (result.success) {
-        // Reload page to reflect changes
-        window.location.reload();
+        // Refresh the page to show updated membership status
+        router.refresh();
       } else {
         alert(result.message || "Failed to join club");
       }
@@ -98,14 +110,6 @@ export const ClubDetailView = memo(function ClubDetailView({
 
   const handleLeaveClub = async () => {
     if (!currentUser || !club) return;
-
-    const confirmLeave = window.confirm(
-      isLeader
-        ? "Are you sure you want to leave? As the leader, you'll need to transfer leadership or the club will be disbanded."
-        : "Are you sure you want to leave this club?"
-    );
-
-    if (!confirmLeave) return;
 
     setIsLeaving(true);
     try {
@@ -124,13 +128,9 @@ export const ClubDetailView = memo(function ClubDetailView({
       const result = await response.json();
 
       if (result.success) {
-        if (isLeader) {
-          // If leader is leaving, redirect to clubs page
-          window.location.href = "/clubs";
-        } else {
-          // Reload page to reflect changes
-          window.location.reload();
-        }
+        // After leaving, redirect to clubs page for better UX
+        // No point staying on a club page you're no longer part of
+        router.push("/clubs?tab=join");
       } else {
         alert(result.message || "Failed to leave club");
       }
@@ -139,6 +139,7 @@ export const ClubDetailView = memo(function ClubDetailView({
       alert("Failed to leave club. Please try again.");
     } finally {
       setIsLeaving(false);
+      setShowLeaveDialog(false);
     }
   };
 
@@ -412,26 +413,58 @@ export const ClubDetailView = memo(function ClubDetailView({
             {/* Right side - Join/Leave buttons */}
             <div>
               {isUserMember ? (
-                <Button
-                  variant="destructive"
-                  onClick={handleLeaveClub}
-                  disabled={isLeaving || isLeader}
-                  size="lg"
-                  title={
-                    isLeader
-                      ? "Leaders cannot leave the club. Transfer leadership first."
-                      : undefined
-                  }
+                <Dialog
+                  open={showLeaveDialog}
+                  onOpenChange={setShowLeaveDialog}
                 >
-                  {isLeaving ? (
-                    "Leaving..."
-                  ) : (
-                    <>
-                      <UserMinus className="h-4 w-4 mr-2" />
-                      {isLeader ? "Cannot Leave (Leader)" : "Leave Club"}
-                    </>
-                  )}
-                </Button>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      disabled={isLeaving || isLeader}
+                      size="lg"
+                      title={
+                        isLeader
+                          ? "Leaders cannot leave the club. Transfer leadership first."
+                          : undefined
+                      }
+                    >
+                      {isLeaving ? (
+                        "Leaving..."
+                      ) : (
+                        <>
+                          <UserMinus className="h-4 w-4 mr-2" />
+                          {isLeader ? "Cannot Leave (Leader)" : "Leave Club"}
+                        </>
+                      )}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Leave Club</DialogTitle>
+                      <DialogDescription>
+                        {isLeader
+                          ? "As the leader, you'll need to transfer leadership before leaving this club. This action cannot be undone."
+                          : "Are you sure you want to leave this club?"}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowLeaveDialog(false)}
+                        disabled={isLeaving}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleLeaveClub}
+                        disabled={isLeaving || isLeader}
+                      >
+                        {isLeaving ? "Leaving..." : "Leave Club"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               ) : !currentUser ? (
                 <Link href="/login">
                   <Button size="lg">

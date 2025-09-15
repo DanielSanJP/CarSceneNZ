@@ -331,22 +331,23 @@ export const ClubGallery = memo(function ClubGallery({
                 {/* Action buttons outside the clickable area */}
                 <CardContent className="p-4 pt-0 relative z-10">
                   {/* Action button */}
-                  <div
-                    className="flex gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div onClick={(e) => e.stopPropagation()}>
                     {/* Main Action Button */}
                     {isUserMember ? (
                       <Link
                         href={`/clubs/${club.id}?from=gallery`}
-                        className="flex-1"
+                        className="block"
                       >
-                        <Button className="w-full" size="sm">
-                          View Club
+                        <Button
+                          className="w-full"
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Joined
                         </Button>
                       </Link>
                     ) : !currentUser ? (
-                      <Link href="/login" className="flex-1">
+                      <Link href="/login" className="block">
                         <Button className="w-full" size="sm">
                           Sign In to Join
                         </Button>
@@ -354,7 +355,7 @@ export const ClubGallery = memo(function ClubGallery({
                     ) : club.club_type === "closed" ? (
                       <Link
                         href={`/clubs/${club.id}?from=gallery`}
-                        className="flex-1"
+                        className="block"
                       >
                         <Button className="w-full" size="sm" variant="outline">
                           View Club
@@ -367,7 +368,7 @@ export const ClubGallery = memo(function ClubGallery({
                           clubName={club.name}
                           sendClubJoinRequestAction={sendClubJoinRequestAction}
                           trigger={
-                            <Button className="flex-1" size="sm">
+                            <Button className="w-full" size="sm">
                               Request to Join
                             </Button>
                           }
@@ -375,7 +376,7 @@ export const ClubGallery = memo(function ClubGallery({
                       ) : (
                         <Link
                           href={`/clubs/${club.id}?from=gallery`}
-                          className="flex-1"
+                          className="block"
                         >
                           <Button className="w-full" size="sm">
                             Request to Join
@@ -385,7 +386,7 @@ export const ClubGallery = memo(function ClubGallery({
                     ) : // Open club - direct join
                     joinClubAction ? (
                       <Button
-                        className="flex-1"
+                        className="w-full"
                         size="sm"
                         onClick={async (e) => {
                           e.preventDefault();
@@ -414,24 +415,13 @@ export const ClubGallery = memo(function ClubGallery({
                     ) : (
                       <Link
                         href={`/clubs/${club.id}?from=gallery`}
-                        className="flex-1"
+                        className="block"
                       >
                         <Button className="w-full" size="sm">
                           Join Club
                         </Button>
                       </Link>
                     )}
-
-                    {/* View Button */}
-                    <Link href={`/clubs/${club.id}?from=gallery`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        View
-                      </Button>
-                    </Link>
                   </div>
                 </CardContent>
               </Card>

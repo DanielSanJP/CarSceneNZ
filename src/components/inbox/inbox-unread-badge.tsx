@@ -2,28 +2,21 @@
 
 import { Badge } from "@/components/ui/badge";
 import { usePathname } from "next/navigation";
+import { useRealtimeContext } from "@/components/providers/realtime-provider";
 
 interface InboxUnreadBadgeProps {
-  // Pass unread count as a prop instead of getting from context
-  unreadCount?: number;
-  // Optional className for styling variations
   className?: string;
 }
 
 /**
- * Client component that displays the unread message count badge
- * Now uses props instead of complex context
+ * Simple unread badge that uses the global RealtimeProvider
  */
-export function InboxUnreadBadge({
-  unreadCount = 0,
-  className,
-}: InboxUnreadBadgeProps) {
+export function InboxUnreadBadge({ className }: InboxUnreadBadgeProps) {
+  const { unreadCount } = useRealtimeContext();
   const pathname = usePathname();
 
-  // Don't show badge if user is currently on the inbox page
-  const isOnInboxPage = pathname === "/inbox";
-
-  if (unreadCount === 0 || isOnInboxPage) {
+  // Don't show badge if user is on inbox page or count is 0
+  if (unreadCount === 0 || pathname === "/inbox") {
     return null;
   }
 

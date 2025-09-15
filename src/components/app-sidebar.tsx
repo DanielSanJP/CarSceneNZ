@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { RealtimeUnreadBadge } from "@/components/inbox/realtime-unread-badge";
+import { InboxUnreadBadge } from "@/components/inbox/inbox-unread-badge";
 
 import type { User as UserType } from "@/types/user";
 
@@ -212,9 +212,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
-                          {item.title === "Inbox" && (
-                            <RealtimeUnreadBadge userId={user?.id || null} />
-                          )}
+                          {item.title === "Inbox" && <InboxUnreadBadge />}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

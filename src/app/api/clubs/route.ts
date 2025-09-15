@@ -1,18 +1,14 @@
+// Simplified Clubs Gallery API - Direct queries instead of RPC
+
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/utils/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
     const startTime = Date.now();
-    console.log("🚀 FETCH CACHE: Fetching clubs gallery via API route...");
+    console.log("🚀 FETCH CACHE: Fetching clubs gallery via direct queries...");
 
-    // Get environment variables for native fetch
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("❌ Missing Supabase environment variables");
-      throw new Error("Server configuration error");
-    }
+    const supabase = await createClient();
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -29,54 +25,139 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    // Call Supabase RPC function using native fetch for caching
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/get_clubs_gallery`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          search_term: search,
-          location_filter: location,
-          club_type_filter: club_type,
-          sort_by: sortBy,
-          result_limit: limit,
-          result_offset: offset,
-          current_user_id: userId,
-        }),
-        // Enable Next.js caching with 5 minute revalidation
-        next: {
-          revalidate: 300, // 5 minutes
-          tags: ["clubs", `clubs-page-${page}`, ...(userId ? [`user-${userId}-clubs`] : [])],
-        },
-      }
-    );
+    // Build the query dynamically with filters
+    let query = supabase
+      .from('clubs')
+      .select(`
+        id,
+        name,
+        description,
+        banner_image_url,
+        club_type,
+        location,
+        leader_id,
+        total_likes,
+        created_at,
+        updated_at,
+        leader:users!clubs_leader_id_fkey(
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `);
 
-    console.log(`🔍 DEBUG: Clubs RPC response status: ${response.status}`);
-
-    if (!response.ok) {
-      console.error(`❌ Clubs RPC failed: ${response.status} ${response.statusText}`);
-      throw new Error(`Failed to fetch clubs: ${response.status}`);
+    // Apply search filter
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
-    const data = await response.json();
-    console.log(`🔍 DEBUG: Clubs RPC returned data:`, {
-      clubsCount: data?.clubs?.length || 0,
-      pagination: data?.pagination
-    });
+    // Apply location filter
+    if (location) {
+      query = query.eq('location', location);
+    }
 
-    // Transform data to match ClubsGalleryData interface
+    // Apply club type filter
+    if (club_type) {
+      query = query.eq('club_type', club_type);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'likes':
+        query = query.order('total_likes', { ascending: false });
+        break;
+      case 'newest':
+        query = query.order('created_at', { ascending: false });
+        break;
+      case 'oldest':
+        query = query.order('created_at', { ascending: true });
+        break;
+      case 'name':
+        query = query.order('name', { ascending: true });
+        break;
+      default:
+        query = query.order('total_likes', { ascending: false });
+    }
+
+    // Get total count for pagination (with same filters)
+    let countQuery = supabase
+      .from('clubs')
+      .select('*', { count: 'exact', head: true });
+
+    // Apply same filters to count query
+    if (search) {
+      countQuery = countQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    if (location) {
+      countQuery = countQuery.eq('location', location);
+    }
+    if (club_type) {
+      countQuery = countQuery.eq('club_type', club_type);
+    }
+
+    const { count: totalCount } = await countQuery;
+
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1);
+
+    const { data: clubs, error: clubsError } = await query;
+
+    if (clubsError) {
+      console.error("❌ Error fetching clubs:", clubsError);
+      throw clubsError;
+    }
+
+    console.log(`🔍 DEBUG: Fetched ${clubs?.length || 0} clubs from database`);
+
+    // Get member counts for all clubs in parallel
+    const clubIds = clubs?.map(club => club.id) || [];
+    const memberCounts: Record<string, number> = {};
+    const userMemberships: Record<string, boolean> = {};
+
+    if (clubIds.length > 0) {
+      // Get member counts for all clubs
+      const { data: memberCountData } = await supabase
+        .from('club_members')
+        .select('club_id')
+        .in('club_id', clubIds);
+
+      // Count members per club
+      memberCountData?.forEach(member => {
+        memberCounts[member.club_id] = (memberCounts[member.club_id] || 0) + 1;
+      });
+
+      // Get user memberships if userId is provided
+      if (userId) {
+        const { data: userMembershipData } = await supabase
+          .from('club_members')
+          .select('club_id')
+          .eq('user_id', userId)
+          .in('club_id', clubIds);
+
+        userMembershipData?.forEach(membership => {
+          userMemberships[membership.club_id] = true;
+        });
+      }
+    }
+
+    // Transform clubs data to match interface
+    const transformedClubs = clubs?.map(club => ({
+      ...club,
+      is_invite_only: club.club_type === 'invite', // Derive from club_type
+      memberCount: memberCounts[club.id] || 0,
+      isUserMember: userId ? userMemberships[club.id] || false : undefined
+    })) || [];
+
+    const totalPages = Math.ceil((totalCount || 0) / limit);
+
     const clubsGalleryData = {
-      clubs: data?.clubs || [],
-      pagination: data?.pagination || {
-        total: 0,
+      clubs: transformedClubs,
+      pagination: {
+        total: totalCount || 0,
         page: page,
         limit: limit,
-        totalPages: 0,
+        totalPages: totalPages,
       },
       filters: {
         search: search || "",

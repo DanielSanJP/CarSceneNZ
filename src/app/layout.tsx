@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
+import { RealtimeProvider } from "@/components/providers/realtime-provider";
 
 import { getAuthUser, getUserProfile } from "@/lib/auth";
 
@@ -47,19 +48,21 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <ReactQueryProvider>
-            <SidebarProvider defaultOpen={false}>
-              <AppSidebar user={user} />
-              <SidebarInset>
-                <Navigation user={user} />
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="min-h-screen bg-background">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <div className="max-w-7xl mx-auto">{children}</div>
+            <RealtimeProvider userId={user?.id || null}>
+              <SidebarProvider defaultOpen={false}>
+                <AppSidebar user={user} />
+                <SidebarInset>
+                  <Navigation user={user} />
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="min-h-screen bg-background">
+                      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <div className="max-w-7xl mx-auto">{children}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </SidebarInset>
-            </SidebarProvider>
+                </SidebarInset>
+              </SidebarProvider>
+            </RealtimeProvider>
           </ReactQueryProvider>
           <Toaster position="top-center" />
         </ThemeProvider>

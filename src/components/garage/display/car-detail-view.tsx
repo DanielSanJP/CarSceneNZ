@@ -46,7 +46,7 @@ export const CarDetailView = React.memo(function CarDetailView({
 
   // Memoize car formatted data to prevent unnecessary recalculations
   const carFormatted = useMemo(() => {
-    if (!carDetailData) return null;
+    if (!carDetailData || !carDetailData.car) return null;
 
     const {
       car,

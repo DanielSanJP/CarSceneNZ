@@ -1,4 +1,7 @@
+// Simplified Event Detail API - Direct queries instead of RPC
+
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/utils/supabase/server";
 
 export async function POST(
   request: NextRequest,
@@ -10,129 +13,135 @@ export async function POST(
     const userId = body?.userId;
     const startTime = Date.now();
 
-    console.log(`🚀 FETCH CACHE: Fetching event ${id} details via API route...`);
+    console.log(`🚀 FETCH CACHE: Fetching event ${id} details via direct queries...`);
 
-    // Get environment variables for direct Supabase fetch
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    const supabase = await createClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("❌ Missing Supabase environment variables");
-      throw new Error("Server configuration error");
-    }
+    // Get event details with host information
+    const { data: eventData, error: eventError } = await supabase
+      .from('events')
+      .select(`
+        id,
+        host_id,
+        title,
+        description,
+        poster_image_url,
+        daily_schedule,
+        location,
+        created_at,
+        updated_at,
+        host:users!events_host_id_fkey(
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .eq('id', id)
+      .single();
 
-    // Fetch event details using native fetch for caching
-    const eventDetailsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/get_event_details_optimized`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          target_event_id: id,
-          current_user_id: userId || null,
-        }),
-        // Enable Next.js caching with 5 minute revalidation
-        next: {
-          revalidate: 300, // 5 minutes
-          tags: ["events", `event-${id}`],
-        },
+    if (eventError || !eventData) {
+      console.error("❌ Error fetching event:", eventError);
+      if (eventError?.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: "Event not found" },
+          { status: 404 }
+        );
       }
-    );
-
-    if (!eventDetailsResponse.ok) {
-      console.error(`❌ Event details RPC failed: ${eventDetailsResponse.status}`);
-      return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
-      );
+      throw eventError;
     }
 
-    const eventDetailsData = await eventDetailsResponse.json();
-    const eventDetail = eventDetailsData?.[0];
+    console.log(`🔍 DEBUG: Found event: ${eventData.title}`);
 
-    if (!eventDetail) {
-      console.error("❌ No event details found in RPC response");
-      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    // Get attendees with user information
+    const { data: attendeesData, error: attendeesError } = await supabase
+      .from('event_attendees')
+      .select(`
+        id,
+        event_id,
+        user_id,
+        status,
+        created_at,
+        updated_at,
+        user:users!event_attendees_user_id_fkey(
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .eq('event_id', id)
+      .order('created_at', { ascending: false });
+
+    if (attendeesError) {
+      console.error("❌ Error fetching attendees:", attendeesError);
+      throw attendeesError;
     }
 
-    // Fetch attendees using native fetch for caching
-    const attendeesResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/get_event_attendees_optimized`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          target_event_id: id,
-          page_limit: 100,
-          page_offset: 0,
-        }),
-        // Enable Next.js caching
-        next: {
-          revalidate: 300, // 5 minutes
-          tags: ["events", `event-${id}`, "attendees"],
-        },
-      }
-    );
+    // Get user's attendance status if userId is provided
+    let userStatus: string | null = null;
+    if (userId) {
+      const { data: userAttendance } = await supabase
+        .from('event_attendees')
+        .select('status')
+        .eq('event_id', id)
+        .eq('user_id', userId)
+        .single();
 
-    let attendeesData = [];
-    if (attendeesResponse.ok) {
-      attendeesData = await attendeesResponse.json();
+      userStatus = userAttendance?.status || null;
     }
 
     // Transform data to match EventDetailData interface
+    const host = Array.isArray(eventData.host) ? eventData.host[0] : eventData.host;
+
+    // Get attendee counts for the event
+    const goingCount = attendeesData?.filter(a => a.status === 'going').length || 0;
+    const interestedCount = attendeesData?.filter(a => a.status === 'interested').length || 0;
+
     const eventDetailData = {
       event: {
-        id: eventDetail.id,
-        host_id: eventDetail.host_id,
-        title: eventDetail.title,
-        description: eventDetail.description,
-        poster_image_url: eventDetail.poster_image_url || undefined,
-        daily_schedule: eventDetail.daily_schedule,
-        location: eventDetail.location,
-        created_at: eventDetail.created_at,
-        updated_at: eventDetail.updated_at,
-        host: {
-          id: eventDetail.host_id,
-          username: eventDetail.host_username,
-          display_name: eventDetail.host_display_name || undefined,
-          profile_image_url: eventDetail.host_profile_image_url || undefined,
-        },
-        attendeeCount: Number(eventDetail.attendee_count) || 0,
-        interestedCount: Number(eventDetail.interested_count) || 0,
+        id: eventData.id,
+        host_id: eventData.host_id,
+        title: eventData.title,
+        description: eventData.description,
+        poster_image_url: eventData.poster_image_url,
+        daily_schedule: eventData.daily_schedule,
+        location: eventData.location,
+        created_at: eventData.created_at,
+        updated_at: eventData.updated_at,
+        host: host ? {
+          id: host.id,
+          username: host.username,
+          display_name: host.display_name,
+          profile_image_url: host.profile_image_url
+        } : undefined,
+        attendeeCount: goingCount,
+        interestedCount: interestedCount,
       },
-      user: null, // User data is handled in the server component
-      attendees:
-        attendeesData?.map((attendee: {
-          id: string;
-          user_id: string;
-          status: string;
-          user_username: string;
-          user_display_name?: string;
-          user_profile_image_url?: string;
-          attended_at: string;
-        }) => ({
+      user: userId ? {
+        id: userId,
+        username: '', // This would need to be fetched if needed
+        display_name: undefined,
+        profile_image_url: undefined
+      } : null,
+      attendees: attendeesData?.map(attendee => {
+        const user = Array.isArray(attendee.user) ? attendee.user[0] : attendee.user;
+        return {
           id: attendee.id,
-          event_id: id,
+          event_id: attendee.event_id,
           user_id: attendee.user_id,
-          status: attendee.status,
-          created_at: attendee.attended_at,
-          updated_at: attendee.attended_at,
-          user: {
-            id: attendee.user_id,
-            username: attendee.user_username,
-            display_name: attendee.user_display_name || undefined,
-            profile_image_url: attendee.user_profile_image_url || undefined,
-          },
-        })) || [],
-      userStatus: eventDetail.user_status || null,
+          status: attendee.status as 'interested' | 'going' | 'approved',
+          created_at: attendee.created_at,
+          updated_at: attendee.updated_at,
+          user: user ? {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name,
+            profile_image_url: user.profile_image_url
+          } : undefined
+        };
+      }) || [],
+      userStatus: userStatus
     };
 
     const endTime = Date.now();
@@ -141,6 +150,8 @@ export async function POST(
         endTime - startTime
       }ms`
     );
+
+    console.log(`📊 Final data - Event: ${eventDetailData.event.title}, Attendees: ${eventDetailData.attendees.length}, User Status: ${eventDetailData.userStatus}`);
 
     return NextResponse.json(eventDetailData);
   } catch (error) {

@@ -1,4 +1,7 @@
+// Simplified User Leader Clubs API - Direct queries instead of RPC
+
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/utils/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,74 +16,69 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🚀 FETCH CACHE: Fetching leader clubs for user ${userId} via API route...`);
+    console.log(`🚀 FETCH CACHE: Fetching leader clubs for user ${userId} via direct queries...`);
 
-    // Get environment variables for native fetch
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    const supabase = await createClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("❌ Missing Supabase environment variables");
-      throw new Error("Server configuration error");
+    // Get clubs where user is the leader - simple query!
+    const { data: leaderClubs, error: clubsError } = await supabase
+      .from('clubs')
+      .select(`
+        id,
+        name,
+        description,
+        banner_image_url,
+        club_type,
+        location,
+        total_likes,
+        created_at,
+        updated_at
+      `)
+      .eq('leader_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (clubsError) {
+      console.error("❌ Error fetching leader clubs:", clubsError);
+      throw clubsError;
     }
 
-    console.log(`🔍 DEBUG: Fetching leader clubs for user: ${userId}`);
+    console.log(`🔍 DEBUG: Found ${leaderClubs?.length || 0} clubs where user is leader`);
 
-    // Call Supabase RPC function using native fetch for caching
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/get_user_leader_clubs_optimized`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          user_uuid: userId,
-        }),
-        // Enable Next.js caching with 5 minute revalidation for leader clubs
-        next: {
-          revalidate: 300, // 5 minutes for leader clubs data
-          tags: ["profile", "leader-clubs", `user-${userId}-leader-clubs`],
-        },
-      }
-    );
+    // Get member counts for these clubs
+    const clubIds = leaderClubs?.map(club => club.id) || [];
+    const memberCounts: Record<string, number> = {};
 
-    console.log(`🔍 DEBUG: Leader clubs RPC response status: ${response.status}`);
+    if (clubIds.length > 0) {
+      const { data: memberCountData } = await supabase
+        .from('club_members')
+        .select('club_id')
+        .in('club_id', clubIds);
 
-    if (!response.ok) {
-      console.error(`❌ Leader clubs RPC failed: ${response.status} ${response.statusText}`);
-      throw new Error(`Failed to fetch leader clubs: ${response.status}`);
+      // Count members per club
+      memberCountData?.forEach(member => {
+        memberCounts[member.club_id] = (memberCounts[member.club_id] || 0) + 1;
+      });
     }
-
-    const leaderClubsData = await response.json();
-
-    console.log(`🔍 DEBUG: Leader clubs RPC returned ${leaderClubsData?.length || 0} clubs`);
 
     const endTime = Date.now();
     console.log(`✅ FETCH CACHE: User ${userId} leader clubs fetched and processed in ${endTime - startTime}ms`);
 
     // Format response to match expected LeaderClubsData interface
     const formattedResponse = {
-      leaderClubs: leaderClubsData?.map((club: {
-        club_id: string;
-        club_name: string;
-        club_description: string;
-        club_banner_image_url: string | null;
-        member_count: number;
-      }) => ({
-        id: club.club_id,
-        name: club.club_name,
-        description: club.club_description,
-        image_url: club.club_banner_image_url,
-        memberCount: club.member_count,
+      leaderClubs: leaderClubs?.map(club => ({
+        id: club.id,
+        name: club.name,
+        description: club.description,
+        image_url: club.banner_image_url,
+        memberCount: memberCounts[club.id] || 0,
       })) || [],
       meta: {
         generated_at: new Date().toISOString(),
         cache_key: `leader_clubs_${userId}_${Date.now()}`,
       },
     };
+
+    console.log(`📊 Final data - Leader clubs: ${formattedResponse.leaderClubs.length}`);
 
     return NextResponse.json(formattedResponse);
   } catch (error) {

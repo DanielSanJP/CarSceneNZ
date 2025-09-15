@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
 import { requireAuth } from '@/lib/auth';
+import { revalidateTag, revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 async function addMemberToClub(supabase: SupabaseClient, clubId: string, userId: string): Promise<{ success: boolean; error?: string }> {
@@ -153,6 +154,32 @@ export async function POST(request: Request) {
 
     // Delete the original join request message
     await deleteProcessedMessage(supabase, messageId, 'join request')
+
+    // Critical: Invalidate cache after processing join request
+    try {
+      if (action === 'approve') {
+        // Invalidate the club detail page cache so member list updates
+        revalidateTag(`club-${clubId}`);
+        revalidateTag('clubs');
+        // Invalidate user-specific club data cache for the new member
+        revalidateTag(`user-${senderId}-clubs`);
+        
+        // Invalidate related pages
+        revalidatePath(`/clubs/${clubId}`);
+        revalidatePath('/clubs/my-clubs');
+        revalidatePath('/clubs');
+        
+        console.log(`🔄 Cache invalidated for club ${clubId} and user ${senderId} after join request approval`);
+      }
+      
+      // Invalidate inbox caches for both users
+      revalidateTag(`user-${currentUser.id}-inbox`);
+      revalidateTag(`user-${senderId}-inbox`);
+      
+    } catch (revalidateError) {
+      console.error('❌ Error during cache revalidation:', revalidateError);
+      // Don't fail the request if revalidation fails
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

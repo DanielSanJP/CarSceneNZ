@@ -1,61 +1,83 @@
 import { InboxView } from "@/components/inbox/inbox-view";
 import { requireAuth } from "@/lib/auth";
-import type { InboxMessagesData } from "@/types/inbox";
-import { headers, cookies } from "next/headers";
+import { createClient } from "@/lib/utils/supabase/server";
+import type { InboxMessage } from "@/types/inbox";
 
-// Enable ISR with 60 second revalidation for better performance
-export const revalidate = 60; // Cache for 1 minute, then revalidate in background
-
-import { getBaseUrl } from "@/lib/utils";
+// No caching - we want fresh data for inbox
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function InboxPage() {
   // Get the current user
   const authUser = await requireAuth();
+  const supabase = await createClient();
 
-  console.log("📬 SSR: Fetching inbox messages for user:", authUser.id);
+  console.log("📬 Server: Fetching inbox messages for user:", authUser.id);
 
-  // Use cached API route for better performance
-  let inboxData: InboxMessagesData | null = null;
   try {
-    const cookieStore = await cookies();
-    const headersList = await headers();
+    // Direct Supabase query - no API route needed
+    const { data: messages, error } = await supabase
+      .from("messages")
+      .select(
+        `
+        id,
+        sender_id,
+        receiver_id,
+        subject,
+        message,
+        message_type,
+        club_id,
+        created_at,
+        updated_at,
+        is_read,
+        sender:sender_id (
+          id,
+          username,
+          display_name,
+          profile_image_url
+        ),
+        club:club_id (
+          id,
+          name
+        )
+      `
+      )
+      .eq("receiver_id", authUser.id)
+      .order("created_at", { ascending: false });
 
-    // Forward authentication cookies and headers to API route for RLS
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((cookie) => `${cookie.name}=${cookie.value}`)
-      .join("; ");
-
-    const response = await fetch(`${getBaseUrl()}/api/inbox/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: cookieHeader,
-        // Forward auth headers for RLS
-        Authorization: headersList.get("authorization") || "",
-        "User-Agent": headersList.get("user-agent") || "",
-      },
-      body: JSON.stringify({
-        userId: authUser.id,
-      }),
-      // Enable Next.js caching with 1 minute revalidation
-      next: {
-        revalidate: 60,
-        tags: [`inbox-${authUser.id}`],
-      },
-    });
-
-    if (!response.ok) {
-      console.error(
-        `❌ Inbox messages API route failed: ${response.status} ${response.statusText}`
-      );
-      throw new Error("Failed to load inbox messages");
+    if (error) {
+      console.error("❌ Error fetching messages:", error);
+      throw error;
     }
 
-    inboxData = await response.json();
-    console.log("✅ SSR: API route completed successfully");
+    console.log(`✅ Server: Retrieved ${messages?.length || 0} messages`);
+
+    // Transform the data to handle Supabase's array returns
+    const transformedMessages: InboxMessage[] =
+      messages?.map((msg) => {
+        const sender = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender;
+        const club = Array.isArray(msg.club) ? msg.club[0] : msg.club;
+
+        return {
+          ...msg,
+          sender: sender || null,
+          club: club || null,
+          // Add flat fields for compatibility
+          sender_username: sender?.username || null,
+          sender_display_name: sender?.display_name || null,
+          sender_profile_image_url: sender?.profile_image_url || null,
+          club_name: club?.name || null,
+        };
+      }) || [];
+
+    return (
+      <InboxView
+        initialMessages={transformedMessages}
+        currentUserId={authUser.id}
+      />
+    );
   } catch (error) {
-    console.error("Failed to fetch inbox messages via API:", error);
+    console.error("❌ Failed to fetch inbox messages:", error);
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -68,10 +90,4 @@ export default async function InboxPage() {
       </div>
     );
   }
-
-  if (!inboxData) {
-    return <div className="text-center">No inbox data available.</div>;
-  }
-
-  return <InboxView inboxData={inboxData} />;
 }

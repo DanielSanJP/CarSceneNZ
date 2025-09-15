@@ -309,6 +309,7 @@ async function sendClubJoinRequestAction(
         message || `${user.username} wants to join your club "${club.name}"`,
       message_type: "club_join_request",
       created_at: new Date().toISOString(),
+      is_read: false, // Mark new messages as unread
     });
 
     if (messageError) {

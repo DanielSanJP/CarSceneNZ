@@ -97,6 +97,21 @@ export function UserProfileDisplay({
     userClubs,
     isFollowing,
   } = profileData;
+
+  // Add safety check for profileUser
+  if (!profileUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Profile data incomplete</h2>
+          <p className="text-muted-foreground mb-6">
+            The profile information is missing or incomplete.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const isOwnProfile = currentUser?.id === profileUser.id;
 
   // API wrapper for club invitations
@@ -141,7 +156,7 @@ export function UserProfileDisplay({
   };
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Profile Info */}
       <Card>
         <CardHeader>
@@ -554,6 +569,6 @@ export function UserProfileDisplay({
           )}
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }

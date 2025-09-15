@@ -32,16 +32,27 @@ async function followUserAction(
       `🔄 Server Action: ${action} user ${targetUserId}, current user ${user.id}`
     );
 
-    const { data, error } = await supabase.rpc("toggle_user_follow_optimized", {
-      follower_id_param: user.id,
-      following_id_param: targetUserId,
+    // Use our simplified API route instead of RPC
+    const response = await fetch(`${getBaseUrl()}/api/profile/follow`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        targetUserId: targetUserId,
+      }),
     });
 
-    if (error) {
-      console.error("❌ Follow/Unfollow RPC Error:", error);
-      return { success: false, error: error.message };
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("❌ Follow/Unfollow API Error:", errorData);
+      return {
+        success: false,
+        error: errorData.error || "Failed to update follow status",
+      };
     }
 
+    const data = await response.json();
     console.log(`✅ ${action} Success:`, data);
 
     // Revalidate relevant pages
@@ -159,6 +170,15 @@ async function getProfileDataSSR(
     const responseData = await response.json();
     const profileData = responseData.profileData;
 
+    console.log(`🔍 DEBUG: SSR Response structure:`, {
+      hasResponseData: !!responseData,
+      hasProfileData: !!profileData,
+      hasProfileUser: !!profileData?.profileUser,
+      profileUserKeys: profileData?.profileUser
+        ? Object.keys(profileData.profileUser)
+        : "none",
+    });
+
     console.log(
       `✅ SSR CACHE: Profile ${usernameOrId} data fetched via API route in ${
         Date.now() - startTime
@@ -202,7 +222,7 @@ export default async function UserProfilePage({
 
   // Fetch leader clubs data if current user is viewing someone else's profile
   let leaderClubsData: LeaderClubsData | null = null;
-  const isOwnProfile = currentUser?.id === profileData.profileUser.id;
+  const isOwnProfile = currentUser?.id === profileData?.profileUser?.id;
 
   if (currentUser && !isOwnProfile) {
     leaderClubsData = await getLeaderClubsDataSSR(currentUser.id);

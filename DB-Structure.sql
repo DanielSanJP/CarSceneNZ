@@ -145,10 +145,11 @@ CREATE TABLE public.messages (
         )
     ),
     club_id uuid,
+    is_read boolean DEFAULT false,
     CONSTRAINT messages_pkey PRIMARY KEY (id),
-    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id),
+    CONSTRAINT messages_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
     CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id),
-    CONSTRAINT messages_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
+    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.user_follows (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),

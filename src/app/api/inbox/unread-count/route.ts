@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
 import { requireAuth } from '@/lib/auth';
 
+// Ensure this route is always dynamic and never cached
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     // Use authenticated user instead of accepting userId parameter
@@ -12,27 +16,12 @@ export async function GET() {
 
     const supabase = await createClient();
 
-    // Get user's last_seen_inbox timestamp
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('last_seen_inbox')
-      .eq('id', userId)
-      .single();
-
-    if (userError) {
-      console.error('❌ Error fetching user data:', userError);
-      return NextResponse.json({ error: 'Failed to get user data' }, { status: 500 });
-    }
-
-    const lastSeenInbox = userData?.last_seen_inbox || new Date(0).toISOString();
-    console.log(`🔍 User last seen inbox: ${lastSeenInbox}`);
-
-    // Count unread messages (messages created after last_seen_inbox)
+    // Count unread messages using the new is_read column
     const { count, error: countError } = await supabase
       .from('messages')
       .select('id', { count: 'exact', head: true })
       .eq('receiver_id', userId)
-      .gt('created_at', lastSeenInbox);
+      .eq('is_read', false);
 
     if (countError) {
       console.error('❌ Error counting unread messages:', countError);
@@ -47,7 +36,7 @@ export async function GET() {
       meta: {
         generated_at: new Date().toISOString(),
         cache_key: `unread_count_${userId}`,
-        last_seen_inbox: lastSeenInbox,
+        method: 'is_read_column',
       },
     }, {
       headers: {

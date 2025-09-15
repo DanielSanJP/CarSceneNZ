@@ -1,6 +1,5 @@
 import { getUserOptional } from "@/lib/auth";
 import { CarDetailView } from "@/components/garage/display/car-detail-view";
-import { notFound } from "next/navigation";
 import type { CarDetailData } from "@/types/car";
 import { getBaseUrl } from "@/lib/utils";
 
@@ -21,14 +20,16 @@ async function getCarDetailData(
 
   try {
     // Use our API route with Next.js native fetch for caching
-    const response = await fetch(`${getBaseUrl()}/api/garage/${carId}`, {
-      method: "POST",
+    const url = new URL(`${getBaseUrl()}/api/garage/${carId}`);
+    if (userId) {
+      url.searchParams.set("userId", userId);
+    }
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        userId: userId || null,
-      }),
       // Enable Next.js caching with 5 minute revalidation
       next: {
         revalidate: 300, // 5 minutes
@@ -73,7 +74,26 @@ export default async function CarDetailsPage({ params }: CarDetailPageProps) {
 
     return <CarDetailView user={user} carDetailData={carDetailData} />;
   } catch (error) {
-    console.error("Error loading car:", error);
-    notFound();
+    console.error("❌ Error loading car on server:", error);
+
+    // Return error state instead of notFound() to see what's happening
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">
+            Failed to load car details
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            There was an error loading the car information.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 }

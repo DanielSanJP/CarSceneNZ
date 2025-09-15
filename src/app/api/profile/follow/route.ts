@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
+import { revalidateTag } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await requireAuth();
-
     const { targetUserId, action } = await request.json();
 
     if (!targetUserId || !action) {
@@ -29,33 +29,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use optimized RPC function
     const supabase = await createClient();
-    const { data: result, error } = await supabase.rpc('toggle_user_follow', {
-      current_user_id: currentUser.id,
-      target_user_id: targetUserId,
-      action: action
-    });
 
-    if (error || !result?.[0]?.success) {
-      return NextResponse.json(
-        { error: `Failed to ${action} user` },
-        { status: 500 }
-      );
+    console.log(`🔄 SIMPLE: ${action} user ${targetUserId}`);
+
+    let isFollowing;
+
+    if (action === 'follow') {
+      // Add follow relationship
+      const { error: insertError } = await supabase
+        .from('user_follows')
+        .insert({
+          follower_id: currentUser.id,
+          following_id: targetUserId
+        });
+
+      if (insertError) {
+        // Check if already following (unique constraint error)
+        if (insertError.code === '23505') {
+          return NextResponse.json({
+            success: true,
+            isFollowing: true,
+            message: 'Already following this user'
+          });
+        }
+        throw insertError;
+      }
+
+      isFollowing = true;
+      console.log("✅ Follow added");
+
+    } else {
+      // Remove follow relationship
+      const { error: deleteError } = await supabase
+        .from('user_follows')
+        .delete()
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', targetUserId);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      isFollowing = false;
+      console.log("✅ Follow removed");
     }
 
-    const followResult = result[0];
+    // Get updated followers count for the target user
+    const { count: newFollowersCount } = await supabase
+      .from('user_follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', targetUserId);
+
+    console.log(`✅ SIMPLE: Follow toggled - isFollowing: ${isFollowing}, followers: ${newFollowersCount}`);
+
+    // Revalidate relevant caches
+    revalidateTag("profile");
+    revalidateTag(`profile-${targetUserId}`);
+    revalidateTag(`user-${currentUser.id}-following`);
 
     return NextResponse.json({
       success: true,
-      isFollowing: followResult.is_following,
-      newFollowersCount: followResult.new_followers_count,
+      isFollowing,
+      newFollowersCount: newFollowersCount || 0,
       action,
       targetUserId
     });
 
   } catch (error) {
-    console.error('Error in follow API:', error);
+    console.error('❌ Error in follow API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Check, X, Clock, Users } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/utils/supabase/client";
-import type { InboxMessage, InboxMessagesData } from "@/types/inbox";
+import type { InboxMessage } from "@/types/inbox";
 import { toast } from "sonner";
 
 // Helper function to format relative time
@@ -61,136 +60,56 @@ function getRelativeTime(date: string | Date): string {
 }
 
 interface InboxViewProps {
-  inboxData: InboxMessagesData;
+  initialMessages: InboxMessage[];
+  currentUserId: string;
 }
 
-function InboxViewComponent({ inboxData }: InboxViewProps) {
+function InboxViewComponent({
+  initialMessages,
+  currentUserId,
+}: InboxViewProps) {
   const [processingRequest, setProcessingRequest] = useState<string | null>(
     null
   );
 
   // Local state for real-time updates - start with server data
-  const [messages, setMessages] = useState<InboxMessage[]>(
-    inboxData.messages || []
-  );
+  const [messages, setMessages] = useState<InboxMessage[]>(initialMessages);
 
   // Update local state when server data changes (on page refresh/navigation)
   useEffect(() => {
-    setMessages(inboxData.messages || []);
-  }, [inboxData.messages]);
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
-  // Mark inbox as read when component mounts (client-side for immediate feedback)
+  // Mark inbox as read when component mounts
   useEffect(() => {
-    const markAsReadClientSide = async () => {
-      const supabase = createClient();
-
+    // Mark as read via API
+    const markAsRead = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
-
-        console.log(
-          "📬 Client-side: Marking inbox as read for immediate UI feedback"
-        );
-
+        console.log("📨 Marking messages as read via API...");
         const response = await fetch("/api/inbox/mark-read", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            userId: user.id,
-          }),
         });
 
-        if (response.ok) {
-          console.log("✅ Client-side: Inbox marked as read successfully");
-        } else {
-          console.error("❌ Client-side: Failed to mark inbox as read");
+        if (!response.ok) {
+          console.error("❌ API response not ok:", response.status);
+          return;
         }
+
+        const data = await response.json();
+        console.log("✅ Marked messages as read via API:", data);
       } catch (error) {
-        console.error("❌ Client-side mark-read error:", error);
+        console.error("❌ Error marking as read via API:", error);
       }
     };
 
-    // Small delay to ensure component is mounted and user is authenticated
-    const timeoutId = setTimeout(markAsReadClientSide, 500);
-    return () => clearTimeout(timeoutId);
-  }, []); // Only run once when component mounts
+    markAsRead();
+  }, [currentUserId]);
 
-  // Set up real-time subscription for new messages
-  useEffect(() => {
-    const supabase = createClient();
-
-    // Get current user to filter messages
-    const getCurrentUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      console.log(`🔄 Setting up real-time subscription for user: ${user.id}`);
-
-      // Subscribe to new messages for this user
-      const channel = supabase
-        .channel(`inbox-messages-${user.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-            filter: `receiver_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log("📨 New message received via real-time:", payload.new);
-
-            // Add new message to the top of the list
-            const newMessage = payload.new as InboxMessage;
-            setMessages((prev) => {
-              // Prevent duplicates
-              const exists = prev.some((msg) => msg.id === newMessage.id);
-              if (exists) return prev;
-
-              return [newMessage, ...prev];
-            });
-
-            // Show toast notification
-            toast.success("New message received!");
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "messages",
-            filter: `receiver_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log("🗑️ Message deleted via real-time:", payload.old);
-
-            // Remove deleted message from list
-            const deletedId = payload.old?.id;
-            if (deletedId) {
-              setMessages((prev) => prev.filter((msg) => msg.id !== deletedId));
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log("📡 Real-time subscription status:", status);
-        });
-
-      // Cleanup subscription
-      return () => {
-        console.log("🧹 Cleaning up real-time subscription");
-        supabase.removeChannel(channel);
-      };
-    };
-
-    getCurrentUser();
-  }, []);
+  // No local realtime subscription needed - RealtimeProvider handles this globally
+  // InboxView just manages local state for the inbox page
 
   // Function to clean message content by removing metadata
   const getCleanMessage = (message: string): string => {
@@ -200,6 +119,7 @@ function InboxViewComponent({ inboxData }: InboxViewProps) {
       .replace(/<!-- METADATA:CLUB_INVITATION:.*? -->/g, "")
       .trim();
   };
+
   const handleJoinRequest = async (
     msg: InboxMessage,
     action: "approve" | "reject"

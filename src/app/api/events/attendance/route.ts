@@ -1,10 +1,12 @@
+// Simplified Event Attendance API - Direct queries instead of RPC
+
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { createClient } from "@/lib/utils/supabase/server";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user (lightweight)
     const authUser = await getAuthUser();
     if (!authUser) {
       return NextResponse.json(
@@ -13,7 +15,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse the request body
     const { eventId, status } = await request.json();
 
     if (!eventId || !status) {
@@ -30,44 +31,90 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For attendance actions, we need direct Supabase access since this modifies data
-    const { createClient } = await import("@/lib/utils/supabase/server");
     const supabase = await createClient();
 
-    // Call the RPC function with correct parameter names
-    const { data: result, error } = await supabase.rpc(
-      "toggle_event_attendance",
-      {
-        target_event_id: eventId,
-        current_user_id: authUser.id,
-        attendance_status: status,
+    console.log(`🔄 Toggle event attendance: ${status} for event ${eventId} by user ${authUser.id}`);
+
+    let newStatus = null;
+    let attendeeCount = 0;
+    let interestedCount = 0;
+
+    if (status === "remove") {
+      // Remove attendance - simple delete
+      const { error: deleteError } = await supabase
+        .from('event_attendees')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('user_id', authUser.id);
+
+      if (deleteError) {
+        console.error("Error removing attendance:", deleteError);
+        throw deleteError;
       }
-    );
 
-    if (error) {
-      console.error("Event attendance RPC error:", error);
-      return NextResponse.json(
-        { error: "Failed to update attendance" },
-        { status: 500 }
-      );
+      console.log("✅ Attendance removed");
+
+    } else {
+      // Check if user already has attendance for this event
+      const { data: existingAttendance } = await supabase
+        .from('event_attendees')
+        .select('id, status')
+        .eq('event_id', eventId)
+        .eq('user_id', authUser.id)
+        .single();
+
+      if (existingAttendance) {
+        // Update existing attendance
+        const { error: updateError } = await supabase
+          .from('event_attendees')
+          .update({ 
+            status: status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('event_id', eventId)
+          .eq('user_id', authUser.id);
+
+        if (updateError) {
+          console.error("Error updating attendance:", updateError);
+          throw updateError;
+        }
+
+        console.log(`✅ Attendance updated to: ${status}`);
+      } else {
+        // Create new attendance
+        const { error: insertError } = await supabase
+          .from('event_attendees')
+          .insert({
+            event_id: eventId,
+            user_id: authUser.id,
+            status: status
+          });
+
+        if (insertError) {
+          console.error("Error creating attendance:", insertError);
+          throw insertError;
+        }
+
+        console.log(`✅ New attendance created: ${status}`);
+      }
+
+      newStatus = status;
     }
 
-    if (!result || result.length === 0) {
-      return NextResponse.json(
-        { error: "No response from attendance update" },
-        { status: 500 }
-      );
+    // Get updated counts - simple aggregation query
+    const { data: attendees } = await supabase
+      .from('event_attendees')
+      .select('status')
+      .eq('event_id', eventId);
+
+    if (attendees) {
+      attendeeCount = attendees.filter(a => a.status === 'going').length;
+      interestedCount = attendees.filter(a => a.status === 'interested').length;
     }
+
+    console.log(`✅ Event attendance updated - going: ${attendeeCount}, interested: ${interestedCount}`);
 
     // Comprehensive revalidation to ensure all cached data is updated
-    
-    // 1. Revalidate specific paths
-    revalidatePath("/events"); // Events list page
-    revalidatePath(`/events/${eventId}`); // Specific event page
-    revalidatePath("/events/my-events"); // My events page - shows attendance counts
-    revalidatePath("/"); // Homepage (might show event previews)
-    
-    // 2. Revalidate by cache tags to invalidate all cached events data
     revalidateTag("events"); // This will invalidate all fetch requests tagged with "events"
     revalidateTag("user-events"); // This will invalidate ALL user events caches (my-events for all users)
     revalidateTag(`event-${eventId}`); // Invalidate specific event detail cache
@@ -75,16 +122,25 @@ export async function POST(request: NextRequest) {
     revalidateTag("event-attendees"); // Invalidate user event statuses cache
     revalidateTag(`user-${authUser.id}-attendees`); // Invalidate specific user attendance cache
     
-    // 3. Use nuclear option to ensure my-events pages update
-    revalidatePath("/", "layout"); // Revalidates entire app from root layout
+    revalidatePath("/events"); // Events list page
+    revalidatePath(`/events/${eventId}`); // Specific event page
+    revalidatePath("/events/my-events"); // My events page - shows attendance counts
+    revalidatePath("/"); // Homepage (might show event previews)
 
     console.log(`✅ Revalidated all events cache after attendance update for event ${eventId}`);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      userStatus: newStatus,
+      attendeeCount,
+      interestedCount,
+      message: status === "remove" ? "Attendance removed" : `Status updated to ${status}`
+    });
+
   } catch (error) {
-    console.error("Event attendance API error:", error);
+    console.error("❌ Error updating event attendance:", error);
     return NextResponse.json(
-      { error: "Server error occurred" },
+      { error: "Failed to update attendance" },
       { status: 500 }
     );
   }

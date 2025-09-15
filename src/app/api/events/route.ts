@@ -1,4 +1,7 @@
+// Simplified Events Gallery API - Direct queries instead of RPC
+
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/utils/supabase/server";
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -7,113 +10,112 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '12');
+  const userId = searchParams.get('userId') || null;
   const offset = (page - 1) * limit;
   
   console.log(`🚀 FETCH CACHE: Events API route called - Page ${page}, Limit ${limit}`);
 
   try {
-    // Get environment variables
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    const supabase = await createClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("❌ Missing Supabase environment variables");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 }
-      );
+    // Get events with host information using direct query
+    const { data: events, error: eventsError } = await supabase
+      .from('events')
+      .select(`
+        id,
+        host_id,
+        title,
+        description,
+        poster_image_url,
+        daily_schedule,
+        location,
+        created_at,
+        updated_at,
+        host:users!events_host_id_fkey(
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (eventsError) {
+      console.error("❌ Error fetching events:", eventsError);
+      throw eventsError;
     }
 
-    console.log(`🔍 DEBUG: Using Supabase URL: ${supabaseUrl}`);
-    
-    // Call Supabase RPC function using native fetch
-    const eventsResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/get_events_optimized`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify({
-        page_limit: limit,
-        page_offset: offset,
-      }),
-      // Enable Next.js caching with 5 minute revalidation (same as page revalidate)
-      next: { 
-        revalidate: 300, // 5 minutes
-        tags: ['events'] 
-      },
-    });
+    console.log(`🔍 DEBUG: Fetched ${events?.length || 0} events from database`);
 
-    if (!eventsResponse.ok) {
-      console.error(`❌ Events RPC failed: ${eventsResponse.status} ${eventsResponse.statusText}`);
-      return NextResponse.json(
-        { error: "Failed to fetch events" },
-        { status: 500 }
-      );
-    }
-
-    const events = await eventsResponse.json();
-    console.log(`✅ FETCH CACHE: Events RPC completed successfully (${events?.length || 0} events)`);
-
-    // Get user from auth header if present
-    const authHeader = request.headers.get('authorization');
+    // Get attendee counts for all events in parallel
+    const eventIds = events?.map(event => event.id) || [];
+    const attendeeCounts: Record<string, { going: number; interested: number }> = {};
     const userStatuses: Record<string, string> = {};
-    const currentUser = null;
 
-    if (authHeader && events && events.length > 0) {
-      try {
-        // Extract user ID from auth header or session
-        // For now, we'll skip user-specific data in the cached response
-        // This can be fetched separately on the client side if needed
-        console.log(`🔍 DEBUG: Auth header present, but skipping user-specific data for caching`);
-      } catch (error) {
-        console.error("Error processing auth:", error);
-        // Continue without user data
+    if (eventIds.length > 0) {
+      // Get attendee counts for all events
+      const { data: attendeeData } = await supabase
+        .from('event_attendees')
+        .select('event_id, status')
+        .in('event_id', eventIds);
+
+      // Count attendees per event by status
+      attendeeData?.forEach(attendee => {
+        if (!attendeeCounts[attendee.event_id]) {
+          attendeeCounts[attendee.event_id] = { going: 0, interested: 0 };
+        }
+        if (attendee.status === 'going') {
+          attendeeCounts[attendee.event_id].going++;
+        } else if (attendee.status === 'interested') {
+          attendeeCounts[attendee.event_id].interested++;
+        }
+      });
+
+      // Get user's attendance status if userId is provided
+      if (userId) {
+        const { data: userAttendanceData } = await supabase
+          .from('event_attendees')
+          .select('event_id, status')
+          .eq('user_id', userId)
+          .in('event_id', eventIds);
+
+        userAttendanceData?.forEach(attendance => {
+          userStatuses[attendance.event_id] = attendance.status;
+        });
       }
     }
 
-    // Define type for RPC result
-    type EventRPCResult = {
-      id: string;
-      host_id: string;
-      title: string;
-      description: string;
-      poster_image_url: string | null;
-      daily_schedule: { date: string; start_time?: string; end_time?: string }[];
-      location: string;
-      created_at: string;
-      updated_at: string;
-      host_username: string;
-      host_display_name: string | null;
-      host_profile_image_url: string | null;
-      attendee_count: number;
-      interested_count: number;
-    };
-
-    // Transform events data to match our EventsData interface
-    const eventsData = {
-      events: events?.map((event: EventRPCResult) => ({
+    // Transform events data to match interface
+    const transformedEvents = events?.map(event => {
+      const host = Array.isArray(event.host) ? event.host[0] : event.host;
+      const counts = attendeeCounts[event.id] || { going: 0, interested: 0 };
+      
+      return {
         id: event.id,
         host_id: event.host_id,
         title: event.title,
         description: event.description,
-        poster_image_url: event.poster_image_url || undefined,
+        poster_image_url: event.poster_image_url,
         daily_schedule: event.daily_schedule,
         location: event.location,
         created_at: event.created_at,
         updated_at: event.updated_at,
-        host: {
-          id: event.host_id,
-          username: event.host_username,
-          display_name: event.host_display_name || undefined,
-          profile_image_url: event.host_profile_image_url || undefined,
-        },
-        attendeeCount: Number(event.attendee_count),
-        interestedCount: Number(event.interested_count),
-      })) || [],
+        host: host ? {
+          id: host.id,
+          username: host.username,
+          display_name: host.display_name,
+          profile_image_url: host.profile_image_url,
+        } : undefined,
+        attendeeCount: counts.going,
+        interestedCount: counts.interested,
+      };
+    }) || [];
+
+    const eventsData = {
+      events: transformedEvents,
       userStatuses,
-      currentUser,
+      currentUser: null, // This could be populated if needed
       pagination: {
         page,
         limit,
@@ -123,6 +125,7 @@ export async function GET(request: NextRequest) {
 
     const endTime = Date.now();
     console.log(`✅ FETCH CACHE: Events data processed in ${endTime - startTime}ms`);
+    console.log(`📊 Final data - Events: ${eventsData.events.length}, Has more: ${eventsData.pagination.hasMore}`);
 
     return NextResponse.json(eventsData, {
       headers: {
