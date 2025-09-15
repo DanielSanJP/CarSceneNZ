@@ -144,9 +144,7 @@ async function getProfileDataSSR(
     );
 
     const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-      }/api/profile/${usernameOrId}`,
+      `${getBaseUrl()}/api/profile/${usernameOrId}`,
       {
         method: "POST",
         headers: {
