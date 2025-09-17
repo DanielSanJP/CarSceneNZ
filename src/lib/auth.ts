@@ -86,35 +86,6 @@ export const getCurrentUserProfile = cache(async (): Promise<User | null> => {
 })
 
 /**
- * LEGACY: Get authenticated user with profile data (cached per request)
- * Redirects to login if not authenticated
- * @deprecated Use requireAuth() + getUserProfile() for better performance
- */
-export const getUser = cache(async (): Promise<User> => {
-  const authUser = await requireAuth() // This handles redirect
-  const profile = await getUserProfile(authUser.id)
-  
-  if (!profile) {
-    console.error("❌ Error fetching user profile for authenticated user")
-    redirect('/login')
-  }
-  
-  return profile
-})
-
-/**
- * LEGACY: Get authenticated user with profile data (cached per request)  
- * Returns null if not authenticated (doesn't redirect)
- * @deprecated Use getAuthUser() + getUserProfile() for better performance
- */
-export const getUserOptional = cache(async (): Promise<User | null> => {
-  const authUser = await getAuthUser()
-  if (!authUser) return null
-  
-  return await getUserProfile(authUser.id)
-})
-
-/**
  * Sign out the current user and redirect to home page
  */
 export async function signOut() {

@@ -1,7 +1,8 @@
 import { EventDetailView } from "@/components/events/display/event-detail-view";
+import { toggleEventAttendanceAction } from "@/lib/actions";
 import { notFound } from "next/navigation";
 import type { EventDetailData } from "@/types/event";
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, getUserProfile } from "@/lib/auth";
 import { getBaseUrl } from "@/lib/utils";
 
 // Cache this page for 5 minutes, then revalidate in the background
@@ -73,7 +74,8 @@ export default async function EventDetailPage({
 
   try {
     // Get user directly in server component (like events page does)
-    const user = await getUserOptional();
+    const authUser = await getAuthUser();
+    const user = authUser ? await getUserProfile(authUser.id) : null;
 
     // Get event details using our cached API route
     const eventDetailData = await getEventDetailData(id, user?.id);
@@ -93,7 +95,10 @@ export default async function EventDetailPage({
 
     return (
       <>
-        <EventDetailView eventDetailData={completeEventDetailData} />
+        <EventDetailView
+          eventDetailData={completeEventDetailData}
+          attendEventAction={toggleEventAttendanceAction}
+        />
       </>
     );
   } catch (error) {

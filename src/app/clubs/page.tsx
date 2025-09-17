@@ -202,6 +202,23 @@ async function joinClub(
       return { success: false, message: "Failed to join club" };
     }
 
+    // Force revalidation of club pages and related data after successful join
+    try {
+      // Revalidate the specific club page
+      revalidatePath(`/clubs/${clubId}`);
+      // Revalidate the user's clubs page
+      revalidatePath("/clubs/my-clubs");
+      // Revalidate general clubs page
+      revalidatePath("/clubs");
+
+      console.log(
+        `🔄 Cache invalidated for club ${clubId} and user ${userId} after join`
+      );
+    } catch (revalidateError) {
+      console.error("❌ Error during cache revalidation:", revalidateError);
+      // Don't fail the request if revalidation fails
+    }
+
     return { success: true };
   } catch (error) {
     console.error("Error in joinClub:", error);

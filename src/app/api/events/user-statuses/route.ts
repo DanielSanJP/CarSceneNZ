@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get userId and eventIds from request body (following event detail pattern)
     const body = await request.json();
     const { userId, eventIds } = body;
+
+    console.log(`🔍 API: User statuses request - User: ${userId}, Events: ${eventIds?.length || 0}`);
 
     if (!userId) {
       return NextResponse.json(
@@ -14,10 +15,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!eventIds || !Array.isArray(eventIds) || eventIds.length === 0) {
+      console.log("🔍 API: No event IDs provided, returning empty statuses");
       return NextResponse.json({ userStatuses: {} });
     }
 
-    // Get environment variables for native fetch
+    // Get Supabase config
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
@@ -26,60 +28,53 @@ export async function POST(request: NextRequest) {
       throw new Error("Server configuration error");
     }
 
-    console.log(`🔍 DEBUG: Fetching user statuses for ${eventIds.length} events for user ${userId}`);
+    // Create the filter for event_attendees table
+    // Format: event_id=in.(uuid1,uuid2,uuid3)&user_id=eq.uuid
+    const eventIdsFilter = eventIds.join(",");
+    const url = `${supabaseUrl}/rest/v1/event_attendees?event_id=in.(${eventIdsFilter})&user_id=eq.${userId}&select=event_id,status`;
 
-    // Build the query for event_attendees table using native fetch for caching
-    const query = new URLSearchParams({
-      select: "event_id,status",
-      user_id: `eq.${userId}`,
-      event_id: `in.(${eventIds.join(",")})`,
+    console.log(`🔍 API: Querying URL: ${url}`);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
+      next: {
+        revalidate: 30, // 30 second cache for user attendance data
+        tags: ["event-attendees", `user-${userId}-attendees`],
+      },
     });
 
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/event_attendees?${query}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          Prefer: "return=representation",
-        },
-        // Enable Next.js caching with shorter revalidation for user-specific data
-        next: {
-          revalidate: 60, // 1 minute cache for user attendance data
-          tags: ["event-attendees", `user-${userId}-attendees`],
-        },
-      }
-    );
-
-    console.log(`🔍 DEBUG: User statuses fetch response status: ${response.status}`);
+    console.log(`🔍 API: Response status: ${response.status}`);
 
     if (!response.ok) {
-      console.error(`❌ Failed to fetch user event statuses: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Supabase query failed: ${response.status} ${response.statusText}`, errorText);
       throw new Error(`Failed to fetch user event statuses: ${response.status}`);
     }
 
-    const statusData = await response.json();
+    const attendanceRecords = await response.json();
+    console.log(`🔍 API: Raw response:`, attendanceRecords);
 
-    console.log(`🔍 DEBUG: Fetched ${statusData?.length || 0} user attendance records`);
+    // Convert array of {event_id, status} to {eventId: status} object
+    const userStatuses: Record<string, string> = {};
+    if (Array.isArray(attendanceRecords)) {
+      attendanceRecords.forEach((record: { event_id: string; status: string }) => {
+        userStatuses[record.event_id] = record.status;
+      });
+    }
 
-    // Transform the data into the expected format
-    const userStatuses = (statusData || []).reduce(
-      (acc: Record<string, string>, item: { event_id: string; status: string }) => {
-        acc[item.event_id] = item.status;
-        return acc;
-      },
-      {}
-    );
-
-    console.log(`✅ User event statuses fetched successfully: ${Object.keys(userStatuses).length} events`);
+    console.log(`✅ API: Returning user statuses for ${Object.keys(userStatuses).length} events:`, userStatuses);
 
     return NextResponse.json({
       userStatuses,
       userId: userId,
     });
   } catch (error) {
-    console.error("❌ Error fetching user event statuses:", error);
+    console.error("❌ Error in user-statuses API:", error);
     return NextResponse.json(
       { error: "Failed to fetch user event statuses" },
       { status: 500 }

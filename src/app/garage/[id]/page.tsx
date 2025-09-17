@@ -1,5 +1,6 @@
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, getUserProfile } from "@/lib/auth";
 import { CarDetailView } from "@/components/garage/display/car-detail-view";
+import { likeCarAction } from "@/lib/actions";
 import type { CarDetailData } from "@/types/car";
 import { getBaseUrl } from "@/lib/utils";
 
@@ -67,12 +68,19 @@ export default async function CarDetailsPage({ params }: CarDetailPageProps) {
 
   try {
     // Get user directly in server component
-    const user = await getUserOptional();
+    const authUser = await getAuthUser();
+    const user = authUser ? await getUserProfile(authUser.id) : null;
 
     // Get car details using our cached API route
     const carDetailData = await getCarDetailData(id, user?.id);
 
-    return <CarDetailView user={user} carDetailData={carDetailData} />;
+    return (
+      <CarDetailView
+        user={user}
+        carDetailData={carDetailData}
+        likeCarAction={likeCarAction}
+      />
+    );
   } catch (error) {
     console.error("❌ Error loading car on server:", error);
 

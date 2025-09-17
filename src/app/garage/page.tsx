@@ -1,5 +1,6 @@
 import { getAuthUser, getUserProfile } from "@/lib/auth";
 import { GarageGallery } from "@/components/garage/display/garage-gallery";
+import { likeCarAction } from "@/lib/actions";
 import type { GarageData } from "@/types/car";
 import { getBaseUrl } from "@/lib/utils";
 
@@ -94,10 +95,24 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
         : null,
     };
 
-    return <GarageGallery page={page} limit={limit} garageData={garageData} />;
+    return (
+      <GarageGallery
+        page={page}
+        limit={limit}
+        garageData={garageData}
+        likeCarAction={likeCarAction}
+      />
+    );
   } catch (error) {
     console.error("Error loading garage:", error);
     // Return null data to show error state
-    return <GarageGallery page={page} limit={limit} garageData={null} />;
+    return (
+      <GarageGallery
+        page={page}
+        limit={limit}
+        garageData={null}
+        likeCarAction={likeCarAction}
+      />
+    );
   }
 }

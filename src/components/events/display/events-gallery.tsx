@@ -37,6 +37,15 @@ interface EventsGalleryProps {
   page: number;
   limit: number;
   eventsData: EventsData; // Direct SSR data - required
+  attendEventAction?: (
+    eventId: string,
+    status?: "interested" | "going" | "remove"
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    isAttending?: boolean;
+    attendeeCount?: number;
+  }>;
 }
 
 // Memoized individual event card component
@@ -225,7 +234,12 @@ const EventCard = React.memo(
 
 EventCard.displayName = "EventCard";
 
-export function EventsGallery({ page, limit, eventsData }: EventsGalleryProps) {
+export function EventsGallery({
+  page,
+  limit,
+  eventsData,
+  attendEventAction: serverAttendAction,
+}: EventsGalleryProps) {
   const router = useRouter();
 
   console.log(
@@ -238,29 +252,19 @@ export function EventsGallery({ page, limit, eventsData }: EventsGalleryProps) {
   );
 
   // Client-side attendance function
+  // Client-side attendance function - use Server Action if available, otherwise API route
   const attendEventAction = async (
     eventId: string,
     status: "interested" | "going" | "remove"
   ) => {
     try {
-      const response = await fetch("/api/events/attendance", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ eventId, status }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: result.error || "Failed to update attendance",
-        };
+      if (!serverAttendAction) {
+        console.error("attendEventAction not provided");
+        return { success: false, error: "Attendance action not available" };
       }
 
-      return { success: true };
+      const result = await serverAttendAction(eventId, status);
+      return result;
     } catch (error) {
       console.error("Client-side attendance error:", error);
       return { success: false, error: "Network error occurred" };
@@ -430,12 +434,10 @@ export function EventsGallery({ page, limit, eventsData }: EventsGalleryProps) {
         setLocalUserStatuses((prev) => ({ ...prev, [eventId]: currentStatus }));
         console.error("Failed to update attendance:", result.error);
       } else {
-        // Success! Refresh the page to get updated server data with accurate counts
-        setTimeout(() => {
-          router.refresh();
-        }, 100);
-
-        console.log(`✅ Attendance updated successfully, page will refresh`);
+        // Success! Server Action automatically invalidates cache
+        console.log(
+          `✅ Attendance updated successfully with immediate cache invalidation`
+        );
       }
     } catch (error) {
       console.error("Error updating attendance:", error);
@@ -564,6 +566,16 @@ export function EventsGallery({ page, limit, eventsData }: EventsGalleryProps) {
             const interestedCount = getInterestedCount(event.id);
             const host = getHostInfo(event.host);
             const userStatus = getUserStatus(event.id);
+
+            // Debug logging for the first event only to avoid spam
+            if (filteredAndSortedEvents.indexOf(event) === 0) {
+              console.log(`🔍 GALLERY DEBUG for event ${event.id}:`, {
+                localUserStatuses: localUserStatuses[event.id],
+                userEventStatuses: userEventStatuses[event.id],
+                calculatedUserStatus: userStatus,
+                user: user ? `${user.username} (${user.id})` : "not logged in",
+              });
+            }
 
             return (
               <Link
@@ -708,6 +720,15 @@ export function EventsGallery({ page, limit, eventsData }: EventsGalleryProps) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          console.log(
+                            `🔘 INTERESTED button clicked for ${
+                              event.id
+                            }: userStatus=${userStatus}, variant=${
+                              userStatus === "interested"
+                                ? "default"
+                                : "outline"
+                            }`
+                          );
                           handleAttendanceAction(event.id, "interested");
                         }}
                       >
@@ -729,6 +750,16 @@ export function EventsGallery({ page, limit, eventsData }: EventsGalleryProps) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          console.log(
+                            `🔘 GOING button clicked for ${
+                              event.id
+                            }: userStatus=${userStatus}, variant=${
+                              userStatus === "going" ||
+                              userStatus === "approved"
+                                ? "default"
+                                : "outline"
+                            }`
+                          );
                           handleAttendanceAction(event.id, "going");
                         }}
                       >

@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { CreateCarForm } from "@/components/garage";
 import {
@@ -17,12 +17,7 @@ async function createCarWithComponents(carData: {
   model: string;
   year: number;
   images: string[];
-  engine?: unknown;
-  suspension?: unknown;
-  wheels_tires?: unknown;
-  braking_system?: unknown;
-  exterior_mods?: unknown;
-  interior_mods?: unknown;
+  [key: string]: unknown; // Allow any additional flattened fields
 }): Promise<Car> {
   try {
     const supabase = await createClient();
@@ -35,12 +30,13 @@ async function createCarWithComponents(carData: {
         model: carData.model,
         year: carData.year,
         images: carData.images,
-        engine: carData.engine,
-        suspension: carData.suspension,
-        wheels_tires: carData.wheels_tires,
-        braking_system: carData.braking_system,
-        exterior_mods: carData.exterior_mods,
-        interior_mods: carData.interior_mods,
+        // Add all additional fields directly (flattened structure)
+        ...Object.fromEntries(
+          Object.entries(carData).filter(
+            ([key]) =>
+              !["owner_id", "brand", "model", "year", "images"].includes(key)
+          )
+        ),
       })
       .select()
       .single();
@@ -227,8 +223,21 @@ async function createCarAction(formData: FormData) {
         const newImageUrls = await moveFromTemp(tempCarId, result.id, "cars");
         if (newImageUrls.length > 0) {
           // Update the car record with the new image URLs
-          // Note: You might want to add an updateCarImages function to your cars.ts
           console.log("Images moved successfully:", newImageUrls);
+
+          // Update the database with the new image URLs
+          const supabase = await createClient();
+          const { error: updateError } = await supabase
+            .from("cars")
+            .update({ images: newImageUrls })
+            .eq("id", result.id);
+
+          if (updateError) {
+            console.error(
+              "Error updating car with new image URLs:",
+              updateError
+            );
+          }
         }
       } catch (error) {
         console.error("Error moving temp images:", error);
@@ -236,7 +245,12 @@ async function createCarAction(formData: FormData) {
       }
     }
 
+    // Revalidate multiple paths and cache tags
     revalidatePath("/garage");
+    revalidatePath("/garage/my-garage");
+    revalidatePath("/");
+    revalidateTag("garage");
+    revalidateTag("garage-page-1");
     redirect(`/garage/${result.id}`);
   } catch (error) {
     // If car creation failed and we have temp images, clean them up

@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
     formats: ['image/webp', 'image/avif'],
     // Configure allowed quality values
     qualities: [25, 50, 75, 100],
+    // Configure imageSizes for small fixed-size images like avatars
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Configure deviceSizes for responsive images
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     // Allow images from Supabase storage
     remotePatterns: [
       {

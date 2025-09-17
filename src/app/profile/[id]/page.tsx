@@ -1,5 +1,6 @@
 import { UserProfileDisplay } from "@/components/profile/user-profile-display";
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, getUserProfile } from "@/lib/auth";
+import { toggleFollowUserAction } from "@/lib/actions";
 import { createClient } from "@/lib/utils/supabase/server";
 import type { ProfileData, LeaderClubsData } from "@/types/user";
 import { revalidatePath } from "next/cache";
@@ -20,7 +21,12 @@ async function followUserAction(
 ) {
   "use server";
 
-  const user = await getUserOptional();
+  const authUser = await getAuthUser();
+  if (!authUser) {
+    redirect("/login");
+  }
+
+  const user = await getUserProfile(authUser.id);
   if (!user) {
     redirect("/login");
   }
@@ -32,30 +38,20 @@ async function followUserAction(
       `🔄 Server Action: ${action} user ${targetUserId}, current user ${user.id}`
     );
 
-    // Use our simplified API route instead of RPC
-    const response = await fetch(`${getBaseUrl()}/api/profile/follow`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        targetUserId: targetUserId,
-      }),
-    });
+    // Use Server Action for immediate cache invalidation
+    const result = await toggleFollowUserAction(targetUserId);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("❌ Follow/Unfollow API Error:", errorData);
+    if (!result.success) {
+      console.error("❌ Follow/Unfollow Server Action Error:", result.error);
       return {
         success: false,
-        error: errorData.error || "Failed to update follow status",
+        error: result.error || "Failed to update follow status",
       };
     }
 
-    const data = await response.json();
-    console.log(`✅ ${action} Success:`, data);
+    console.log(`✅ ${action} Success via Server Action`);
 
-    // Revalidate relevant pages
+    // Server Actions automatically handle cache invalidation, but we can add specific paths
     revalidatePath(`/profile/${targetUserId}`);
     revalidatePath("/"); // Homepage might show followed users' content
 
@@ -72,9 +68,9 @@ async function followUserAction(
 
     return {
       success: true,
-      action: data.action,
-      isFollowing: data.isFollowing,
-      newFollowersCount: data.newFollowersCount,
+      action: result.isFollowing ? "follow" : "unfollow",
+      isFollowing: result.isFollowing,
+      newFollowersCount: result.followerCount,
     };
   } catch (error) {
     console.error("❌ Follow/Unfollow Server Action Exception:", error);
@@ -196,7 +192,8 @@ export default async function UserProfilePage({
   const { id: usernameOrId } = await params;
 
   // Get current user (optional)
-  const currentUser = await getUserOptional();
+  const authUser = await getAuthUser();
+  const currentUser = authUser ? await getUserProfile(authUser.id) : null;
 
   // Fetch profile data using cached API route
   let profileData: ProfileData | null = null;

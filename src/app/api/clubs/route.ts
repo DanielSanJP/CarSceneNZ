@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    // Build the query dynamically with filters
+    // Build the query dynamically with filters using club_stats view for accurate total_likes
     let query = supabase
-      .from('clubs')
+      .from('club_stats')
       .select(`
         id,
         name,
@@ -36,15 +36,11 @@ export async function GET(request: NextRequest) {
         club_type,
         location,
         leader_id,
-        total_likes,
+        calculated_total_likes,
+        member_count,
+        total_cars,
         created_at,
-        updated_at,
-        leader:users!clubs_leader_id_fkey(
-          id,
-          username,
-          display_name,
-          profile_image_url
-        )
+        updated_at
       `);
 
     // Apply search filter
@@ -65,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Apply sorting
     switch (sortBy) {
       case 'likes':
-        query = query.order('total_likes', { ascending: false });
+        query = query.order('calculated_total_likes', { ascending: false });
         break;
       case 'newest':
         query = query.order('created_at', { ascending: false });
@@ -77,12 +73,12 @@ export async function GET(request: NextRequest) {
         query = query.order('name', { ascending: true });
         break;
       default:
-        query = query.order('total_likes', { ascending: false });
+        query = query.order('calculated_total_likes', { ascending: false });
     }
 
-    // Get total count for pagination (with same filters)
+    // Get total count for pagination (with same filters) using club_stats view
     let countQuery = supabase
-      .from('clubs')
+      .from('club_stats')
       .select('*', { count: 'exact', head: true });
 
     // Apply same filters to count query
@@ -108,44 +104,46 @@ export async function GET(request: NextRequest) {
       throw clubsError;
     }
 
-    console.log(`🔍 DEBUG: Fetched ${clubs?.length || 0} clubs from database`);
+    console.log(`🔍 DEBUG: Fetched ${clubs?.length || 0} clubs from club_stats view`);
 
-    // Get member counts for all clubs in parallel
-    const clubIds = clubs?.map(club => club.id) || [];
-    const memberCounts: Record<string, number> = {};
-    const userMemberships: Record<string, boolean> = {};
+    // Get leader info for all clubs manually (since views don't have foreign key relationships)
+    const leaderIds = clubs?.map(club => club.leader_id) || [];
+    const leadersMap: Record<string, any> = {};
 
-    if (clubIds.length > 0) {
-      // Get member counts for all clubs
-      const { data: memberCountData } = await supabase
-        .from('club_members')
-        .select('club_id')
-        .in('club_id', clubIds);
+    if (leaderIds.length > 0) {
+      const { data: leaders } = await supabase
+        .from('users')
+        .select('id, username, display_name, profile_image_url')
+        .in('id', leaderIds);
 
-      // Count members per club
-      memberCountData?.forEach(member => {
-        memberCounts[member.club_id] = (memberCounts[member.club_id] || 0) + 1;
+      leaders?.forEach(leader => {
+        leadersMap[leader.id] = leader;
       });
-
-      // Get user memberships if userId is provided
-      if (userId) {
-        const { data: userMembershipData } = await supabase
-          .from('club_members')
-          .select('club_id')
-          .eq('user_id', userId)
-          .in('club_id', clubIds);
-
-        userMembershipData?.forEach(membership => {
-          userMemberships[membership.club_id] = true;
-        });
-      }
     }
 
-    // Transform clubs data to match interface
+    // Get user memberships if userId is provided (we already have member_count from the view)
+    const clubIds = clubs?.map(club => club.id) || [];
+    const userMemberships: Record<string, boolean> = {};
+
+    if (clubIds.length > 0 && userId) {
+      const { data: userMembershipData } = await supabase
+        .from('club_members')
+        .select('club_id')
+        .eq('user_id', userId)
+        .in('club_id', clubIds);
+
+      userMembershipData?.forEach(membership => {
+        userMemberships[membership.club_id] = true;
+      });
+    }
+
+    // Transform clubs data to match interface (using calculated values from view)
     const transformedClubs = clubs?.map(club => ({
       ...club,
+      total_likes: club.calculated_total_likes, // Map calculated_total_likes to total_likes for compatibility
+      leader: leadersMap[club.leader_id] || null, // Add leader info manually
       is_invite_only: club.club_type === 'invite', // Derive from club_type
-      memberCount: memberCounts[club.id] || 0,
+      memberCount: club.member_count || 0, // Use pre-calculated member_count from view
       isUserMember: userId ? userMemberships[club.id] || false : undefined
     })) || [];
 

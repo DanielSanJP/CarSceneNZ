@@ -67,8 +67,8 @@ export default async function MyEventsPage() {
         location: string;
         created_at: string;
         updated_at: string;
-        attendee_count: number;
-        interested_count: number;
+        attendeeCount: number; // API returns camelCase
+        interestedCount: number; // API returns camelCase
       }) => ({
         id: event.id,
         host_id: user.id, // These are all user's events
@@ -80,10 +80,10 @@ export default async function MyEventsPage() {
         created_at: event.created_at,
         updated_at: event.updated_at,
         // Map to both camelCase (Event interface) and snake_case (component expects)
-        attendeeCount: event.attendee_count || 0,
-        interestedCount: event.interested_count || 0,
-        attendee_count: event.attendee_count || 0,
-        interested_count: event.interested_count || 0,
+        attendeeCount: event.attendeeCount || 0,
+        interestedCount: event.interestedCount || 0,
+        attendee_count: event.attendeeCount || 0,
+        interested_count: event.interestedCount || 0,
         host: {
           id: user.id,
           username: user.username,

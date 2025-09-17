@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Search, Car, Calendar, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -189,10 +188,6 @@ function SearchContent({ initialData }: SearchClientProps) {
                         <p className="text-sm text-muted-foreground">
                           Owner: {car.owner?.display_name || "Unknown"}
                         </p>
-
-                        <Badge variant="outline" className="mt-1">
-                          {car.year}
-                        </Badge>
                       </div>
                     </CardContent>
                   </Card>

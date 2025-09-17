@@ -26,11 +26,13 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
   const [error, setError] = useState<string>("");
   const router = useRouter();
 
-  const handleAction = async (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setIsLoading(true);
     setError(""); // Clear any previous errors
 
     try {
+      const formData = new FormData(e.currentTarget);
       const result = await action(formData);
 
       if (result.success) {
@@ -60,7 +62,7 @@ export function LoginForm({ className, action, ...props }: LoginFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={handleAction}>
+          <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>

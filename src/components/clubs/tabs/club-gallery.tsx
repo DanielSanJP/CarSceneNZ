@@ -400,7 +400,8 @@ export const ClubGallery = memo(function ClubGallery({
                               currentUser.id
                             );
                             if (result.success) {
-                              window.location.reload();
+                              // Successfully joined - cache will be revalidated by API
+                              // No need to reload, revalidation will update the UI
                             } else {
                               alert(result.message || "Failed to join club");
                             }

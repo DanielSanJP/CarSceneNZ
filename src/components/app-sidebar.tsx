@@ -2,16 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import {
-  Car,
-  Trophy,
-  Calendar,
-  Users,
-  Mail,
-  User,
-  LogOut,
-  Search,
-} from "lucide-react";
+import { Car, Trophy, Calendar, Users, Mail, User, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth";
@@ -58,11 +49,6 @@ const mainNavItems = [
     title: "Clubs",
     url: "/clubs",
     icon: Users,
-  },
-  {
-    title: "Search",
-    url: "/search",
-    icon: Search,
   },
 ];
 

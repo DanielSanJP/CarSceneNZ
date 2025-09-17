@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, memo } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from "sonner";
+import { manageMemberAction } from "@/lib/actions/club-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import {
   Users,
   MapPin,
@@ -31,12 +38,16 @@ import {
   UserPlus,
   UserMinus,
   Mail,
+  MoreVertical,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import type { User } from "@/types/user";
 import { SendClubMail } from "@/components/clubs/send-club-mail";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
 import type { ClubMailData } from "@/types/inbox";
 import type { ClubDetailData } from "@/types/club";
+import { joinClubAction, leaveClubAction } from "@/lib/actions/club-actions";
 
 interface ClubDetailViewProps {
   currentUser: User | null;
@@ -55,7 +66,12 @@ export const ClubDetailView = memo(function ClubDetailView({
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const router = useRouter();
+  const [managingMemberId, setManagingMemberId] = useState<string | null>(null);
+  const [showKickDialog, setShowKickDialog] = useState(false);
+  const [memberToKick, setMemberToKick] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   // Use data directly from props (no React Query)
   const clubData = clubDetailData;
@@ -71,38 +87,25 @@ export const ClubDetailView = memo(function ClubDetailView({
   const userRole = userMembership?.role;
 
   const isLeader = userRole === "leader";
-  const isCoLeader = userRole === "co-leader";
   const canManage = isLeader;
-  const canManageMembers = isLeader || isCoLeader;
 
   const handleJoinClub = async () => {
     if (!currentUser || !club) return;
 
     setIsJoining(true);
     try {
-      // Call API route instead of server action
-      const response = await fetch("/api/clubs/join", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clubId: club.id,
-          userId: currentUser.id,
-        }),
-      });
-
-      const result = await response.json();
+      // Use Server Action for immediate cache invalidation
+      const result = await joinClubAction(club.id, currentUser.id);
 
       if (result.success) {
-        // Refresh the page to show updated membership status
-        router.refresh();
+        // Server Action automatically invalidates both Data Cache and Router Cache
+        toast.success("Successfully joined the club!");
       } else {
-        alert(result.message || "Failed to join club");
+        toast.error(result.message || "Failed to join club");
       }
     } catch (error) {
       console.error("Error joining club:", error);
-      alert("Failed to join club. Please try again.");
+      toast.error("Failed to join club. Please try again.");
     } finally {
       setIsJoining(false);
     }
@@ -113,30 +116,18 @@ export const ClubDetailView = memo(function ClubDetailView({
 
     setIsLeaving(true);
     try {
-      // Call API route instead of server action
-      const response = await fetch("/api/clubs/leave", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clubId: club.id,
-          userId: currentUser.id,
-        }),
-      });
-
-      const result = await response.json();
+      // Use Server Action for immediate cache invalidation
+      const result = await leaveClubAction(club.id, currentUser.id);
 
       if (result.success) {
-        // After leaving, redirect to clubs page for better UX
-        // No point staying on a club page you're no longer part of
-        router.push("/clubs?tab=join");
+        // Server Action automatically invalidates both Data Cache and Router Cache
+        toast.success("Successfully left the club");
       } else {
-        alert(result.message || "Failed to leave club");
+        toast.error(result.message || "Failed to leave club");
       }
     } catch (error) {
       console.error("Error leaving club:", error);
-      alert("Failed to leave club. Please try again.");
+      toast.error("Failed to leave club. Please try again.");
     } finally {
       setIsLeaving(false);
       setShowLeaveDialog(false);
@@ -181,6 +172,38 @@ export const ClubDetailView = memo(function ClubDetailView({
     } catch (error) {
       console.error("Error sending join request:", error);
       return { success: false, error: "Failed to send join request" };
+    }
+  };
+
+  // Member management actions
+  const handleMemberAction = async (
+    action: "promote" | "demote" | "kick",
+    targetUserId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    setManagingMemberId(targetUserId);
+
+    try {
+      const result = await manageMemberAction(club.id, targetUserId, action);
+
+      if (result.success) {
+        // Successfully managed member - Server Action already revalidated the cache
+        if (action === "kick") {
+          toast.success("Member removed from club");
+        } else if (action === "promote") {
+          toast.success("Member promoted successfully");
+        } else if (action === "demote") {
+          toast.success("Member demoted successfully");
+        }
+      } else {
+        toast.error(result.error || "Failed to manage member");
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error managing member:", error);
+      return { success: false, error: "Failed to manage member" };
+    } finally {
+      setManagingMemberId(null);
     }
   };
 
@@ -531,14 +554,26 @@ export const ClubDetailView = memo(function ClubDetailView({
 
                   {/* Avatar */}
                   <Link href={`/profile/${member.user?.username}`}>
-                    <Avatar className="h-12 w-12 cursor-pointer border-2 border-muted">
-                      {member.user?.profile_image_url && (
-                        <AvatarImage src={member.user.profile_image_url} />
+                    <div className="relative h-12 w-12 cursor-pointer border-2 border-muted rounded-full overflow-hidden bg-muted">
+                      {member.user?.profile_image_url ? (
+                        <Image
+                          src={member.user.profile_image_url}
+                          alt={`${
+                            member.user?.display_name || member.user?.username
+                          }'s profile`}
+                          width={48}
+                          height={48}
+                          className="object-cover rounded-full"
+                          quality={100}
+                          priority={index < 5}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full w-full bg-muted text-muted-foreground font-medium">
+                          {member.user?.username?.charAt(0)?.toUpperCase() ||
+                            "?"}
+                        </div>
                       )}
-                      <AvatarFallback>
-                        {member.user?.username?.charAt(0) || "?"}
-                      </AvatarFallback>
-                    </Avatar>
+                    </div>
                   </Link>
 
                   {/* User Info */}
@@ -575,13 +610,75 @@ export const ClubDetailView = memo(function ClubDetailView({
                     </div>
                   </div>
 
-                  {/* Actions - placeholder for future member management */}
-                  {(canManage || canManageMembers) &&
+                  {/* Member Management Actions */}
+                  {canManage &&
                     member.role !== "leader" &&
                     member.user.id !== currentUser?.id && (
-                      <div className="text-xs text-muted-foreground">
-                        {/* Future: Member management dropdown */}
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={managingMemberId === member.user.id}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {member.role === "member" && (
+                            <DropdownMenuItem
+                              disabled={managingMemberId === member.user.id}
+                              onClick={async () => {
+                                await handleMemberAction(
+                                  "promote",
+                                  member.user.id
+                                );
+                              }}
+                            >
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              {managingMemberId === member.user.id
+                                ? "Promoting..."
+                                : "Promote to Co-Leader"}
+                            </DropdownMenuItem>
+                          )}
+                          {member.role === "co-leader" && (
+                            <DropdownMenuItem
+                              disabled={managingMemberId === member.user.id}
+                              onClick={async () => {
+                                await handleMemberAction(
+                                  "demote",
+                                  member.user.id
+                                );
+                              }}
+                            >
+                              <UserMinus className="h-4 w-4 mr-2" />
+                              {managingMemberId === member.user.id
+                                ? "Demoting..."
+                                : "Demote to Member"}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            disabled={managingMemberId === member.user.id}
+                            onClick={() => {
+                              setMemberToKick({
+                                id: member.user.id,
+                                name:
+                                  member.user.display_name ||
+                                  member.user.username,
+                              });
+                              setShowKickDialog(true);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <UserX className="h-4 w-4 mr-2" />
+                            {managingMemberId === member.user.id
+                              ? "Kicking..."
+                              : "Kick from Club"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                 </div>
               ))}
@@ -595,6 +692,47 @@ export const ClubDetailView = memo(function ClubDetailView({
           )}
         </CardContent>
       </Card>
+
+      {/* Kick Member Confirmation Dialog */}
+      <Dialog open={showKickDialog} onOpenChange={setShowKickDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kick Member</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to kick{" "}
+              <strong>{memberToKick?.name}</strong> from the club? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowKickDialog(false);
+                setMemberToKick(null);
+              }}
+              disabled={managingMemberId === memberToKick?.id}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (memberToKick) {
+                  await handleMemberAction("kick", memberToKick.id);
+                  setShowKickDialog(false);
+                  setMemberToKick(null);
+                }
+              }}
+              disabled={managingMemberId === memberToKick?.id}
+            >
+              {managingMemberId === memberToKick?.id
+                ? "Kicking..."
+                : "Kick Member"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 });

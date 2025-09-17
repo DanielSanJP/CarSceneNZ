@@ -1,4 +1,4 @@
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, getUserProfile } from "@/lib/auth";
 import { ClubDetailView } from "@/components/clubs/display/club-detail-view";
 import type { ClubDetailData } from "@/types/club";
 import { getBaseUrl } from "@/lib/utils";
@@ -29,9 +29,9 @@ async function getClubDetailDataSSR(
       body: JSON.stringify({
         userId: currentUserId || null,
       }),
-      // Enable Next.js caching with 5 minute revalidation
+      // Enable Next.js caching with 1 minute revalidation for faster updates
       next: {
-        revalidate: 300, // 5 minutes
+        revalidate: 60, // 1 minute
         tags: ["clubs", `club-${clubId}`],
       },
     });
@@ -69,7 +69,8 @@ export default async function ClubDetailPage({
   const { from = "join", tab = "clubs" } = await searchParams;
 
   // Get current user (optional)
-  const currentUser = await getUserOptional();
+  const authUser = await getAuthUser();
+  const currentUser = authUser ? await getUserProfile(authUser.id) : null;
 
   // Fetch club detail data using cached API route
   let clubDetailData: ClubDetailData | null = null;
@@ -108,4 +109,4 @@ export default async function ClubDetailPage({
   );
 }
 
-export const revalidate = 300; // 5 minutes
+export const revalidate = 60; // 1 minute

@@ -1,5 +1,5 @@
 import { requireAuth, getUserProfile } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { EditProfileClient } from "@/components/profile/edit-profile-client";
 import { uploadProfileImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
@@ -141,11 +141,26 @@ async function updateProfileAction(formData: FormData) {
 
     console.log("Server action - update successful:", result);
 
-    // Revalidate specific paths
+    // Efficient revalidation using cache tags for display name changes
+    // User profiles appear throughout the app in various contexts
+
+    // Core profile pages
     revalidatePath("/profile/edit");
     revalidatePath(`/profile/${result.id}`);
     revalidatePath(`/profile/${result.username}`);
-    revalidatePath("/"); // Home page navigation
+
+    // Use cache tags for broader invalidation
+    revalidateTag("home-data"); // Home page navigation and featured content
+    revalidateTag("garage"); // Car owner display names in garage
+    revalidateTag("cars"); // Individual car detail pages with owner info
+    revalidateTag("events"); // Event host and attendee display names
+    revalidateTag("clubs"); // Club leader and member display names
+    revalidateTag("leaderboards"); // User names in leaderboards
+    revalidateTag("users"); // General user data
+    revalidateTag(`user-${result.id}`); // Specific user data
+
+    // Inbox/messages may show sender display names
+    revalidateTag(`user-${result.id}-inbox`);
 
     // Return success with user data for client-side navigation
     return {

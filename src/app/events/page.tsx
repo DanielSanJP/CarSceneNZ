@@ -1,6 +1,7 @@
 import { EventsGallery } from "@/components/events";
+import { toggleEventAttendanceAction } from "@/lib/actions";
 import type { EventsData } from "@/types/event";
-import { getUserOptional } from "@/lib/auth";
+import { getAuthUser, getUserProfile } from "@/lib/auth";
 import { getBaseUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,8 @@ export const dynamic = "force-dynamic";
 async function getUserHints() {
   try {
     // Use cached auth check - this is fast due to React cache()
-    const user = await getUserOptional();
+    const authUser = await getAuthUser();
+    const user = authUser ? await getUserProfile(authUser.id) : null;
 
     if (!user) {
       return {
@@ -235,5 +237,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     pagination: eventsData.pagination,
   };
 
-  return <EventsGallery page={page} limit={limit} eventsData={ssrEventsData} />;
+  return (
+    <EventsGallery
+      page={page}
+      limit={limit}
+      eventsData={ssrEventsData}
+      attendEventAction={toggleEventAttendanceAction}
+    />
+  );
 }

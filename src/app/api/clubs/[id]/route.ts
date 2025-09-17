@@ -15,9 +15,9 @@ export async function POST(
 
     const supabase = await createClient();
 
-    // 1. Get club basic info
+    // 1. Get club basic info from club_stats view for accurate total_likes
     const { data: club, error: clubError } = await supabase
-      .from('clubs')
+      .from('club_stats')
       .select('*')
       .eq('id', id)
       .single();
@@ -101,6 +101,7 @@ export async function POST(
     const clubDetailData = {
       club: {
         ...club,
+        total_likes: club.calculated_total_likes, // Map calculated_total_likes to total_likes for compatibility
         leader,
         isUserMember
       },
@@ -119,7 +120,7 @@ export async function POST(
 
     return NextResponse.json(clubDetailData, {
       headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=1800',
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60',
       },
     });
 

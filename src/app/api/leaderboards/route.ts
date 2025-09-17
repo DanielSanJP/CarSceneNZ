@@ -34,18 +34,14 @@ type ClubRPCResult = {
   name: string;
   description: string | null;
   banner_image_url: string | null;
-  total_likes: number;
+  calculated_total_likes: number; // From club_stats view
   leader_id: string;
   club_type: string;
   location: string;
   created_at: string;
   updated_at: string;
-  member_count: number;
-  leader_username: string;
-  leader_display_name: string | null;
-  leader_profile_image_url: string | null;
-  leader_created_at: string;
-  leader_updated_at: string;
+  member_count: number; // From club_stats view
+  total_cars: number; // From club_stats view
 };
 
 export async function GET(request: NextRequest) {
@@ -104,17 +100,14 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Top Clubs RPC
-      fetch(`${supabaseUrl}/rest/v1/rpc/get_top_clubs`, {
-        method: "POST",
+      // Top Clubs - Use club_stats view for accurate total_likes
+      fetch(`${supabaseUrl}/rest/v1/club_stats?select=*&order=calculated_total_likes.desc&limit=${limit}`, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           apikey: supabaseKey,
           Authorization: `Bearer ${supabaseKey}`,
         },
-        body: JSON.stringify({
-          result_limit: limit,
-        }),
         next: {
           revalidate: 300, // 5 minutes cache
           tags: ["leaderboards", "clubs"],
@@ -146,6 +139,28 @@ export async function GET(request: NextRequest) {
     ]);
 
     console.log(`🔍 DEBUG: Raw data lengths - Cars: ${carsData?.length || 0}, Owners: ${ownersData?.length || 0}, Clubs: ${clubsData?.length || 0}`);
+
+    // For clubs, we need to fetch leader data separately since club_stats view doesn't include it
+    const leaderIds = clubsData?.map((club: ClubRPCResult) => club.leader_id).filter(Boolean) || [];
+    const leadersMap: Record<string, { id: string; username: string; display_name?: string; profile_image_url?: string }> = {};
+    
+    if (leaderIds.length > 0) {
+      const leadersResponse = await fetch(`${supabaseUrl}/rest/v1/users?select=id,username,display_name,profile_image_url&id=in.(${leaderIds.join(',')})`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      });
+      
+      if (leadersResponse.ok) {
+        const leadersData = await leadersResponse.json();
+        leadersData?.forEach((leader: { id: string; username: string; display_name?: string; profile_image_url?: string }) => {
+          leadersMap[leader.id] = leader;
+        });
+      }
+    }
 
     // Transform data to match LeaderboardsData interface
     const leaderboardsData = {
@@ -187,31 +202,41 @@ export async function GET(request: NextRequest) {
         },
       })),
       
-      clubs: (clubsData || []).map((club: ClubRPCResult, index: number) => ({
-        rank: index + 1,
-        likes: club.total_likes || 0,
-        memberCount: club.member_count || 0,
-        club: {
-          id: club.id,
-          name: club.name,
-          description: club.description,
-          banner_image_url: club.banner_image_url,
-          total_likes: club.total_likes || 0,
-          leader_id: club.leader_id,
-          club_type: club.club_type,
-          location: club.location,
-          created_at: club.created_at,
-          updated_at: club.updated_at,
-          leader: {
-            id: club.leader_id,
-            username: club.leader_username || "unknown",
-            display_name: club.leader_display_name || "Unknown Leader",
-            profile_image_url: club.leader_profile_image_url,
-            created_at: club.leader_created_at,
-            updated_at: club.leader_updated_at,
+      clubs: (clubsData || []).map((club: ClubRPCResult, index: number) => {
+        const leader = leadersMap[club.leader_id];
+        return {
+          rank: index + 1,
+          likes: club.calculated_total_likes || 0, // Use calculated value from club_stats view
+          memberCount: club.member_count || 0,
+          club: {
+            id: club.id,
+            name: club.name,
+            description: club.description,
+            banner_image_url: club.banner_image_url,
+            total_likes: club.calculated_total_likes || 0, // Use calculated value from club_stats view
+            leader_id: club.leader_id,
+            club_type: club.club_type,
+            location: club.location,
+            created_at: club.created_at,
+            updated_at: club.updated_at,
+            leader: leader ? {
+              id: leader.id,
+              username: leader.username,
+              display_name: leader.display_name || leader.username,
+              profile_image_url: leader.profile_image_url,
+              created_at: club.created_at, // Use club's created_at as fallback
+              updated_at: club.updated_at, // Use club's updated_at as fallback
+            } : {
+              id: club.leader_id,
+              username: "unknown",
+              display_name: "Unknown Leader",
+              profile_image_url: null,
+              created_at: club.created_at,
+              updated_at: club.updated_at,
+            },
           },
-        },
-      })),
+        };
+      }),
       
       meta: {
         generated_at: new Date().toISOString(),

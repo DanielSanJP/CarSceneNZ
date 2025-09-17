@@ -27,39 +27,40 @@ import type { EventAttendee } from "@/types/event";
 
 interface EventDetailViewProps {
   eventDetailData: EventDetailData; // Direct SSR data - required
+  attendEventAction?: (
+    eventId: string,
+    status?: "interested" | "going" | "remove"
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    isAttending?: boolean;
+    attendeeCount?: number;
+  }>;
 }
 
-export function EventDetailView({ eventDetailData }: EventDetailViewProps) {
+export function EventDetailView({
+  eventDetailData,
+  attendEventAction: serverAttendAction,
+}: EventDetailViewProps) {
   const router = useRouter();
 
   // Extract data from SSR props
   const event = eventDetailData.event;
   const user = eventDetailData.user;
 
-  // Client-side attendance function using our API route
+  // Client-side attendance function using Server Actions
   const attendEventAction = async (
     eventId: string,
     status: "interested" | "going" | "remove"
   ) => {
     try {
-      const response = await fetch("/api/events/attendance", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ eventId, status }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: result.error || "Failed to update attendance",
-        };
+      if (!serverAttendAction) {
+        console.error("attendEventAction not provided");
+        return { success: false, error: "Attendance action not available" };
       }
 
-      return { success: true };
+      const result = await serverAttendAction(eventId, status);
+      return result;
     } catch (error) {
       console.error("Client-side attendance error:", error);
       return { success: false, error: "Network error occurred" };
@@ -75,16 +76,11 @@ export function EventDetailView({ eventDetailData }: EventDetailViewProps) {
     eventDetailData.userStatus
   );
 
-  // Loading states for better UX without optimistic updates
-  const [isUpdatingAttendance, setIsUpdatingAttendance] = useState(false);
-
   // Handle attendance actions with immediate server response
   const handleAttendance = async (
     status: "interested" | "going"
   ): Promise<void> => {
     if (!event || !user || !attendEventAction) return;
-
-    setIsUpdatingAttendance(true);
 
     try {
       const result = await attendEventAction(event.id, status);
@@ -100,15 +96,11 @@ export function EventDetailView({ eventDetailData }: EventDetailViewProps) {
     } catch (error) {
       console.error("Error updating event attendance:", error);
       toast.error("Failed to update attendance");
-    } finally {
-      setIsUpdatingAttendance(false);
     }
   };
 
   const handleUnattendance = async (): Promise<void> => {
     if (!event || !user || !attendEventAction) return;
-
-    setIsUpdatingAttendance(true);
 
     try {
       const result = await attendEventAction(event.id, "remove");
@@ -124,8 +116,6 @@ export function EventDetailView({ eventDetailData }: EventDetailViewProps) {
     } catch (error) {
       console.error("Error removing event attendance:", error);
       toast.error("Failed to remove attendance");
-    } finally {
-      setIsUpdatingAttendance(false);
     }
   };
 
@@ -478,27 +468,25 @@ export function EventDetailView({ eventDetailData }: EventDetailViewProps) {
                 className="w-full"
                 onClick={() => handleStatusChange("going")}
                 variant={userStatus === "going" ? "default" : "outline"}
-                disabled={isUpdatingAttendance}
               >
                 {userStatus === "going" ? (
                   <Check className="h-4 w-4 mr-2" />
                 ) : (
                   <Users className="h-4 w-4 mr-2" />
                 )}
-                {isUpdatingAttendance ? "Updating..." : "I'm Going"}
+                I&apos;m Going
               </Button>
               <Button
                 className="w-full"
                 onClick={() => handleStatusChange("interested")}
                 variant={userStatus === "interested" ? "default" : "outline"}
-                disabled={isUpdatingAttendance}
               >
                 {userStatus === "interested" ? (
                   <Check className="h-4 w-4 mr-2" />
                 ) : (
                   <Star className="h-4 w-4 mr-2" />
                 )}
-                {isUpdatingAttendance ? "Updating..." : "Interested"}
+                Interested
               </Button>
 
               <div className="flex gap-2">
