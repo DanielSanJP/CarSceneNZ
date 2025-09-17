@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/utils/supabase/server";
+import { User } from "@/types/user";
 
 export async function GET(request: NextRequest) {
   try {
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
 
     // Get leader info for all clubs manually (since views don't have foreign key relationships)
     const leaderIds = clubs?.map(club => club.leader_id) || [];
-    const leadersMap: Record<string, any> = {};
+    const leadersMap: Record<string, Pick<User, 'id' | 'username' | 'display_name' | 'profile_image_url'>> = {};
 
     if (leaderIds.length > 0) {
       const { data: leaders } = await supabase
