@@ -37,7 +37,6 @@ export function EventImageManager({
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [compressionProgress, setCompressionProgress] =
     useState<CompressionProgress | null>(null);
-  const [compressionInfo, setCompressionInfo] = useState<string | null>(null);
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
@@ -86,12 +85,14 @@ export function EventImageManager({
           compressionResult.originalSize) *
         100
       ).toFixed(1);
-      const info = `Compressed from ${formatFileSize(
-        compressionResult.originalSize
-      )} to ${formatFileSize(
-        compressionResult.compressedSize
-      )} (${savings}% smaller)`;
-      setCompressionInfo(info);
+      // Image compressed successfully
+      console.log(
+        `Compressed from ${formatFileSize(
+          compressionResult.originalSize
+        )} to ${formatFileSize(
+          compressionResult.compressedSize
+        )} (${savings}% smaller)`
+      );
 
       // Always upload to Supabase storage - use a temp ID if none provided
       const eventId = tempEventId || `temp_${Date.now()}`;

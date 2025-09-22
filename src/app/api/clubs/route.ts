@@ -108,7 +108,12 @@ export async function GET(request: NextRequest) {
 
     // Get leader info for all clubs manually (since views don't have foreign key relationships)
     const leaderIds = clubs?.map(club => club.leader_id) || [];
-    const leadersMap: Record<string, any> = {};
+    const leadersMap: Record<string, {
+      id: string;
+      username: string;
+      display_name: string | null;
+      profile_image_url: string | null;
+    }> = {};
 
     if (leaderIds.length > 0) {
       const { data: leaders } = await supabase
