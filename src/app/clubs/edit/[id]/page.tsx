@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { EditClubForm } from "@/components/clubs/edit-club-form";
 import { uploadClubImage } from "@/lib/utils/image-upload";
@@ -171,6 +171,14 @@ async function updateClubServerAction(formData: FormData) {
       revalidatePath(`/clubs/${clubId}`);
       revalidatePath("/clubs/my-clubs");
       revalidatePath("/clubs");
+      revalidatePath("/leaderboards"); // Revalidate leaderboards page
+      revalidatePath("/leaderboards", "page"); // Revalidate leaderboards dynamic route
+      revalidatePath("/api/leaderboards"); // Revalidate leaderboards API route
+
+      // Revalidate cache tags used by leaderboards API
+      revalidateTag("leaderboards");
+      revalidateTag("clubs");
+      revalidateTag(`club-${clubId}`);
 
       return { success: true, error: null };
     } else {

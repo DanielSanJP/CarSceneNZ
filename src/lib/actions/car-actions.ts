@@ -103,12 +103,15 @@ export async function likeCarAction(carId: string) {
     revalidatePath('/garage');
     revalidatePath('/garage/my-garage');
     revalidatePath('/clubs'); // Club rankings may have changed
+    revalidatePath('/leaderboards'); // Leaderboards may have changed due to club ranking updates
+    revalidatePath('/api/leaderboards'); // Revalidate leaderboards API
     revalidatePath('/'); // Homepage might show liked cars
     
     revalidateTag(`car-${carId}`);
     revalidateTag('cars');
     revalidateTag('garage');
     revalidateTag('clubs'); // Invalidate clubs cache since rankings may change
+    revalidateTag('leaderboards'); // Invalidate leaderboards cache since club rankings may change
     revalidateTag(`user-${authUser.id}-likes`);
     
     console.log(`🔄 Server Action: Cache invalidated for car ${carId} like toggle`);

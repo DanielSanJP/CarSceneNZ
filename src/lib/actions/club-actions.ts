@@ -66,6 +66,13 @@ export async function updateClubTotalLikes(clubId: string) {
     }
 
     console.log(`✅ Successfully updated club ${clubId} total_likes to ${totalLikes}`);
+    
+    // Revalidate caches since total_likes affects leaderboards
+    revalidateTag('clubs');
+    revalidateTag('leaderboards');
+    revalidatePath('/leaderboards');
+    revalidatePath('/api/leaderboards');
+    
     return true;
 
   } catch (error) {
@@ -149,6 +156,8 @@ export async function joinClubAction(clubId: string, userId: string) {
     revalidatePath(`/clubs/${clubId}`);
     revalidatePath('/clubs/my-clubs');
     revalidatePath('/clubs');
+    revalidatePath('/leaderboards'); // Revalidate leaderboards page
+    revalidatePath('/api/leaderboards'); // Revalidate leaderboards API
     
     revalidateTag(`club-${clubId}`);
     revalidateTag('clubs');
@@ -232,6 +241,8 @@ export async function leaveClubAction(clubId: string, userId: string) {
     revalidatePath(`/clubs/${clubId}`);
     revalidatePath('/clubs/my-clubs');
     revalidatePath('/clubs');
+    revalidatePath('/leaderboards'); // Revalidate leaderboards page
+    revalidatePath('/api/leaderboards'); // Revalidate leaderboards API
     
     revalidateTag(`club-${clubId}`);
     revalidateTag('clubs');
@@ -375,6 +386,8 @@ export async function manageMemberAction(clubId: string, targetUserId: string, a
     revalidatePath(`/clubs/${clubId}`);
     revalidatePath('/clubs');
     revalidatePath('/clubs/my-clubs');
+    revalidatePath('/leaderboards'); // Revalidate leaderboards page
+    revalidatePath('/api/leaderboards'); // Revalidate leaderboards API
     
     revalidateTag(`club-${clubId}`);
     revalidateTag('clubs');
@@ -432,6 +445,9 @@ export async function refreshAllClubTotalLikesAction() {
     // Invalidate all club-related caches
     revalidatePath('/clubs');
     revalidateTag('clubs');
+    revalidateTag('leaderboards');
+    revalidatePath('/leaderboards');
+    revalidatePath('/api/leaderboards');
 
     console.log(`✅ Successfully updated ${updatedCount}/${clubs.length} clubs`);
 
