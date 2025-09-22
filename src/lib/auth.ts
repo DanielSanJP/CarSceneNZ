@@ -50,7 +50,7 @@ export const getUserProfile = cache(async (userId: string): Promise<User | null>
     // Fetch profile data using proper RLS
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('id, username, display_name, profile_image_url, created_at, updated_at')
+      .select('id, username, display_name, profile_image_url, instagram_url, facebook_url, tiktok_url, created_at, updated_at')
       .eq('id', userId)
       .single()
 
@@ -65,6 +65,9 @@ export const getUserProfile = cache(async (userId: string): Promise<User | null>
       display_name: profile.display_name,
       email: authUser.email || '',
       profile_image_url: profile.profile_image_url,
+      instagram_url: profile.instagram_url,
+      facebook_url: profile.facebook_url,
+      tiktok_url: profile.tiktok_url,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
     }

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { MapLocationSelector } from "./map-location-selector";
+import { ImprovedLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
 import type { User } from "@/types/user";
@@ -247,7 +247,7 @@ export function CreateEventForm({
             {/* Location with map functionality */}
             <div className="space-y-2">
               <Label htmlFor="location">Location *</Label>
-              <MapLocationSelector
+              <ImprovedLocationSelector
                 selectedLocation={formData.location}
                 onLocationSelect={(location) =>
                   setFormData((prev) => ({ ...prev, location }))

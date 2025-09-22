@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ClubImageManager } from "./club-image-manager";
 import {
   Select,
   SelectContent,
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import {
   ArrowLeft,
-  Upload,
   Globe,
   Shield,
   Lock,
@@ -75,8 +75,6 @@ export function EditClubForm({
   const [imagePreview, setImagePreview] = useState<string>(
     club.banner_image_url || ""
   );
-  const [imageError, setImageError] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
 
   const [formData, setFormData] = useState<ClubFormData>({
     name: club.name || "",
@@ -90,57 +88,12 @@ export function EditClubForm({
     setFormData((prev: ClubFormData) => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file.");
-      e.target.value = "";
-      return;
-    }
-
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      alert("Image size should be less than 5MB.");
-      e.target.value = "";
-      return;
-    }
-
-    setImageUploading(true);
-
-    try {
-      // Create FormData for server action
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("clubId", club.id);
-      formData.append("isTemp", "false");
-
-      const result = await uploadAction(formData);
-
-      if (result.url) {
-        setImagePreview(result.url);
-        setFormData((prev: ClubFormData) => ({
-          ...prev,
-          banner_image: result.url!,
-        }));
-        setImageError(false);
-      } else {
-        alert(result.error || "Failed to upload image. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      alert("Failed to upload image. Please try again.");
-    } finally {
-      setImageUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleImageError = () => {
-    setImageError(true);
+  const handleImageChange = (imageUrl: string) => {
+    setImagePreview(imageUrl);
+    setFormData((prev: ClubFormData) => ({
+      ...prev,
+      banner_image: imageUrl,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -249,48 +202,15 @@ export function EditClubForm({
           <CardHeader>
             <CardTitle>Club Logo</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 overflow-hidden max-w-md mx-auto">
-              {imagePreview && !imageError ? (
-                <Image
-                  src={imagePreview}
-                  alt="Club preview"
-                  fill
-                  className="object-cover"
-                  sizes="400px"
-                  onError={handleImageError}
-                />
-              ) : (
-                <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                  <Users className="h-16 w-16 text-primary opacity-50" />
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="banner-upload">Upload Club Logo</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="banner-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="cursor-pointer"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={imageUploading}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {imageUploading ? "Uploading..." : "Choose File"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Recommended: Square image, at least 400x400px
-              </p>
-            </div>
+          <CardContent>
+            <ClubImageManager
+              currentImage={imagePreview}
+              onImageChange={handleImageChange}
+              isLoading={isLoading}
+              clubId={club.id}
+              isTemp={false}
+              uploadAction={uploadAction}
+            />
           </CardContent>
         </Card>
 
@@ -397,37 +317,56 @@ export function EditClubForm({
         {/* Preview */}
         <Card>
           <CardHeader>
-            <CardTitle>Preview</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Club Preview
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="max-w-md mx-auto">
-              <Card className="overflow-hidden">
+              {/* Preview club card - matching the main clubs page layout */}
+              <div className="overflow-hidden rounded-lg border hover:shadow-lg transition-all duration-300">
+                {/* Banner */}
                 <div className="relative aspect-square overflow-hidden">
-                  {imagePreview && !imageError ? (
+                  {imagePreview ? (
                     <Image
                       src={imagePreview}
-                      alt={formData.name}
+                      alt="Club logo preview"
                       fill
                       className="object-cover"
-                      sizes="400px"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   ) : (
-                    <div className="h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                    <div className="h-full  flex items-center justify-center">
                       <Users className="h-12 w-12 text-primary opacity-50" />
                     </div>
                   )}
+
+                  {/* Member count */}
                   <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                    <Users className="h-3 w-3" />1
+                    <Users className="h-3 w-3" />
+                    {club.total_likes || 1}/50
                   </div>
-                  <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+
+                  {/* Club type badge */}
+                  <div
+                    className={`absolute top-3 left-3 ${
+                      formData.club_type === "open"
+                        ? "bg-green-500"
+                        : formData.club_type === "invite"
+                        ? "bg-orange-500"
+                        : "bg-red-500"
+                    } text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}
+                  >
                     {getClubTypeInfo(formData.club_type).icon}
-                    {getClubTypeInfo(formData.club_type).text.split(" ")[0]}
+                    {getClubTypeInfo(formData.club_type).text}
                   </div>
                 </div>
-                <CardContent className="p-4">
+
+                <div className="p-4">
                   <div className="space-y-2 mb-3">
                     <h3 className="font-bold text-lg leading-tight">
-                      {formData.name || "Club Name"}
+                      {formData.name || "Your Club Name"}
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
@@ -436,17 +375,25 @@ export function EditClubForm({
                       </div>
                       <div className="flex items-center gap-1">
                         <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                        {club.total_likes}
+                        {club.total_likes || 0}
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formData.description && formData.description.length > 60
-                      ? `${formData.description.substring(0, 60)}...`
-                      : formData.description || "Description..."}
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {formData.description ||
+                      "Club description will appear here..."}
                   </p>
-                </CardContent>
-              </Card>
+                  <div className="text-xs text-muted-foreground mb-4">
+                    Led by{" "}
+                    {club.leader?.display_name ||
+                      club.leader?.username ||
+                      "Club Leader"}
+                  </div>
+                  <Button className="w-full" size="sm" disabled>
+                    Preview Mode
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

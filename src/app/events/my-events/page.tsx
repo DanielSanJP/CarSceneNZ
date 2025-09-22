@@ -1,4 +1,4 @@
-import { MyEventsView } from "@/components/events/my-events-view";
+import { MyEventsTabNavigation } from "@/components/events/my-events-tab-navigation";
 import { requireAuth, getUserProfile } from "@/lib/auth";
 import type { Event } from "@/types/event";
 import { getBaseUrl } from "@/lib/utils";
@@ -6,7 +6,15 @@ import { getBaseUrl } from "@/lib/utils";
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
 
-export default async function MyEventsPage() {
+interface MyEventsPageProps {
+  searchParams: {
+    tab?: string;
+  };
+}
+
+export default async function MyEventsPage({
+  searchParams,
+}: MyEventsPageProps) {
   // Server-side auth check - redirects if not authenticated
   const authUser = await requireAuth();
   const user = await getUserProfile(authUser.id);
@@ -15,32 +23,49 @@ export default async function MyEventsPage() {
     throw new Error("Failed to load user profile");
   }
 
-  console.log("� SSR CACHE: Fetching user events via cached API route...");
+  // Determine which tab to show - default to 'hosting'
+  const activeTab =
+    (searchParams.tab as "hosting" | "going" | "interested") || "hosting";
+
+  console.log(
+    `🚀 SSR CACHE: Fetching user events for tab '${activeTab}' via cached API route...`
+  );
   const startTime = Date.now();
 
-  // Use native fetch to call our cached API route
-  const response = await fetch(`${getBaseUrl()}/api/events/my-events`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      userId: user.id,
-      pageLimit: 50,
-      pageOffset: 0,
-    }),
-    // Leverage the API route's caching
-    next: { revalidate: 60 },
-  });
+  // Fetch events for all tabs to enable client-side switching
+  const fetchEventsForTab = async (filter: string) => {
+    const response = await fetch(`${getBaseUrl()}/api/events/my-events`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        pageLimit: 50,
+        pageOffset: 0,
+        filter: filter,
+      }),
+      // Leverage the API route's caching
+      next: { revalidate: 60 },
+    });
 
-  if (!response.ok) {
-    console.error(
-      `❌ My events API route failed: ${response.status} ${response.statusText}`
-    );
-    throw new Error("Failed to load your events");
-  }
+    if (!response.ok) {
+      console.error(
+        `❌ My events API route failed for filter '${filter}': ${response.status} ${response.statusText}`
+      );
+      return [];
+    }
 
-  const userEventsData = await response.json();
+    return await response.json();
+  };
+
+  // Fetch events for all tabs
+  const [hostingEventsData, goingEventsData, interestedEventsData] =
+    await Promise.all([
+      fetchEventsForTab("hosting"),
+      fetchEventsForTab("going"),
+      fetchEventsForTab("interested"),
+    ]);
 
   console.log(
     `✅ SSR CACHE: User events fetched via API route in ${
@@ -48,50 +73,48 @@ export default async function MyEventsPage() {
     }ms`
   );
 
-  // Transform RPC result to match Event interface with attendance counts
-  const events: (Event & {
-    attendee_count?: number;
-    interested_count?: number;
-  })[] =
-    userEventsData?.map(
-      (event: {
-        id: string;
-        title: string;
-        description: string;
-        poster_image_url: string | null;
-        daily_schedule: Array<{
-          date: string;
-          start_time?: string;
-          end_time?: string;
-        }>;
-        location: string;
-        created_at: string;
-        updated_at: string;
-        attendeeCount: number; // API returns camelCase
-        interestedCount: number; // API returns camelCase
-      }) => ({
-        id: event.id,
-        host_id: user.id, // These are all user's events
-        title: event.title,
-        description: event.description,
-        poster_image_url: event.poster_image_url || undefined,
-        daily_schedule: event.daily_schedule,
-        location: event.location,
-        created_at: event.created_at,
-        updated_at: event.updated_at,
-        // Map to both camelCase (Event interface) and snake_case (component expects)
-        attendeeCount: event.attendeeCount || 0,
-        interestedCount: event.interestedCount || 0,
-        attendee_count: event.attendeeCount || 0,
-        interested_count: event.interestedCount || 0,
-        host: {
-          id: user.id,
-          username: user.username,
-          display_name: user.display_name || undefined,
-          profile_image_url: user.profile_image_url || undefined,
-        },
-      })
-    ) || [];
+  // Transform events data
+  const transformEvents = (eventsData: Event[]): Event[] => {
+    return (
+      eventsData?.map((event: Event) => {
+        const host = Array.isArray(event.host) ? event.host[0] : event.host;
 
-  return <MyEventsView events={events} userId={user.id} />;
+        return {
+          id: event.id,
+          host_id: event.host_id,
+          title: event.title,
+          description: event.description,
+          poster_image_url: event.poster_image_url || undefined,
+          daily_schedule: event.daily_schedule,
+          location: event.location,
+          created_at: event.created_at,
+          updated_at: event.updated_at,
+          attendeeCount: event.attendeeCount || 0,
+          interestedCount: event.interestedCount || 0,
+          host: host
+            ? {
+                id: host.id,
+                username: host.username,
+                display_name: host.display_name || undefined,
+                profile_image_url: host.profile_image_url || undefined,
+              }
+            : undefined,
+        };
+      }) || []
+    );
+  };
+
+  const hostingEvents = transformEvents(hostingEventsData);
+  const goingEvents = transformEvents(goingEventsData);
+  const interestedEvents = transformEvents(interestedEventsData);
+
+  return (
+    <MyEventsTabNavigation
+      currentUser={user}
+      defaultTab={activeTab}
+      hostingEvents={hostingEvents}
+      goingEvents={goingEvents}
+      interestedEvents={interestedEvents}
+    />
+  );
 }

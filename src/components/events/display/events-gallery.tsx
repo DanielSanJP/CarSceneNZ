@@ -186,7 +186,7 @@ const EventCard = React.memo(
 
           {/* Attendance info and actions */}
           <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center justify-evenly text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
                 <span>{attendeeCount} going</span>
@@ -583,7 +583,7 @@ export function EventsGallery({
                 href={`/events/${event.id}`}
                 className="block"
               >
-                <Card className="overflow-hidden pt-0 cursor-pointer">
+                <Card className="overflow-hidden pt-0 cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
                   {/* Event Image/Poster */}
                   <div className="relative aspect-square overflow-hidden">
                     {failedImages.has(event.id) || !event.poster_image_url ? (
@@ -610,28 +610,24 @@ export function EventsGallery({
                     )}
                   </div>
 
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">
+                  <CardHeader className="pb-3 h-24 flex-shrink-0">
+                    <div className="flex items-start justify-between h-full">
+                      <div className="flex-1 flex flex-col">
+                        <CardTitle className="text-lg mb-2 line-clamp-1">
                           {event.title}
                         </CardTitle>
-                        <CardDescription className="line-clamp-2">
+                        <CardDescription className="line-clamp-2 flex-1">
                           {event.description}
                         </CardDescription>
                       </div>
                     </div>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 flex-1 flex flex-col">
                     {/* Date and Time */}
                     <div className="flex items-center space-x-3">
                       <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
-                        <div className="text-center">
-                          <div className="text-sm font-bold text-primary">
-                            <Calendar className="h-5 w-5 text-primary" />
-                          </div>
-                        </div>
+                        <Calendar className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <div className="font-medium text-sm">
@@ -654,60 +650,71 @@ export function EventsGallery({
                       </span>
                     </div>
 
-                    {/* Interested */}
-                    <div className="flex items-center space-x-2">
-                      <Star className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {interestedCount}{" "}
-                        {interestedCount === 1 ? "person" : "people"} interested
-                      </span>
-                    </div>
+                    <Separator />
 
-                    {/* Attendees */}
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {attendeeCount}{" "}
-                        {attendeeCount === 1 ? "person" : "people"} attending
-                      </span>
-                    </div>
-
-                    {/* Host */}
-                    {host && (
-                      <div className="flex items-center space-x-3">
-                        {host.profile_image_url ? (
-                          <Image
-                            src={host.profile_image_url}
-                            alt={host.display_name || host.username}
-                            width={32}
-                            height={32}
-                            quality={100}
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>
-                              {(host.display_name || host.username || "Unknown")
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div>
-                          <div className="text-xs text-muted-foreground">
-                            Hosted by
-                          </div>
-                          <div className="text-sm font-medium">
-                            {host.display_name ||
-                              host.username ||
-                              "Unknown Host"}
-                          </div>
-                        </div>
+                    {/* Attendance Stats */}
+                    <div className="flex items-center justify-evenly text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4" />
+                        <span>{interestedCount} interested</span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        <span>{attendeeCount} going</span>
+                      </div>
+                    </div>
 
                     <Separator />
+
+                    {/* Host - Fixed height section */}
+                    <div className="h-12 flex items-center">
+                      {host ? (
+                        <div className="flex items-center space-x-3">
+                          {host.profile_image_url ? (
+                            <Image
+                              src={host.profile_image_url}
+                              alt={host.display_name || host.username}
+                              width={32}
+                              height={32}
+                              quality={100}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback>
+                                {(
+                                  host.display_name ||
+                                  host.username ||
+                                  "Unknown"
+                                )
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          <div>
+                            <div className="text-xs text-muted-foreground">
+                              Hosted by
+                            </div>
+                            <div className="text-sm font-medium">
+                              {host.display_name ||
+                                host.username ||
+                                "Unknown Host"}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          Host information unavailable
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    {/* Spacer to push buttons to bottom */}
+                    <div className="flex-grow"></div>
 
                     {/* Action Buttons */}
                     <div className="flex space-x-2">

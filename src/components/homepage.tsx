@@ -176,7 +176,7 @@ export function Homepage({ homeData }: HomepageProps) {
         {upcomingEvents && upcomingEvents.length > 0 ? (
           upcomingEvents.map((event: Event) => (
             <Link key={event.id} href={`/events/${event.id}`}>
-              <Card className="overflow-hidden pt-0 text-center hover:shadow-lg transition-shadow cursor-pointer">
+              <Card className="overflow-hidden pt-0 text-center hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col">
                 <div className="relative aspect-square overflow-hidden">
                   {event.poster_image_url ? (
                     <Image
@@ -240,7 +240,7 @@ export function Homepage({ homeData }: HomepageProps) {
           {featuredCars && featuredCars.length > 0 ? (
             featuredCars.map((car: HomeCar) => (
               <Link key={car.id} href={`/garage/${car.id}`}>
-                <Card className="overflow-hidden pt-0 text-center hover:shadow-lg transition-shadow cursor-pointer">
+                <Card className="overflow-hidden pt-0 text-center hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col">
                   <div className="relative aspect-square overflow-hidden">
                     {car.images?.[0] ? (
                       <Image

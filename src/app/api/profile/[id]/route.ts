@@ -38,6 +38,9 @@ export async function POST(
         username,
         display_name,
         profile_image_url,
+        instagram_url,
+        facebook_url,
+        tiktok_url,
         created_at,
         updated_at
       `);
@@ -236,6 +239,9 @@ export async function POST(
         username: userData.username,
         display_name: userData.display_name,
         profile_image_url: userData.profile_image_url,
+        instagram_url: userData.instagram_url,
+        facebook_url: userData.facebook_url,
+        tiktok_url: userData.tiktok_url,
         created_at: userData.created_at,
         updated_at: userData.updated_at,
         followersCount: followersCount || 0,

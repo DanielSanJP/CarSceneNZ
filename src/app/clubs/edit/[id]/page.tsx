@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { EditClubForm } from "@/components/clubs/edit-club-form";
 import { uploadClubImage } from "@/lib/utils/image-upload";
@@ -165,6 +166,12 @@ async function updateClubServerAction(formData: FormData) {
     });
 
     if (result) {
+      // Revalidate all relevant paths to show updated data
+      revalidatePath("/clubs/[id]", "page");
+      revalidatePath(`/clubs/${clubId}`);
+      revalidatePath("/clubs/my-clubs");
+      revalidatePath("/clubs");
+
       return { success: true, error: null };
     } else {
       return { success: false, error: "Failed to update club" };

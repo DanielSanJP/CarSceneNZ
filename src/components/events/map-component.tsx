@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface MapComponentProps {
@@ -9,139 +10,163 @@ interface MapComponentProps {
   className?: string;
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({
+// Inner component that handles the actual map logic
+function LeafletMapInner({
   selectedLocation,
   onLocationSelect,
   className = "",
-}) => {
+}: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const isDraggingRef = useRef<boolean>(false);
+  const [isMapReady, setIsMapReady] = useState(false);
 
+  // Initialize map only once
   useEffect(() => {
-    // Load Leaflet CSS and JS if not already loaded
-    if (!document.querySelector('link[href*="leaflet.css"]')) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
+    let isMounted = true;
 
-    if (!(window as any).L) {
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-      script.onload = initializeMap;
-      document.head.appendChild(script);
-    } else {
-      initializeMap();
-    }
+    const initializeMap = async () => {
+      try {
+        // Import Leaflet dynamically
+        const L = (await import("leaflet")).default;
 
-    function initializeMap() {
-      if (!mapRef.current || mapInstanceRef.current) return;
-
-      // Initialize map centered on New Zealand
-      const map = (window as any).L.map(mapRef.current, {
-        center: selectedLocation
-          ? [selectedLocation.lat, selectedLocation.lng]
-          : [-41.2865, 174.7762],
-        zoom: selectedLocation ? 15 : 6,
-        zoomControl: true,
-        scrollWheelZoom: true,
-        dragging: true,
-        doubleClickZoom: true,
-      });
-
-      // Add CartoDB Voyager tiles (most popular modern style)
-      (window as any).L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: "abcd",
-          maxZoom: 20,
-        }
-      ).addTo(map);
-
-      // Handle map clicks - simple and direct
-      map.on("click", (e: any) => {
-        // Don't place marker if we're currently dragging
-        if (isDraggingRef.current) {
-          isDraggingRef.current = false; // Reset the flag
-          return;
+        // Import CSS by dynamically loading it
+        if (!document.querySelector('link[href*="leaflet.css"]')) {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+          document.head.appendChild(link);
         }
 
-        const { lat, lng } = e.latlng;
+        if (!mapRef.current || mapInstanceRef.current || !isMounted) return;
 
-        // Remove existing marker
-        if (markerRef.current) {
-          map.removeLayer(markerRef.current);
-        }
+        console.log("🗺️ MapComponent: Initializing map with Leaflet");
 
-        // Add default Leaflet marker (much simpler!)
-        const marker = (window as any).L.marker([lat, lng])
-          .addTo(map)
-          .openPopup();
+        // Initialize map centered on New Zealand
+        const map = L.map(mapRef.current, {
+          center: [-41.2865, 174.7762], // Always start with NZ center
+          zoom: 6, // Default zoom
+          zoomControl: true,
+          scrollWheelZoom: true,
+          dragging: true,
+          doubleClickZoom: true,
+        });
 
-        markerRef.current = marker;
+        // Add CartoDB Voyager tiles
+        L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+          {
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: "abcd",
+            maxZoom: 20,
+          }
+        ).addTo(map);
 
-        // Call the callback
-        onLocationSelect(lat, lng);
-      });
+        // Handle map clicks
+        map.on("click", (e: any) => {
+          if (isDraggingRef.current) {
+            isDraggingRef.current = false;
+            return;
+          }
 
-      // Track dragging to prevent click after drag
-      map.on("dragstart", () => {
-        isDraggingRef.current = true;
-      });
+          const { lat, lng } = e.latlng;
 
-      map.on("dragend", () => {
-        isDraggingRef.current = false;
-      });
+          // Remove existing marker
+          if (markerRef.current) {
+            map.removeLayer(markerRef.current);
+          }
 
-      mapInstanceRef.current = map;
-    }
+          // Add marker
+          const marker = L.marker([lat, lng]).addTo(map).openPopup();
+          markerRef.current = marker;
+
+          // Call the callback
+          onLocationSelect(lat, lng);
+        });
+
+        // Track dragging
+        map.on("dragstart", () => {
+          isDraggingRef.current = true;
+        });
+
+        map.on("dragend", () => {
+          isDraggingRef.current = false;
+        });
+
+        mapInstanceRef.current = map;
+        setIsMapReady(true);
+        console.log("🗺️ MapComponent: Map initialization complete");
+      } catch (error) {
+        console.error("🗺️ MapComponent: Failed to initialize map", error);
+      }
+    };
+
+    initializeMap();
 
     return () => {
+      isMounted = false;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
+        setIsMapReady(false);
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - onLocationSelect is stable from parent
 
-  // Update marker when selectedLocation changes
+  // Update marker when selectedLocation changes and map is ready
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
-
-    if (selectedLocation) {
-      // Remove existing marker
-      if (markerRef.current) {
-        mapInstanceRef.current.removeLayer(markerRef.current);
-      }
-
-      // Add default Leaflet marker (much simpler!)
-      const marker = (window as any).L.marker([
-        selectedLocation.lat,
-        selectedLocation.lng,
-      ])
-        .addTo(mapInstanceRef.current)
-        .openPopup();
-
-      markerRef.current = marker;
-
-      // Center map on the location (without changing zoom level)
-      mapInstanceRef.current.panTo([
-        selectedLocation.lat,
-        selectedLocation.lng,
-      ]);
-    } else {
-      // Remove marker if no location selected
-      if (markerRef.current) {
-        mapInstanceRef.current.removeLayer(markerRef.current);
-        markerRef.current = null;
-      }
+    if (!isMapReady || !mapInstanceRef.current) {
+      console.log("🗺️ MapComponent: Map not ready yet, waiting...");
+      return;
     }
-  }, [selectedLocation]);
+
+    console.log("🗺️ MapComponent selectedLocation changed:", selectedLocation);
+
+    const updateMarker = async () => {
+      try {
+        // Access Leaflet from global or import
+        const L = (window as any).L || (await import("leaflet")).default;
+
+        if (selectedLocation) {
+          console.log("🗺️ MapComponent: Adding marker at", selectedLocation);
+
+          // Remove existing marker
+          if (markerRef.current) {
+            console.log("🗺️ MapComponent: Removing existing marker");
+            mapInstanceRef.current.removeLayer(markerRef.current);
+          }
+
+          // Add new marker
+          const marker = L.marker([selectedLocation.lat, selectedLocation.lng])
+            .addTo(mapInstanceRef.current)
+            .openPopup();
+
+          markerRef.current = marker;
+          console.log("🗺️ MapComponent: Marker added successfully");
+
+          // Center map on the location with appropriate zoom
+          mapInstanceRef.current.setView(
+            [selectedLocation.lat, selectedLocation.lng],
+            15
+          );
+        } else {
+          console.log("🗺️ MapComponent: No location, removing marker");
+          // Remove marker if no location selected
+          if (markerRef.current) {
+            mapInstanceRef.current.removeLayer(markerRef.current);
+            markerRef.current = null;
+          }
+        }
+      } catch (error) {
+        console.error("🗺️ MapComponent: Failed to update marker", error);
+      }
+    };
+
+    updateMarker();
+  }, [selectedLocation, isMapReady]);
 
   return (
     <div
@@ -149,6 +174,20 @@ const MapComponent: React.FC<MapComponentProps> = ({
       className={`h-full w-full rounded-md border ${className}`}
     />
   );
+}
+
+// Dynamically import the map component to avoid SSR issues
+const DynamicLeafletMap = dynamic(() => Promise.resolve(LeafletMapInner), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full rounded-md border bg-muted flex items-center justify-center">
+      <div className="text-muted-foreground">Loading map...</div>
+    </div>
+  ),
+});
+
+const MapComponent: React.FC<MapComponentProps> = (props) => {
+  return <DynamicLeafletMap {...props} />;
 };
 
 export default MapComponent;

@@ -8,6 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, GripVertical } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
+import {
+  compressMultipleImagesForUpload,
+  formatFileSize,
+} from "@/lib/utils/image-compression";
 
 // Simple temp ID generator for client-side use
 function generateTempId(): string {
@@ -38,6 +42,12 @@ export default function CarImageManager({
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState({
+    currentFile: 0,
+    totalFiles: 0,
+    progress: 0,
+  });
+  const [isCompressing, setIsCompressing] = useState(false);
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
@@ -68,30 +78,71 @@ export default function CarImageManager({
       );
     }
 
-    if (carId) {
-      // For existing cars, upload immediately to Supabase
+    try {
+      // Reset compression state
+      setCompressionProgress({
+        currentFile: 0,
+        totalFiles: filesToProcess.length,
+        progress: 0,
+      });
+      setIsCompressing(true);
+
+      // Compress images
+      const compressionResults = await compressMultipleImagesForUpload(
+        filesToProcess,
+        "car",
+        (progress, fileIndex, total) => {
+          setCompressionProgress({
+            currentFile: fileIndex + 1,
+            totalFiles: total,
+            progress: progress.progress,
+          });
+        }
+      );
+
+      setIsCompressing(false);
       setIsUploading(true);
-      try {
+
+      // Calculate total compression info
+      const totalOriginalSize = compressionResults.reduce(
+        (sum, result) => sum + result.originalSize,
+        0
+      );
+      const totalCompressedSize = compressionResults.reduce(
+        (sum, result) => sum + result.compressedSize,
+        0
+      );
+      const totalSavings = totalOriginalSize - totalCompressedSize;
+      const totalSavingsPercent = Math.round(
+        (totalSavings / totalOriginalSize) * 100
+      );
+
+      if (carId) {
+        // For existing cars, upload immediately to Supabase
         const formData = new FormData();
-        filesToProcess.forEach((file) => formData.append("files", file));
+        compressionResults.forEach((result) =>
+          formData.append("files", result.file)
+        );
         formData.append("carId", carId);
         formData.append("isTemp", "false");
 
         const result = await uploadAction(formData);
         if (result.urls.length > 0) {
           onChange([...images, ...result.urls]);
+          toast.success(
+            `${
+              result.urls.length
+            } image(s) uploaded successfully! Compressed from ${formatFileSize(
+              totalOriginalSize
+            )} to ${formatFileSize(
+              totalCompressedSize
+            )} (${totalSavingsPercent}% savings)`
+          );
         } else if (result.error) {
           throw new Error(result.error);
         }
-      } catch {
-        toast.error("Failed to upload images. Please try again.");
-      } finally {
-        setIsUploading(false);
-      }
-    } else {
-      // For new cars, also upload immediately to temp folder
-      setIsUploading(true);
-      try {
+      } else {
+        // For new cars, upload to temp folder
         // Generate temp car ID if not provided
         let currentTempId = tempCarId;
         if (!currentTempId) {
@@ -100,21 +151,35 @@ export default function CarImageManager({
         }
 
         const formData = new FormData();
-        filesToProcess.forEach((file) => formData.append("files", file));
+        compressionResults.forEach((result) =>
+          formData.append("files", result.file)
+        );
         formData.append("carId", currentTempId);
         formData.append("isTemp", "true");
 
         const result = await uploadAction(formData);
         if (result.urls.length > 0) {
           onChange([...images, ...result.urls]);
+          toast.success(
+            `${
+              result.urls.length
+            } image(s) uploaded successfully! Compressed from ${formatFileSize(
+              totalOriginalSize
+            )} to ${formatFileSize(
+              totalCompressedSize
+            )} (${totalSavingsPercent}% savings)`
+          );
         } else if (result.error) {
           throw new Error(result.error);
         }
-      } catch {
-        toast.error("Failed to upload images. Please try again.");
-      } finally {
-        setIsUploading(false);
       }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to process and upload images. Please try again.");
+    } finally {
+      setIsUploading(false);
+      setIsCompressing(false);
+      setCompressionProgress({ currentFile: 0, totalFiles: 0, progress: 0 });
     }
 
     // Clear the input
@@ -234,7 +299,7 @@ export default function CarImageManager({
             ))}
           </div>
         ) : (
-          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center max-w-md mx-auto aspect-square flex flex-col items-center justify-center">
             <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
               No images uploaded yet
@@ -243,30 +308,62 @@ export default function CarImageManager({
         )}
 
         {/* Upload new images */}
-        <div className="space-y-2">
+        <div className="space-y-2 max-w-md mx-auto">
           <Label htmlFor="image-upload">Add Images ({images.length}/10)</Label>
-          <div className="flex items-center gap-4">
+
+          {/* Compression Progress */}
+          {isCompressing && (
+            <div className="space-y-2 p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between text-sm">
+                <span>Compressing images...</span>
+                <span>
+                  {compressionProgress.currentFile}/
+                  {compressionProgress.totalFiles}
+                </span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${compressionProgress.progress}%` }}
+                />
+              </div>
+              <div className="text-xs text-muted-foreground text-center">
+                Processing file {compressionProgress.currentFile} of{" "}
+                {compressionProgress.totalFiles}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              asChild
+              disabled={
+                images.length >= 10 || isLoading || isUploading || isCompressing
+              }
+            >
+              <label htmlFor="image-upload" className="cursor-pointer">
+                <Upload className="h-4 w-4 mr-2" />
+                {isCompressing
+                  ? "Compressing..."
+                  : isUploading
+                  ? "Uploading..."
+                  : "Choose Files"}
+              </label>
+            </Button>
             <Input
               id="image-upload"
               type="file"
               accept="image/*"
               multiple
               onChange={handleImageUpload}
-              className="cursor-pointer"
-              disabled={images.length >= 10 || isLoading || isUploading}
+              className="hidden"
+              disabled={
+                images.length >= 10 || isLoading || isUploading || isCompressing
+              }
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              asChild
-              disabled={images.length >= 10 || isLoading || isUploading}
-            >
-              <label htmlFor="image-upload" className="cursor-pointer">
-                <Upload className="h-4 w-4 mr-2" />
-                {isUploading ? "Uploading..." : "Choose Files"}
-              </label>
-            </Button>
           </div>
           {images.length >= 10 && (
             <p className="text-sm text-muted-foreground">

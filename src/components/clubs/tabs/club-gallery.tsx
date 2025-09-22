@@ -321,7 +321,7 @@ export const ClubGallery = memo(function ClubGallery({
 
                     {/* Leader info */}
                     {leader && (
-                      <div className="text-xs text-muted-foreground mb-4">
+                      <div className="text-xs text-muted-foreground">
                         Led by {leader.display_name || leader.username}
                       </div>
                     )}

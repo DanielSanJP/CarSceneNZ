@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { MapLocationSelector } from "./map-location-selector";
+import { ImprovedLocationSelector } from "./map-location-selector";
 import { EventDateTime } from "./event-date-time";
 import { EventImageManager } from "./event-image-manager";
 import type { Event } from "@/types/event";
@@ -237,12 +237,13 @@ export function EditEventForm({
 
             <div className="space-y-2">
               <Label htmlFor="location">Location *</Label>
-              <MapLocationSelector
+              <ImprovedLocationSelector
                 selectedLocation={formData.location}
-                onLocationSelect={(location) =>
+                onLocationSelect={(location: string) =>
                   setFormData((prev) => ({ ...prev, location }))
                 }
                 placeholder="Search for a location in New Zealand..."
+                initialLocation={event.location} // Pass original location to set initial map pin
               />
             </div>
           </CardContent>

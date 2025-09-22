@@ -33,6 +33,9 @@ export function EditProfileClient({
   // Form state
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
+  const [tiktokUrl, setTiktokUrl] = useState("");
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -42,8 +45,22 @@ export function EditProfileClient({
     // Set form data from user
     setDisplayName(user.display_name || "");
     setUsername(user.username);
+    setInstagramUrl(user.instagram_url || "");
+    setFacebookUrl(user.facebook_url || "");
+    setTiktokUrl(user.tiktok_url || "");
     setPreviewUrl(user.profile_image_url || null);
   }, [user]);
+
+  // Helper function to validate URLs
+  const isValidUrl = (url: string): boolean => {
+    if (!url) return true; // Empty URLs are valid (optional field)
+    try {
+      new URL(url);
+      return url.startsWith("http://") || url.startsWith("https://");
+    } catch {
+      return false;
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,6 +121,31 @@ export function EditProfileClient({
         return;
       }
 
+      // Validate social media URLs
+      if (instagramUrl && !isValidUrl(instagramUrl)) {
+        setError(
+          "Please enter a valid Instagram URL (starting with http:// or https://)"
+        );
+        setSaving(false);
+        return;
+      }
+
+      if (facebookUrl && !isValidUrl(facebookUrl)) {
+        setError(
+          "Please enter a valid Facebook URL (starting with http:// or https://)"
+        );
+        setSaving(false);
+        return;
+      }
+
+      if (tiktokUrl && !isValidUrl(tiktokUrl)) {
+        setError(
+          "Please enter a valid TikTok URL (starting with http:// or https://)"
+        );
+        setSaving(false);
+        return;
+      }
+
       console.log("Starting profile update process...");
       let finalImageUrl = user.profile_image_url;
 
@@ -142,6 +184,10 @@ export function EditProfileClient({
       if (finalImageUrl) {
         formData.append("profile_image_url", finalImageUrl);
       }
+      // Always send social media URLs (including empty strings) to allow removal
+      formData.append("instagram_url", instagramUrl.trim());
+      formData.append("facebook_url", facebookUrl.trim());
+      formData.append("tiktok_url", tiktokUrl.trim());
 
       // Call the server action
       const result = await action(formData);
@@ -326,6 +372,50 @@ export function EditProfileClient({
               Click &quot;Change&quot; to update your email address. You&apos;ll
               need to verify the new email.
             </p>
+          </div>
+
+          {/* Social Media Links */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Social Media Links</Label>
+            <p className="text-sm text-muted-foreground">
+              Add links to your social media profiles (optional)
+            </p>
+
+            {/* Instagram */}
+            <div className="space-y-2">
+              <Label htmlFor="instagram">Instagram</Label>
+              <Input
+                id="instagram"
+                type="url"
+                value={instagramUrl}
+                onChange={(e) => setInstagramUrl(e.target.value)}
+                placeholder="https://instagram.com/yourusername"
+              />
+            </div>
+
+            {/* Facebook */}
+            <div className="space-y-2">
+              <Label htmlFor="facebook">Facebook</Label>
+              <Input
+                id="facebook"
+                type="url"
+                value={facebookUrl}
+                onChange={(e) => setFacebookUrl(e.target.value)}
+                placeholder="https://facebook.com/yourusername"
+              />
+            </div>
+
+            {/* TikTok */}
+            <div className="space-y-2">
+              <Label htmlFor="tiktok">TikTok</Label>
+              <Input
+                id="tiktok"
+                type="url"
+                value={tiktokUrl}
+                onChange={(e) => setTiktokUrl(e.target.value)}
+                placeholder="https://tiktok.com/@yourusername"
+              />
+            </div>
           </div>
 
           {/* Save Button */}

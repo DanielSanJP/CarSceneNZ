@@ -1,4 +1,5 @@
 import * as React from "react"
+// THIS IS FOR THE APP SIDEBAR COMPONENT ONLY
 
 const MOBILE_BREAKPOINT = 768
 

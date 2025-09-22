@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus,
   Calendar,
   Clock,
   MapPin,
@@ -34,12 +33,12 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
 
   // Pure SSR - no loading or error states needed (handled by page-level loading.tsx/error.tsx)
 
-  const getAttendeeCount = (event: Event & { attendee_count?: number }) => {
-    return event.attendee_count || 0;
+  const getAttendeeCount = (event: Event & { attendeeCount?: number }) => {
+    return event.attendeeCount || 0;
   };
 
-  const getInterestedCount = (event: Event & { interested_count?: number }) => {
-    return event.interested_count || 0;
+  const getInterestedCount = (event: Event & { interestedCount?: number }) => {
+    return event.interestedCount || 0;
   };
   const formatDate = (
     dailySchedule: Array<{
@@ -76,22 +75,6 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
 
   return (
     <>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex-1 min-w-0 pr-4">
-          <h1 className="text-3xl font-bold text-foreground mb-2">My Events</h1>
-          <p className="text-muted-foreground">
-            Manage and view all your hosted events
-          </p>
-        </div>
-        <Link href="/events/create">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Event
-          </Button>
-        </Link>
-      </div>
-
       {/* Events Grid */}
       {userEvents.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -106,7 +89,7 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
                 href={`/events/${event.id}`}
                 className="block"
               >
-                <Card className="overflow-hidden pt-0 cursor-pointer">
+                <Card className="overflow-hidden pt-0 cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
                   {/* Event Image/Poster */}
                   <div className="relative aspect-square overflow-hidden">
                     {failedImages.has(event.id) || !event.poster_image_url ? (
@@ -131,20 +114,20 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
                     )}
                   </div>
 
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">
+                  <CardHeader className="pb-3 h-24 flex-shrink-0">
+                    <div className="flex items-start justify-between h-full">
+                      <div className="flex-1 flex flex-col">
+                        <CardTitle className="text-lg mb-2 line-clamp-1">
                           {event.title}
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
+                        <p className="text-sm text-muted-foreground line-clamp-2 flex-1">
                           {event.description}
                         </p>
                       </div>
                     </div>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 flex-1 flex flex-col">
                     {/* Date and Time */}
                     <div className="flex items-center space-x-3">
                       <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
@@ -171,19 +154,17 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
                       </span>
                     </div>
 
+                    <Separator />
+
                     {/* Stats */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Star className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {interestedCount} interested
-                        </span>
+                    <div className="flex items-center justify-evenly text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4" />
+                        <span>{interestedCount} interested</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {attendeeCount} attending
-                        </span>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        <span>{attendeeCount} going</span>
                       </div>
                     </div>
 
@@ -234,12 +215,6 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
           <p className="text-muted-foreground mb-6">
             Start by creating your first car event or meet.
           </p>
-          <Link href="/events/create">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Event
-            </Button>
-          </Link>
         </div>
       )}
     </>

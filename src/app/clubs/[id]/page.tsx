@@ -94,18 +94,14 @@ export default async function ClubDetailPage({
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          <ClubDetailView
-            currentUser={currentUser}
-            fromTab={from}
-            leaderboardTab={tab}
-            clubDetailData={clubDetailData}
-          />
-        </div>
-      </div>
-    </div>
+    <>
+      <ClubDetailView
+        currentUser={currentUser}
+        fromTab={from}
+        leaderboardTab={tab}
+        clubDetailData={clubDetailData}
+      />
+    </>
   );
 }
 

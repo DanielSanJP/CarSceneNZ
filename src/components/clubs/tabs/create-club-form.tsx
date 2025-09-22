@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import type { User } from "@/types/user";
+import Image from "next/image";
 import {
   Select,
   SelectContent,
@@ -15,18 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Save,
-  Upload,
-  Camera,
-  Users,
-  Shield,
-  Globe,
-  Lock,
-  MapPin,
-  Star,
-} from "lucide-react";
-import Image from "next/image";
+import { Save, Users, Shield, Globe, Lock, MapPin, Star } from "lucide-react";
+import { ClubImageManager } from "../club-image-manager";
 
 // import {
 //   uploadClubImageForCreation,
@@ -81,9 +73,6 @@ export function CreateClubForm({
 }: CreateClubFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [imageError, setImageError] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
 
   const [formData, setFormData] = useState<ClubFormData>({
     name: "",
@@ -111,71 +100,12 @@ export function CreateClubForm({
     setFormData((prev: ClubFormData) => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file.");
-      e.target.value = "";
-      return;
-    }
-
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      alert("Image size should be less than 5MB.");
-      e.target.value = "";
-      return;
-    }
-
-    setImageUploading(true);
-
-    try {
-      // Generate temp club ID if not already set
-      let tempId = formData.tempClubId;
-      if (!tempId) {
-        tempId = generateTempClubId();
-        setFormData((prev) => ({ ...prev, tempClubId: tempId }));
-      }
-
-      // TODO: Convert to server action
-      // const uploadedUrl = await uploadClubImageForCreation(file, tempId);
-
-      if (uploadAction) {
-        // Create FormData for server action
-        const uploadFormData = new FormData();
-        uploadFormData.append("file", file);
-        uploadFormData.append("clubId", tempId);
-        uploadFormData.append("isTemp", "true");
-
-        const result = await uploadAction(uploadFormData);
-
-        if (result.url) {
-          setImagePreview(result.url);
-          setFormData((prev: ClubFormData) => ({
-            ...prev,
-            banner_image: result.url!,
-          }));
-          setImageError(false);
-        } else {
-          alert(result.error || "Failed to upload image. Please try again.");
-        }
-      } else {
-        alert("Image upload is not available. Please try again later.");
-      }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      alert("Failed to upload image. Please try again.");
-    } finally {
-      setImageUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleImageError = () => {
-    setImageError(true);
+  const handleImageChange = (imageUrl: string, tempClubId?: string) => {
+    setFormData((prev: ClubFormData) => ({
+      ...prev,
+      banner_image: imageUrl,
+      tempClubId: tempClubId || prev.tempClubId,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -297,68 +227,21 @@ export function CreateClubForm({
           <CardHeader>
             <CardTitle>Club Logo</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Banner Preview */}
-            <div className="relative aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 overflow-hidden max-w-md mx-auto">
-              {imagePreview && !imageError ? (
-                <div className="relative h-full">
-                  <Image
-                    src={imagePreview}
-                    alt="Club logo preview"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    quality={75}
-                    priority={false}
-                    unoptimized={false}
-                    onError={handleImageError}
-                  />
-                  {/* Overlay to show how it will look */}
-
-                  <div className="absolute bottom-4 left-4 text-white">
-                    <h3 className="text-xl font-bold">
-                      {formData.name || "Your Club Name"}
-                    </h3>
-                    <p className="text-sm opacity-90">
-                      {formData.location || "Location"}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center bg-muted">
-                  <div className="text-center">
-                    <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Club logo preview
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Upload Banner */}
-            <div className="space-y-2">
-              <Label htmlFor="banner-upload">Upload Club Logo</Label>
-              <div className="flex items-center gap-4">
-                <Input
-                  id="banner-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="cursor-pointer"
-                />
-                <Button type="button" variant="outline" size="sm" asChild>
-                  <Label htmlFor="banner-upload" className="cursor-pointer">
-                    <Upload className="h-4 w-4 mr-2" />
-                    {imageUploading ? "Uploading..." : "Choose Image"}
-                  </Label>
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Recommended size: 400px × 400px (square). This will be the logo
-                image for your club card.
-              </p>
-            </div>
+          <CardContent>
+            <ClubImageManager
+              currentImage={formData.banner_image}
+              onImageChange={handleImageChange}
+              tempClubId={formData.tempClubId || generateTempClubId()}
+              isTemp={true}
+              uploadAction={
+                uploadAction ||
+                (() =>
+                  Promise.resolve({ url: null, error: "Upload not available" }))
+              }
+              showPreviewOverlay={true}
+              clubName={formData.name || "Your Club Name"}
+              clubLocation={formData.location || "Location"}
+            />
           </CardContent>
         </Card>
 
@@ -485,12 +368,13 @@ export function CreateClubForm({
               <div className="overflow-hidden rounded-lg border hover:shadow-lg transition-all duration-300">
                 {/* Banner */}
                 <div className="relative aspect-square overflow-hidden">
-                  {imagePreview && !imageError ? (
+                  {formData.banner_image ? (
                     <Image
-                      src={imagePreview}
+                      src={formData.banner_image}
                       alt="Club logo preview"
                       fill
                       className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   ) : (
                     <div className="h-full  flex items-center justify-center">

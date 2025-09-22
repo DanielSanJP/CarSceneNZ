@@ -7,7 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Upload, X, Camera } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
-// import { uploadEventImageAction } from "@/lib/server/upload-actions"; // TODO: Convert to prop
+import {
+  compressImageForUpload,
+  formatFileSize,
+  validateImageFile,
+  type CompressionProgress,
+} from "@/lib/utils/image-compression";
 
 interface EventImageManagerProps {
   currentImage?: string;
@@ -30,6 +35,9 @@ export function EventImageManager({
 }: EventImageManagerProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [compressionProgress, setCompressionProgress] =
+    useState<CompressionProgress | null>(null);
+  const [compressionInfo, setCompressionInfo] = useState<string | null>(null);
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
@@ -50,46 +58,65 @@ export function EventImageManager({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0]; // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select a valid image file.");
-      e.target.value = "";
-      return;
-    }
+    const file = files[0];
 
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      toast.error("Image size should be less than 5MB.");
+    // Validate file before compression
+    if (!validateImageFile(file)) {
+      toast.error("Please select a valid image file (max 50MB).");
       e.target.value = "";
       return;
     }
 
     setIsUploading(true);
+    setCompressionProgress({ progress: 0, stage: "compressing" });
 
     try {
+      // Compress the image first
+      const compressionResult = await compressImageForUpload(
+        file,
+        "event",
+        (progress) => {
+          setCompressionProgress(progress);
+        }
+      );
+
+      // Show compression info
+      const savings = (
+        ((compressionResult.originalSize - compressionResult.compressedSize) /
+          compressionResult.originalSize) *
+        100
+      ).toFixed(1);
+      const info = `Compressed from ${formatFileSize(
+        compressionResult.originalSize
+      )} to ${formatFileSize(
+        compressionResult.compressedSize
+      )} (${savings}% smaller)`;
+      setCompressionInfo(info);
+
       // Always upload to Supabase storage - use a temp ID if none provided
       const eventId = tempEventId || `temp_${Date.now()}`;
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressionResult.file);
       formData.append("eventId", eventId);
       formData.append("isTemp", "true");
 
-      // TODO: Convert to server action prop
-      // const result = await uploadEventImageAction(formData);
       const result = await uploadAction(formData);
       if (result.url) {
         onImageChange(result.url);
+        toast.success("Image uploaded successfully!");
       } else {
         toast.error(
           result.error || "Failed to upload image. Please try again."
         );
       }
-    } catch {
-      toast.error("Failed to upload image. Please try again.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to process image.";
+      toast.error(errorMessage);
     } finally {
       setIsUploading(false);
+      setCompressionProgress(null);
       e.target.value = "";
     }
   };
@@ -131,7 +158,7 @@ export function EventImageManager({
           </div>
         </div>
       ) : (
-        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center max-w-md mx-auto">
+        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center max-w-md mx-auto aspect-square flex flex-col items-center justify-center">
           <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             No poster image uploaded yet
@@ -144,15 +171,8 @@ export function EventImageManager({
         <Label htmlFor="event-image-upload">
           Event Poster {currentImage ? "(Replace)" : ""}
         </Label>
-        <div className="flex items-center gap-4">
-          <Input
-            id="event-image-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="cursor-pointer"
-            disabled={isLoading || isUploading}
-          />
+
+        <div className="flex justify-start">
           <Button
             type="button"
             variant="outline"
@@ -162,16 +182,45 @@ export function EventImageManager({
           >
             <label htmlFor="event-image-upload" className="cursor-pointer">
               <Upload className="h-4 w-4 mr-2" />
-              {isUploading ? "Uploading..." : "Choose Image"}
+              {isUploading
+                ? compressionProgress?.stage === "compressing"
+                  ? `Compressing... ${Math.round(
+                      compressionProgress.progress
+                    )}%`
+                  : "Uploading..."
+                : currentImage
+                ? "Replace Image"
+                : "Choose Image"}
             </label>
           </Button>
+          <Input
+            id="event-image-upload"
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+            disabled={isLoading || isUploading}
+          />
         </div>
+
+        {/* Compression Progress */}
+        {compressionProgress && (
+          <div className="space-y-2">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${compressionProgress.progress}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              {compressionProgress.stage === "compressing"
+                ? "Compressing image..."
+                : "Processing..."}
+            </p>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
-          Upload a square poster image (recommended: 1080x1080px). Max file
-          size: 5MB.
-          {tempEventId
-            ? " Images are uploaded immediately to secure storage."
-            : ""}
+          We recommend a square format image of 400px x 400px.
         </p>
       </div>
     </div>
