@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -319,6 +319,12 @@ export default function CarImageManager({
   const [isUploading, setIsUploading] = useState(false);
   const [isReorganizeOpen, setIsReorganizeOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration issues with @dnd-kit by only rendering after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Optimized @dnd-kit sensors with better activation constraints
   const sensors = useSensors(
@@ -531,39 +537,59 @@ export default function CarImageManager({
 
             {/* Desktop Grid with Drag and Drop */}
             <div className="hidden md:block space-y-4">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext items={images} strategy={rectSortingStrategy}>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {images.map((imageUrl, index) => (
-                      <SortableImageItem
-                        key={imageUrl}
+              {mounted ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={images}
+                    strategy={rectSortingStrategy}
+                  >
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {images.map((imageUrl, index) => (
+                        <SortableImageItem
+                          key={imageUrl}
+                          imageUrl={imageUrl}
+                          index={index}
+                          failedImages={failedImages}
+                          onImageError={handleImageError}
+                          onDeleteImage={handleDeleteImage}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                  <DragOverlay adjustScale={false}>
+                    {activeId ? (
+                      <ImageItem
+                        imageUrl={activeId}
+                        index={images.indexOf(activeId)}
+                        failedImages={failedImages}
+                        onImageError={handleImageError}
+                        onDeleteImage={handleDeleteImage}
+                        isDragOverlay
+                      />
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              ) : (
+                // Static grid for SSR/before client mount - prevents hydration issues
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {images.map((imageUrl, index) => (
+                    <div key={imageUrl}>
+                      <ImageItem
                         imageUrl={imageUrl}
                         index={index}
                         failedImages={failedImages}
                         onImageError={handleImageError}
                         onDeleteImage={handleDeleteImage}
                       />
-                    ))}
-                  </div>
-                </SortableContext>
-                <DragOverlay adjustScale={false}>
-                  {activeId ? (
-                    <ImageItem
-                      imageUrl={activeId}
-                      index={images.indexOf(activeId)}
-                      failedImages={failedImages}
-                      onImageError={handleImageError}
-                      onDeleteImage={handleDeleteImage}
-                      isDragOverlay
-                    />
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         ) : (

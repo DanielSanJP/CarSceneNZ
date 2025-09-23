@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { ArrowLeft, Trash2 } from "lucide-react";
@@ -174,6 +175,7 @@ export function EditCarForm({
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const router = useRouter();
 
   const [formData, setFormData] = useState<CompleteEditCarFormData>({
     brand: car.brand || "",
@@ -259,7 +261,7 @@ export function EditCarForm({
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      window.location.href = `/garage/${car.id}`;
+      router.push(`/garage/${car.id}`);
     }
   };
 

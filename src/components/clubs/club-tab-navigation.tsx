@@ -109,22 +109,22 @@ function ClubTabNavigationContent({
 
       {/* Main Navigation Tabs */}
       <div className="flex justify-center mb-8">
-        <div className="bg-muted p-1 rounded-lg flex gap-1">
+        <div className="bg-muted p-1 rounded-lg flex gap-1 w-full max-w-md mx-auto">
           <Button
             variant={currentTab === "gallery" ? "default" : "ghost"}
             onClick={() => handleTabChange("gallery")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
           >
             <Users className="h-4 w-4" />
-            Browse Clubs
+            <span>Browse Clubs</span>
           </Button>
           <Button
             variant={currentTab === "create" ? "default" : "ghost"}
             onClick={() => handleTabChange("create")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
           >
             <Plus className="h-4 w-4" />
-            Create Club
+            <span>Create Club</span>
           </Button>
         </div>
       </div>

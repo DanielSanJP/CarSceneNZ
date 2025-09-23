@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 // Import all garage components
@@ -164,6 +165,7 @@ interface CreateCarFormProps {
 
 export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const [formData, setFormData] = useState<CreateCarFormData>({
     brand: "",
@@ -230,7 +232,7 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      window.location.href = "/garage";
+      router.push("/garage");
     }
   };
 
@@ -314,7 +316,6 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
 
         <div className="flex items-center gap-2">
           <Button onClick={handleSubmit} disabled={isLoading}>
-            <Save className="h-4 w-4 mr-2" />
             {isLoading ? "Creating..." : "Create Car"}
           </Button>
           <InformationModal />
@@ -825,7 +826,6 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
       <div className="mt-12 text-center">
         <div className="flex items-center justify-center gap-2">
           <Button onClick={handleSubmit} disabled={isLoading} size="lg">
-            <Save className="h-4 w-4 mr-2" />
             {isLoading ? "Creating..." : "Create Car"}
           </Button>
           <InformationModal />

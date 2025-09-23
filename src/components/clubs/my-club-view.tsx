@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { memo } from "react";
+import { useRouter } from "next/navigation";
 import { Users, MapPin, Crown, Shield, Globe, Lock, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -16,6 +17,7 @@ interface MyClubViewProps {
 function MyClubViewComponent({ userClubsData }: MyClubViewProps) {
   // Use data directly from props (no React Query)
   const userClubs = userClubsData.clubs || [];
+  const router = useRouter();
 
   // Empty state - user is not in any clubs
   if (userClubs.length === 0) {
@@ -220,7 +222,7 @@ function MyClubViewComponent({ userClubsData }: MyClubViewProps) {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        window.location.href = `/clubs/${club.id}?from=myclub`;
+                        router.push(`/clubs/${club.id}?from=myclub`);
                       }}
                     >
                       View Details

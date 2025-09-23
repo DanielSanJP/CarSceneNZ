@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, memo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +27,7 @@ interface MyEventsViewProps {
 
 function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
   const handleImageError = (eventId: string) => {
     setFailedImages((prev) => new Set(prev).add(eventId));
@@ -179,7 +181,7 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          window.location.href = `/events/${event.id}`;
+                          router.push(`/events/${event.id}`);
                         }}
                       >
                         <Eye className="h-4 w-4 mr-2" />
@@ -192,7 +194,9 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          window.location.href = `/events/edit/${event.id}?from=my-events`;
+                          router.push(
+                            `/events/edit/${event.id}?from=my-events`
+                          );
                         }}
                       >
                         <Edit3 className="h-4 w-4 mr-2" />

@@ -265,10 +265,10 @@ export function EditEventForm({
             disabled={isLoading}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete Event
+            Delete
           </Button>
 
-          <div className="flex space-x-4">
+          <div className="flex gap-2">
             <Link
               href={
                 from === "my-events"

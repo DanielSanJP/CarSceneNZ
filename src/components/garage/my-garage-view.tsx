@@ -6,6 +6,7 @@ import { Plus, Car as CarIcon, Edit3, Eye, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, memo } from "react";
+import { useRouter } from "next/navigation";
 import { UserGarageData } from "@/types/car";
 
 interface MyGarageViewProps {
@@ -14,6 +15,7 @@ interface MyGarageViewProps {
 
 function MyGarageView({ garageData }: MyGarageViewProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
@@ -114,10 +116,11 @@ function MyGarageView({ garageData }: MyGarageViewProps) {
                       variant="outline"
                       size="sm"
                       className="flex-1"
+                      onMouseEnter={() => router.prefetch(`/garage/${car.id}`)}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        window.location.href = `/garage/${car.id}`;
+                        router.push(`/garage/${car.id}`);
                       }}
                     >
                       <Eye className="h-4 w-4 mr-2" />
@@ -127,10 +130,13 @@ function MyGarageView({ garageData }: MyGarageViewProps) {
                       variant="outline"
                       size="sm"
                       className="flex-1"
+                      onMouseEnter={() =>
+                        router.prefetch(`/garage/edit/${car.id}`)
+                      }
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        window.location.href = `/garage/edit/${car.id}`;
+                        router.push(`/garage/edit/${car.id}`);
                       }}
                     >
                       <Edit3 className="h-4 w-4 mr-2" />

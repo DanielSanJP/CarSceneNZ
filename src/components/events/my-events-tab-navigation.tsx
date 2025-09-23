@@ -82,16 +82,16 @@ export function MyEventsTabNavigation({
 
       {/* Tab Navigation */}
       <div className="flex justify-center mb-8">
-        <div className="bg-muted p-1 rounded-lg flex gap-1">
+        <div className="bg-muted p-1 rounded-lg flex gap-1 w-full max-w-md mx-auto">
           <Button
             variant={activeTab === "hosting" ? "default" : "ghost"}
             onClick={() => handleTabChange("hosting")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 flex-1 px-1 sm:px-4 text-xs sm:text-sm"
           >
             <Calendar className="h-4 w-4" />
-            Hosting
+            <span>Hosting</span>
             {hostingCount > 0 && (
-              <span className="bg-background text-foreground text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-background text-foreground text-xs px-1.5 sm:px-2 py-0.5 rounded-full">
                 {hostingCount}
               </span>
             )}
@@ -99,12 +99,12 @@ export function MyEventsTabNavigation({
           <Button
             variant={activeTab === "going" ? "default" : "ghost"}
             onClick={() => handleTabChange("going")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 flex-1 px-1 sm:px-4 text-xs sm:text-sm"
           >
             <UserCheck className="h-4 w-4" />
-            Going
+            <span>Going</span>
             {goingCount > 0 && (
-              <span className="bg-background text-foreground text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-background text-foreground text-xs px-1.5 sm:px-2 py-0.5 rounded-full">
                 {goingCount}
               </span>
             )}
@@ -112,12 +112,12 @@ export function MyEventsTabNavigation({
           <Button
             variant={activeTab === "interested" ? "default" : "ghost"}
             onClick={() => handleTabChange("interested")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 flex-1 px-1 sm:px-4 text-xs sm:text-sm"
           >
             <Star className="h-4 w-4" />
-            Interested
+            <span>Interested</span>
             {interestedCount > 0 && (
-              <span className="bg-background text-foreground text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-background text-foreground text-xs px-1.5 sm:px-2 py-0.5 rounded-full">
                 {interestedCount}
               </span>
             )}

@@ -14,6 +14,7 @@ import { Car as CarIcon, Eye, Star, User, Plus } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { GarageData } from "@/types/car";
 
 interface GarageGalleryProps {
@@ -50,6 +51,7 @@ export function GarageGallery({
     year: "all",
     sort: "newest_year" as SortOption,
   });
+  const router = useRouter();
 
   // Pre-compute data for hooks
   const cars = useMemo(() => garageData?.cars || [], [garageData?.cars]);
@@ -421,7 +423,7 @@ export function GarageGallery({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      window.location.href = `/garage/${car.id}`;
+                      router.push(`/garage/${car.id}`);
                     }}
                   >
                     <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />

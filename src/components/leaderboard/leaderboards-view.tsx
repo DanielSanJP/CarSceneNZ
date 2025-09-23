@@ -66,30 +66,30 @@ export function LeaderboardsView({
     <>
       {/* Tab Navigation */}
       <div className="flex justify-center mb-8">
-        <div className="bg-muted p-1 rounded-lg flex gap-1">
+        <div className="bg-muted p-1 rounded-lg flex gap-1 w-full max-w-md mx-auto">
           <Button
             variant={activeTab === "owners" ? "default" : "ghost"}
             onClick={() => handleTabChange("owners")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
           >
             <Car className="h-4 w-4" />
-            Owners
+            <span>Owners</span>
           </Button>
           <Button
             variant={activeTab === "clubs" ? "default" : "ghost"}
             onClick={() => handleTabChange("clubs")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
           >
             <Users className="h-4 w-4" />
-            Clubs
+            <span>Clubs</span>
           </Button>
           <Button
             variant={activeTab === "cars" ? "default" : "ghost"}
             onClick={() => handleTabChange("cars")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
           >
             <Trophy className="h-4 w-4" />
-            Cars
+            <span>Cars</span>
           </Button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useOptimistic, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +49,7 @@ export function UserProfileDisplay({
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
   const [clubsDialogOpen, setClubsDialogOpen] = useState(false);
+  const router = useRouter();
 
   // Extract data from props
   const {
@@ -713,7 +715,7 @@ export function UserProfileDisplay({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          window.location.href = `/garage/${car.id}`;
+                          router.push(`/garage/${car.id}`);
                         }}
                       >
                         <Eye className="h-4 w-4 mr-2" />
