@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useOptimistic, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,13 +30,11 @@ interface UserProfileDisplayProps {
   profileData: ProfileData;
   leaderClubsData?: LeaderClubsData | null;
   currentUser: User | null;
-  followUserAction?: (
-    targetUserId: string,
-    action: "follow" | "unfollow"
-  ) => Promise<{
+  followUserAction?: (targetUserId: string) => Promise<{
     success: boolean;
     error?: string;
-    action?: string;
+    isFollowing?: boolean;
+    followerCount?: number;
   }>;
 }
 
@@ -50,10 +48,31 @@ export function UserProfileDisplay({
   const [followersDialogOpen, setFollowersDialogOpen] = useState(false);
   const [followingDialogOpen, setFollowingDialogOpen] = useState(false);
   const [clubsDialogOpen, setClubsDialogOpen] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
-  // Use data directly from props (no React Query)
+  // Extract data from props
+  const {
+    profileUser,
+    userCars,
+    followers,
+    following,
+    userClubs,
+    isFollowing,
+  } = profileData;
+
+  // Optimistic state for instant UI updates
+  const [optimisticProfile, addOptimisticUpdate] = useOptimistic(
+    { isFollowing, followerCount: followers.length },
+    (state, newFollowState: boolean) => ({
+      isFollowing: newFollowState,
+      followerCount: state.followerCount + (newFollowState ? 1 : -1),
+    })
+  );
+
+  const [, startTransition] = useTransition();
+
+  // Use data directly from props
   const leaderClubs = leaderClubsData?.leaderClubs || [];
+  const isOwnProfile = currentUser?.id === profileUser.id;
 
   const handleImageError = (carId: string) => {
     setFailedImages((prev) => new Set(prev).add(carId));
@@ -70,35 +89,26 @@ export function UserProfileDisplay({
       return;
     }
 
-    const action = profileData.isFollowing ? "unfollow" : "follow";
+    // Run server action in transition with optimistic update
+    startTransition(async () => {
+      // Optimistic update - instant UI change
+      const newFollowState = !optimisticProfile.isFollowing;
+      addOptimisticUpdate(newFollowState);
 
-    setIsFollowLoading(true);
-    try {
-      const result = await followUserAction(profileData.profileUser.id, action);
+      try {
+        const result = await followUserAction(profileData.profileUser.id);
 
-      if (!result.success) {
-        throw new Error(result.error || `Failed to ${action} user`);
+        if (!result.success) {
+          // Server action will handle reverting the optimistic update
+          toast.error(result.error || "Failed to update follow status");
+        }
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        toast.error(`Failed to update follow status: ${errorMessage}`);
       }
-
-      // Success - no toast needed, button state change is sufficient UX
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      toast.error(`Failed to ${action}: ${errorMessage}`);
-    } finally {
-      setIsFollowLoading(false);
-    }
+    });
   };
-
-  // Extract data from props
-  const {
-    profileUser,
-    userCars,
-    followers,
-    following,
-    userClubs,
-    isFollowing,
-  } = profileData;
 
   // Add safety check for profileUser
   if (!profileUser) {
@@ -113,8 +123,6 @@ export function UserProfileDisplay({
       </div>
     );
   }
-
-  const isOwnProfile = currentUser?.id === profileUser.id;
 
   // DEBUG: Log social media data
   console.log("DEBUG - Social media data:", {
@@ -185,8 +193,8 @@ export function UserProfileDisplay({
                     alt={profileUser.username}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 768px) 80px, (max-width: 1024px) 96px, 112px"
-                    quality={100}
+                    sizes="(max-width: 768px) 160px, (max-width: 1024px) 192px, 224px"
+                    quality={90}
                     priority={true}
                     unoptimized={false}
                   />
@@ -249,213 +257,213 @@ export function UserProfileDisplay({
                 )}
               </div>
             </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Action Buttons Section */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:justify-start">
+            {isOwnProfile ? (
+              <>
+                <Link href="/profile/edit">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-fit"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                </Link>
 
-            {/* Right Side: Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              {isOwnProfile ? (
-                <>
-                  <Link href="/profile/edit">
+                <Dialog
+                  open={clubsDialogOpen}
+                  onOpenChange={setClubsDialogOpen}
+                >
+                  <DialogTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
                       className="w-full sm:w-fit"
                     >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Profile
+                      <Users className="h-4 w-4 mr-2" />
+                      View Clubs ({userClubs.length})
                     </Button>
-                  </Link>
-
-                  <Dialog
-                    open={clubsDialogOpen}
-                    onOpenChange={setClubsDialogOpen}
-                  >
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-fit"
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        View Clubs ({userClubs.length})
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>My Clubs ({userClubs.length})</DialogTitle>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        {userClubs.length === 0 ? (
-                          <div className="text-center py-8">
-                            <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                            <p className="text-center text-muted-foreground mb-4">
-                              You&apos;re not part of any clubs yet
-                            </p>
-                            <Link href="/clubs">
-                              <Button onClick={() => setClubsDialogOpen(false)}>
-                                <Users className="h-4 w-4 mr-2" />
-                                Explore Clubs
-                              </Button>
-                            </Link>
-                          </div>
-                        ) : (
-                          userClubs.map((userClub) => (
-                            <Link
-                              key={userClub.club.id}
-                              href={`/clubs/${userClub.club.id}`}
-                              onClick={() => setClubsDialogOpen(false)}
-                              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
-                            >
-                              <div className="relative h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
-                                {userClub.club.banner_image_url ? (
-                                  <Image
-                                    src={userClub.club.banner_image_url}
-                                    alt={userClub.club.name}
-                                    fill
-                                    className="object-cover"
-                                    sizes="48px"
-                                    quality={100}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/60 flex items-center justify-center">
-                                    <span className="text-sm font-bold text-white">
-                                      {userClub.club.name.charAt(0)}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium">
-                                  {userClub.club.name}
-                                </p>
-                                {userClub.club.description && (
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {userClub.club.description}
-                                  </p>
-                                )}
-                              </div>
-                              <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                            </Link>
-                          ))
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </>
-              ) : (
-                <>
-                  <Button
-                    variant={isFollowing ? "outline" : "default"}
-                    size="sm"
-                    onClick={handleFollowToggle}
-                    disabled={isFollowLoading}
-                    className="w-full sm:w-fit"
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    {isFollowLoading
-                      ? "Loading..."
-                      : isFollowing
-                      ? "Unfollow"
-                      : "Follow"}
-                  </Button>
-
-                  <Dialog
-                    open={clubsDialogOpen}
-                    onOpenChange={setClubsDialogOpen}
-                  >
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-fit"
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        View Clubs ({userClubs.length})
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>
-                          {profileUser.display_name || profileUser.username}
-                          &apos;s Clubs ({userClubs.length})
-                        </DialogTitle>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        {userClubs.length === 0 ? (
-                          <p className="text-center text-muted-foreground py-8">
-                            Not part of any clubs yet
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>My Clubs ({userClubs.length})</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      {userClubs.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-center text-muted-foreground mb-4">
+                            You&apos;re not part of any clubs yet
                           </p>
-                        ) : (
-                          userClubs.map((userClub) => (
-                            <Link
-                              key={userClub.club.id}
-                              href={`/clubs/${userClub.club.id}`}
-                              onClick={() => setClubsDialogOpen(false)}
-                              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
-                            >
-                              <div className="relative h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
-                                {userClub.club.banner_image_url ? (
-                                  <Image
-                                    src={userClub.club.banner_image_url}
-                                    alt={userClub.club.name}
-                                    fill
-                                    className="object-cover"
-                                    sizes="48px"
-                                    quality={100}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/60 flex items-center justify-center">
-                                    <span className="text-sm font-bold text-white">
-                                      {userClub.club.name.charAt(0)}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium">
-                                  {userClub.club.name}
+                          <Link href="/clubs">
+                            <Button onClick={() => setClubsDialogOpen(false)}>
+                              <Users className="h-4 w-4 mr-2" />
+                              Explore Clubs
+                            </Button>
+                          </Link>
+                        </div>
+                      ) : (
+                        userClubs.map((userClub) => (
+                          <Link
+                            key={userClub.club.id}
+                            href={`/clubs/${userClub.club.id}`}
+                            onClick={() => setClubsDialogOpen(false)}
+                            className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
+                          >
+                            <div className="relative h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+                              {userClub.club.banner_image_url ? (
+                                <Image
+                                  src={userClub.club.banner_image_url}
+                                  alt={userClub.club.name}
+                                  fill
+                                  className="object-cover"
+                                  sizes="128px"
+                                  quality={100}
+                                  priority={false}
+                                  unoptimized={false}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/60 flex items-center justify-center">
+                                  <span className="text-sm font-bold text-white">
+                                    {userClub.club.name.charAt(0)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">
+                                {userClub.club.name}
+                              </p>
+                              {userClub.club.description && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {userClub.club.description}
                                 </p>
-                                {userClub.club.description && (
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {userClub.club.description}
-                                  </p>
-                                )}
-                              </div>
-                              <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                            </Link>
-                          ))
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </>
-              )}
+                              )}
+                            </div>
+                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant={
+                    optimisticProfile.isFollowing ? "outline" : "default"
+                  }
+                  size="sm"
+                  onClick={handleFollowToggle}
+                  className="w-full sm:w-fit"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {optimisticProfile.isFollowing ? "Unfollow" : "Follow"}
+                </Button>
 
-              {!isOwnProfile && currentUser && leaderClubs.length > 0 && (
-                <InviteToClub
-                  targetUserId={profileUser.id}
-                  targetUsername={profileUser.username}
-                  leaderClubs={leaderClubs
-                    .filter(
-                      (club): club is NonNullable<typeof club> => club !== null
-                    )
-                    .map((club) => ({
-                      id: club.id,
-                      name: club.name,
-                      description: club.description || "",
-                      banner_image_url: club.image_url || undefined,
-                      created_at: "",
-                      updated_at: "",
-                      leader_id: currentUser.id,
-                      total_likes: 0,
-                      memberCount: club.memberCount,
-                    }))}
-                  sendClubInvitationAction={sendClubInvitationAction}
-                />
-              )}
-            </div>
+                <Dialog
+                  open={clubsDialogOpen}
+                  onOpenChange={setClubsDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-fit"
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      View Clubs ({userClubs.length})
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {profileUser.display_name || profileUser.username}
+                        &apos;s Clubs ({userClubs.length})
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      {userClubs.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          Not part of any clubs yet
+                        </p>
+                      ) : (
+                        userClubs.map((userClub) => (
+                          <Link
+                            key={userClub.club.id}
+                            href={`/clubs/${userClub.club.id}`}
+                            onClick={() => setClubsDialogOpen(false)}
+                            className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
+                          >
+                            <div className="relative h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+                              {userClub.club.banner_image_url ? (
+                                <Image
+                                  src={userClub.club.banner_image_url}
+                                  alt={userClub.club.name}
+                                  fill
+                                  className="object-cover"
+                                  sizes="48px"
+                                  quality={100}
+                                  priority={false}
+                                  unoptimized={false}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-primary/30 to-primary/60 flex items-center justify-center">
+                                  <span className="text-sm font-bold text-white">
+                                    {userClub.club.name.charAt(0)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">
+                                {userClub.club.name}
+                              </p>
+                              {userClub.club.description && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {userClub.club.description}
+                                </p>
+                              )}
+                            </div>
+                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+
+            {!isOwnProfile && currentUser && leaderClubs.length > 0 && (
+              <InviteToClub
+                targetUserId={profileUser.id}
+                targetUsername={profileUser.username}
+                leaderClubs={leaderClubs
+                  .filter(
+                    (club): club is NonNullable<typeof club> => club !== null
+                  )
+                  .map((club) => ({
+                    id: club.id,
+                    name: club.name,
+                    description: club.description || "",
+                    banner_image_url: club.image_url || undefined,
+                    created_at: "",
+                    updated_at: "",
+                    leader_id: currentUser.id,
+                    total_likes: 0,
+                    memberCount: club.memberCount,
+                  }))}
+                sendClubInvitationAction={sendClubInvitationAction}
+              />
+            )}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
           <div className="space-y-3">
             <div className="flex flex-col gap-4">
               {/* Stats Grid - Mobile: 2x2, Desktop: 1x4 */}
@@ -535,13 +543,15 @@ export function UserProfileDisplay({
                     <button className="flex items-center space-x-2 hover:underline cursor-pointer justify-start">
                       <span className="text-sm">Followers</span>
                       <span className="font-semibold text-sm">
-                        {followers.length}
+                        {optimisticProfile.followerCount}
                       </span>
                     </button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Followers ({followers.length})</DialogTitle>
+                      <DialogTitle>
+                        Followers ({optimisticProfile.followerCount})
+                      </DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       {followers.length === 0 ? (

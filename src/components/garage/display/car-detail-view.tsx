@@ -247,7 +247,7 @@ export const CarDetailView = React.memo(function CarDetailView({
 
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Images */}
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
           <CarImageGallery car={carFormatted} />
 
           {/* Owner Details */}

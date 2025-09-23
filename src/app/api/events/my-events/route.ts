@@ -4,6 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/utils/supabase/server";
 import type { Event } from "@/types/event";
 
+// Add cache configuration for this API route
+export const revalidate = 60; // 1 minute cache
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -177,7 +180,12 @@ export async function POST(request: NextRequest) {
     const endTime = Date.now();
     console.log(`✅ FETCH CACHE: User ${userId} events (filter: ${filter}) fetched and processed in ${endTime - startTime}ms`);
 
-    return NextResponse.json(transformedEvents);
+    return NextResponse.json(transformedEvents, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'Cache-Tags': `events,event-attendees,user-${userId}-events,my-events`, // Add cache tags for proper invalidation
+      }
+    });
   } catch (error) {
     console.error("❌ Error fetching user events data:", error);
     return NextResponse.json(

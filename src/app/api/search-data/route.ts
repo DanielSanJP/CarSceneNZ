@@ -7,7 +7,7 @@ export async function GET() {
 
     const supabase = await createClient();
 
-    // Fetch cars (public data only)
+    // Fetch cars (public data only) with cache tag
     const { data: cars, error: carsError } = await supabase
       .from('cars')
       .select(`

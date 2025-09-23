@@ -3,6 +3,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/utils/supabase/server";
 
+// Cache configuration
+export const revalidate = 300; // Revalidate every 5 minutes
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -304,7 +307,11 @@ export async function POST(
       },
     };
 
-    return NextResponse.json(formattedResponse);
+    return NextResponse.json(formattedResponse, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900', // 5 minute cache, 15 min stale
+      },
+    });
   } catch (error) {
     console.error("❌ Error fetching profile data:", error);
     return NextResponse.json(

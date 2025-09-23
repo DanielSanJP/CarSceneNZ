@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import type { Car } from "@/types/car";
 import { toast } from "sonner";
 
@@ -421,7 +421,7 @@ export function EditCarForm({
 
         <div className="flex items-center gap-2">
           <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Changes"}
+            {isLoading ? "Saving..." : "Save"}
           </Button>
           <InformationModal />
         </div>
@@ -815,7 +815,7 @@ export function EditCarForm({
             disabled={isDeleting || isLoading}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            {isDeleting ? "Deleting..." : "Delete Car"}
+            {isDeleting ? "Deleting..." : "Delete"}
           </Button>
           <div className="flex items-center gap-2">
             <Button
@@ -826,8 +826,7 @@ export function EditCarForm({
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isLoading || isDeleting}>
-              <Save className="h-4 w-4 mr-2" />
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? "Saving..." : "Save"}
             </Button>
           </div>
         </div>
@@ -837,7 +836,7 @@ export function EditCarForm({
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDelete}
-        title="Delete Car"
+        title="Delete"
         description="Are you sure you want to delete this car? This action cannot be undone."
         itemName={`${car.brand} ${car.model} (${car.year})`}
         isLoading={isDeleting}

@@ -1,6 +1,7 @@
 // Export all garage components for easy importing
 export { default as BasicCarInfo } from './BasicCarInfo';
 export { default as CarImageManager } from './CarImageManager';
+export { ImageReorganizeModal } from './ImageReorganizeModal';
 export { default as EngineDetails } from './EngineDetails';
 export { default as WheelsAndTires } from './WheelsAndTires';
 export { default as BrakingSystem } from './BrakingSystem';

@@ -7,9 +7,9 @@ import { getBaseUrl } from "@/lib/utils";
 export const revalidate = 300; // 5 minutes
 
 interface MyEventsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     tab?: string;
-  };
+  }>;
 }
 
 export default async function MyEventsPage({
@@ -23,9 +23,12 @@ export default async function MyEventsPage({
     throw new Error("Failed to load user profile");
   }
 
+  // Await searchParams before accessing properties
+  const params = await searchParams;
+
   // Determine which tab to show - default to 'hosting'
   const activeTab =
-    (searchParams.tab as "hosting" | "going" | "interested") || "hosting";
+    (params.tab as "hosting" | "going" | "interested") || "hosting";
 
   console.log(
     `🚀 SSR CACHE: Fetching user events for tab '${activeTab}' via cached API route...`
@@ -45,8 +48,16 @@ export default async function MyEventsPage({
         pageOffset: 0,
         filter: filter,
       }),
-      // Leverage the API route's caching
-      next: { revalidate: 60 },
+      // Leverage the API route's caching with proper tags
+      next: {
+        revalidate: 60,
+        tags: [
+          "events",
+          "event-attendees",
+          `user-${user.id}-events`,
+          "my-events",
+        ],
+      },
     });
 
     if (!response.ok) {

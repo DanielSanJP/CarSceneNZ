@@ -8,70 +8,8 @@ import {
   uploadCarImages,
 } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
-import { Car } from "@/types";
-
-// Inline server function from cars.ts
-async function createCarWithComponents(carData: {
-  owner_id: string;
-  brand: string;
-  model: string;
-  year: number;
-  images: string[];
-  [key: string]: unknown; // Allow any additional flattened fields
-}): Promise<Car> {
-  try {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from("cars")
-      .insert({
-        owner_id: carData.owner_id,
-        brand: carData.brand,
-        model: carData.model,
-        year: carData.year,
-        images: carData.images,
-        // Add all additional fields directly (flattened structure)
-        ...Object.fromEntries(
-          Object.entries(carData).filter(
-            ([key]) =>
-              !["owner_id", "brand", "model", "year", "images"].includes(key)
-          )
-        ),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error creating car:", error);
-      throw new Error("Failed to create car");
-    }
-
-    if (!data) {
-      throw new Error("No data returned from car creation");
-    }
-
-    return {
-      id: data.id,
-      owner_id: data.owner_id,
-      brand: data.brand,
-      model: data.model,
-      year: data.year,
-      images: data.images || [],
-      total_likes: data.total_likes || 0,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      owner: {
-        id: data.owner_id,
-        username: "",
-        display_name: "",
-        profile_image_url: undefined,
-      },
-    };
-  } catch (error) {
-    console.error("Error creating car:", error);
-    throw error;
-  }
-}
+import { cleanupOrphanedCarImagesAction } from "@/lib/actions/delete-actions";
+import { createCarWithComponentsAction } from "@/lib/actions/car-actions";
 
 async function uploadCarImagesServerAction(
   formData: FormData
@@ -82,12 +20,19 @@ async function uploadCarImagesServerAction(
     const files = formData.getAll("files") as File[];
     const carId = formData.get("carId") as string;
     const isTemp = formData.get("isTemp") === "true";
+    const existingImageCount =
+      parseInt(formData.get("existingImageCount") as string) || 0;
 
     if (!files || files.length === 0 || !carId) {
       return { urls: [], error: "Missing files or car ID" };
     }
 
-    const urls = await uploadCarImages(files, carId, isTemp);
+    const urls = await uploadCarImages(
+      files,
+      carId,
+      isTemp,
+      existingImageCount
+    );
     return { urls, error: null };
   } catch (error) {
     console.error("Upload error:", error);
@@ -208,10 +153,10 @@ async function createCarAction(formData: FormData) {
 
   try {
     // Create the car record
-    const result = await createCarWithComponents({
+    const result = await createCarWithComponentsAction({
       ...carData,
       ...additionalData,
-    } as Parameters<typeof createCarWithComponents>[0]);
+    } as Parameters<typeof createCarWithComponentsAction>[0]);
 
     if (!result) {
       throw new Error("Failed to create car");
@@ -237,6 +182,17 @@ async function createCarAction(formData: FormData) {
               "Error updating car with new image URLs:",
               updateError
             );
+          } else {
+            // After successful move and update, cleanup any remaining temp files
+            try {
+              await cleanupOrphanedCarImagesAction(result.id, newImageUrls);
+              console.log(
+                `🧹 Car Create: Cleanup completed for new car ${result.id}`
+              );
+            } catch (cleanupError) {
+              console.error("Error during temp cleanup:", cleanupError);
+              // Don't fail the creation if cleanup fails
+            }
           }
         }
       } catch (error) {
@@ -245,12 +201,32 @@ async function createCarAction(formData: FormData) {
       }
     }
 
-    // Revalidate multiple paths and cache tags
-    revalidatePath("/garage");
-    revalidatePath("/garage/my-garage");
-    revalidatePath("/");
-    revalidateTag("garage");
-    revalidateTag("garage-page-1");
+    console.log(
+      `🔄 Car Create: Starting comprehensive cache revalidation for new car ${result.id}`
+    );
+
+    // Revalidate all garage-related paths
+    revalidatePath("/garage"); // Main garage page
+    revalidatePath(`/garage/${result.id}`); // Car detail page
+    revalidatePath("/garage/my-garage"); // User's garage
+    revalidatePath("/"); // Home page (shows recent cars)
+    revalidatePath("/search"); // Search page
+    revalidatePath("/leaderboards"); // Leaderboards page
+    revalidatePath(`/profile/${authUser.id}`); // User's profile page
+
+    // Revalidate cache tags for comprehensive data consistency
+    revalidateTag("garage"); // All garage data
+    revalidateTag("cars"); // All car data
+    revalidateTag(`car-${result.id}`); // Specific car data
+    revalidateTag(`user-${authUser.id}-cars`); // User-specific car data
+    revalidateTag("home-data"); // Home page data
+    revalidateTag("search-data"); // Search data
+    revalidateTag("leaderboards"); // Leaderboard data
+    revalidateTag("users"); // User profiles data
+
+    console.log(
+      `✅ Car Create: Cache revalidation completed for new car ${result.id}`
+    );
     redirect(`/garage/${result.id}`);
   } catch (error) {
     // If car creation failed and we have temp images, clean them up

@@ -4,7 +4,6 @@ import { requireAuth } from '@/lib/auth';
 
 // Ensure this route is always dynamic and never cached
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export async function GET() {
   try {

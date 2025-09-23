@@ -10,15 +10,23 @@ interface CarImageGalleryProps {
 }
 
 export function CarImageGallery({ car }: CarImageGalleryProps) {
-  // UI state
-  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  // Just filter out empty URLs - that's it!
+  const imageUrls = (car.images || []).filter(
+    (url) => url && url.trim() !== ""
+  );
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
 
-  const handleImageError = (imageIndex: number) => {
-    setFailedImages((prev) => new Set(prev).add(`${car.id}-${imageIndex}`));
-  };
+  // No images? Show placeholder
+  if (imageUrls.length === 0) {
+    return (
+      <div className="w-full aspect-square bg-muted flex items-center justify-center rounded-lg">
+        <CarIcon className="h-16 w-16 text-muted-foreground" />
+      </div>
+    );
+  }
 
   const openModal = (imageIndex: number) => {
     setModalImageIndex(imageIndex);
@@ -26,79 +34,63 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
   };
 
   const navigateModal = (direction: "prev" | "next") => {
-    const imageLength = car?.images?.length || 0;
-    if (imageLength === 0) return;
-
     if (direction === "prev") {
-      setModalImageIndex((prev) => (prev === 0 ? imageLength - 1 : prev - 1));
+      setModalImageIndex((prev) =>
+        prev === 0 ? imageUrls.length - 1 : prev - 1
+      );
     } else {
-      setModalImageIndex((prev) => (prev === imageLength - 1 ? 0 : prev + 1));
+      setModalImageIndex((prev) =>
+        prev === imageUrls.length - 1 ? 0 : prev + 1
+      );
     }
   };
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="w-full space-y-4">
+        {/* Main image */}
         <div
-          className="relative aspect-square overflow-hidden rounded-lg cursor-pointer"
+          className="w-full aspect-square relative rounded-lg overflow-hidden cursor-pointer bg-muted"
           onClick={() => openModal(currentImageIndex)}
         >
-          {failedImages.has(`${car.id}-${currentImageIndex}`) ||
-          !car.images?.[currentImageIndex] ? (
-            <div className="aspect-square bg-muted flex items-center justify-center"></div>
-          ) : (
-            <Image
-              src={car.images[currentImageIndex]}
-              alt={`${car.brand} ${car.model} - Image ${currentImageIndex + 1}`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, (max-width: 1536px) 60vw, 50vw"
-              quality={75}
-              priority={true}
-              unoptimized={false}
-              onError={() => handleImageError(currentImageIndex)}
-            />
-          )}
+          <Image
+            src={imageUrls[currentImageIndex]}
+            alt={`${car.brand} ${car.model}`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority
+          />
         </div>
 
-        {/* Image thumbnails */}
-        {(car.images?.length || 0) > 1 && (
+        {/* Thumbnails */}
+        {imageUrls.length > 1 && (
           <div className="grid grid-cols-4 gap-2">
-            {car.images?.map((_, index) => (
+            {imageUrls.map((url, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentImageIndex(index)}
-                className={`relative aspect-square overflow-hidden rounded border-2 transition-colors ${
+                title={`View image ${index + 1}`}
+                className={`aspect-square relative rounded overflow-hidden border-2 ${
                   currentImageIndex === index
                     ? "border-primary"
-                    : "border-transparent hover:border-muted-foreground"
+                    : "border-transparent"
                 }`}
               >
-                {failedImages.has(`${car.id}-${index}`) ||
-                !car.images?.[index] ? (
-                  <div className="aspect-square bg-muted flex items-center justify-center">
-                    <CarIcon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                ) : (
-                  <Image
-                    src={car.images[index]}
-                    alt={`Thumbnail ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 15vw"
-                    quality={75}
-                    priority={index < 4}
-                    unoptimized={false}
-                    onError={() => handleImageError(index)}
-                  />
-                )}
+                <Image
+                  src={url}
+                  alt={`Thumbnail ${index + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="25vw"
+                />
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Image Modal */}
+      {/* Full-Screen Image Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
           className="!max-w-none !w-screen !h-screen !p-0 !m-0 !rounded-none bg-background border-none"
@@ -109,23 +101,18 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
           </DialogTitle>
           <div className="relative w-full h-full flex flex-col">
             <div className="relative flex-1 flex items-center justify-center p-4 pt-16">
-              {car.images && car.images[modalImageIndex] && (
-                <Image
-                  src={car.images[modalImageIndex]}
-                  alt={`${car.brand} ${car.model} - Image ${
-                    modalImageIndex + 1
-                  }`}
-                  fill
-                  className="object-contain"
-                  sizes="100vw"
-                  quality={75}
-                  priority={true}
-                  unoptimized={false}
-                />
-              )}
+              <Image
+                src={imageUrls[modalImageIndex]}
+                alt={`${car.brand} ${car.model} - Image ${modalImageIndex + 1}`}
+                fill
+                className="object-contain"
+                sizes="100vw"
+                quality={75}
+                priority={true}
+              />
 
               {/* Navigation buttons */}
-              {(car.images?.length || 0) > 1 && (
+              {imageUrls.length > 1 && (
                 <>
                   <Button
                     variant="outline"
@@ -148,10 +135,10 @@ export function CarImageGallery({ car }: CarImageGalleryProps) {
             </div>
 
             {/* Image counter */}
-            {(car.images?.length || 0) > 1 && (
+            {imageUrls.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-1">
                 <div className="text-center text-sm">
-                  {modalImageIndex + 1} / {car.images?.length}
+                  {modalImageIndex + 1} / {imageUrls.length}
                 </div>
               </div>
             )}

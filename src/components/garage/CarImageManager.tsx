@@ -1,30 +1,306 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Upload, X, GripVertical } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+
+import { Camera, Upload, X, ArrowUpDown, GripVertical } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
   compressMultipleImagesForUpload,
   formatFileSize,
 } from "@/lib/utils/image-compression";
+import { deleteCarImageAction } from "@/lib/actions/delete-actions";
+import { ImageReorganizeModal } from "./ImageReorganizeModal";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // Simple temp ID generator for client-side use
 function generateTempId(): string {
   return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
+// Presentational Image Item (for DragOverlay)
+interface ImageItemProps {
+  imageUrl: string;
+  index: number;
+  failedImages: Set<string>;
+  onImageError: (imageUrl: string) => void;
+  onDeleteImage: (imageUrl: string) => void;
+  isDragOverlay?: boolean;
+}
+
+const ImageItem = React.forwardRef<HTMLDivElement, ImageItemProps>(
+  (
+    {
+      imageUrl,
+      index,
+      failedImages,
+      onImageError,
+      onDeleteImage,
+      isDragOverlay = false,
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={`
+          relative group overflow-hidden rounded-lg border bg-background transition-all duration-200
+          ${
+            isDragOverlay
+              ? "shadow-2xl scale-105 rotate-2 border-primary"
+              : "hover:border-muted-foreground"
+          }
+        `}
+      >
+        <div className="relative aspect-square">
+          {failedImages.has(imageUrl) ? (
+            <div className="aspect-square bg-muted flex items-center justify-center">
+              <Camera className="h-12 w-12 text-muted-foreground" />
+            </div>
+          ) : (
+            <Image
+              src={imageUrl}
+              alt={`Car image ${index + 1}`}
+              fill
+              className="object-cover transition-all duration-300 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={() => onImageError(imageUrl)}
+              draggable={false}
+            />
+          )}
+
+          {/* Drag handle */}
+          {!isDragOverlay && (
+            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-grab active:cursor-grabbing">
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
+
+          {/* Delete button */}
+          {!isDragOverlay && (
+            <Button
+              type="button"
+              size="icon"
+              variant="destructive"
+              className="absolute top-2 right-2 h-8 w-8 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteImage(imageUrl);
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+
+          {/* Main image indicator */}
+          {index === 0 && (
+            <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded-md text-xs font-medium shadow-sm">
+              Main Image
+            </div>
+          )}
+
+          {/* Image number */}
+          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-md text-xs font-medium">
+            {index + 1}
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+ImageItem.displayName = "ImageItem";
+
+// Sortable Image Item Component
+interface SortableImageItemProps {
+  imageUrl: string;
+  index: number;
+  failedImages: Set<string>;
+  onImageError: (imageUrl: string) => void;
+  onDeleteImage: (imageUrl: string) => void;
+}
+
+function SortableImageItem({
+  imageUrl,
+  index,
+  failedImages,
+  onImageError,
+  onDeleteImage,
+}: SortableImageItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: imageUrl,
+    transition: {
+      duration: 200,
+      easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+    },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    // Hide the original item when dragging (DragOverlay will show the dragged item)
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="cursor-grab active:cursor-grabbing"
+      {...attributes}
+    >
+      <div {...listeners} className="w-full h-full">
+        <ImageItem
+          imageUrl={imageUrl}
+          index={index}
+          failedImages={failedImages}
+          onImageError={onImageError}
+          onDeleteImage={onDeleteImage}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Mobile Draggable Image Item Component
+interface MobileDraggableImageItemProps {
+  imageUrl: string;
+  index: number;
+  totalImages: number;
+  failedImages: Set<string>;
+  isLoading?: boolean;
+  onImageError: (imageUrl: string) => void;
+  onDeleteImage: (imageUrl: string) => void;
+}
+
+function MobileDraggableImageItem({
+  imageUrl,
+  index,
+  totalImages,
+  failedImages,
+  isLoading,
+  onImageError,
+  onDeleteImage,
+}: MobileDraggableImageItemProps) {
+  return (
+    <CarouselItem key={index}>
+      <div className="relative group overflow-hidden rounded-lg border">
+        <div className="relative aspect-square">
+          {failedImages.has(imageUrl) ? (
+            <div className="aspect-square bg-muted flex items-center justify-center">
+              <Camera className="h-12 w-12 text-muted-foreground" />
+            </div>
+          ) : (
+            <Image
+              src={imageUrl}
+              alt={`Car image ${index + 1}`}
+              fill
+              className="object-cover"
+              sizes="100vw"
+              onError={() => onImageError(imageUrl)}
+            />
+          )}
+
+          {/* Carousel Navigation */}
+          {totalImages > 1 && (
+            <>
+              <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 backdrop-blur-sm border-none hover:bg-black/70" />
+              <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 backdrop-blur-sm border-none hover:bg-black/70" />
+            </>
+          )}
+
+          {/* Delete button */}
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            className="absolute top-2 right-2 h-8 w-8"
+            onClick={() => onDeleteImage(imageUrl)}
+            disabled={isLoading}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+
+          {/* Main image indicator */}
+          {index === 0 && (
+            <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
+              Main Image
+            </div>
+          )}
+
+          {/* Image number */}
+          <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-medium">
+            {index + 1} / {totalImages}
+          </div>
+        </div>
+      </div>
+    </CarouselItem>
+  );
+}
+
+// Utility function to clean up image URLs and remove duplicates
+function cleanImageArray(images: string[]): string[] {
+  const cleanedImages: string[] = [];
+  const seenBaseUrls = new Set<string>();
+
+  for (let i = images.length - 1; i >= 0; i--) {
+    const imageUrl = images[i];
+    if (!imageUrl) continue;
+
+    const baseUrl = imageUrl.split("?v=")[0];
+
+    if (!seenBaseUrls.has(baseUrl)) {
+      seenBaseUrls.add(baseUrl);
+      cleanedImages.unshift(imageUrl);
+    }
+  }
+
+  return cleanedImages;
+}
+
 interface CarImageManagerProps {
   images: string[];
   onChange: (images: string[]) => void;
   isLoading?: boolean;
-  carId?: string; // Optional - only provided for existing cars
-  tempCarId?: string; // For new cars - temp ID for pre-upload
-  onTempCarIdChange?: (tempCarId: string) => void; // Callback to set temp car ID
+  carId?: string;
+  tempCarId?: string;
+  onTempCarIdChange?: (tempCarId: string) => void;
   uploadAction: (
     formData: FormData
   ) => Promise<{ urls: string[]; error: string | null }>;
@@ -40,22 +316,72 @@ export default function CarImageManager({
   uploadAction,
 }: CarImageManagerProps) {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [compressionProgress, setCompressionProgress] = useState({
-    currentFile: 0,
-    totalFiles: 0,
-    progress: 0,
-  });
-  const [isCompressing, setIsCompressing] = useState(false);
+  const [isReorganizeOpen, setIsReorganizeOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Optimized @dnd-kit sensors with better activation constraints
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 10, // Require 10px movement before activating
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
   };
 
-  const handleDeleteImage = (imageUrl: string) => {
-    const newImages = images.filter((img) => img !== imageUrl);
-    onChange(newImages);
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveId(active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = images.findIndex((image) => image === active.id);
+      const newIndex = images.findIndex((image) => image === over.id);
+
+      const newImages = arrayMove(images, oldIndex, newIndex);
+      onChange(newImages);
+    }
+
+    setActiveId(null);
+  };
+
+  const handleDeleteImage = async (imageUrl: string) => {
+    try {
+      const newImages = images.filter((img) => img !== imageUrl);
+      onChange(newImages);
+
+      if (carId && !imageUrl.includes("temp_")) {
+        console.log("🗑️ Deleting image from storage:", imageUrl);
+
+        const result = await deleteCarImageAction(imageUrl);
+
+        if (result.success) {
+          console.log("✅ Successfully deleted image from storage");
+        } else {
+          console.error(
+            "❌ Failed to delete image from storage:",
+            result.error
+          );
+          toast.warning("Image removed from gallery, but file cleanup failed");
+        }
+      } else {
+        console.log("🗑️ Removing temp/new image from array:", imageUrl);
+      }
+    } catch (error) {
+      console.error("❌ Error removing image:", error);
+      toast.error("Failed to remove image");
+      onChange(images);
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,31 +405,13 @@ export default function CarImageManager({
     }
 
     try {
-      // Reset compression state
-      setCompressionProgress({
-        currentFile: 0,
-        totalFiles: filesToProcess.length,
-        progress: 0,
-      });
-      setIsCompressing(true);
-
-      // Compress images
-      const compressionResults = await compressMultipleImagesForUpload(
-        filesToProcess,
-        "car",
-        (progress, fileIndex, total) => {
-          setCompressionProgress({
-            currentFile: fileIndex + 1,
-            totalFiles: total,
-            progress: progress.progress,
-          });
-        }
-      );
-
-      setIsCompressing(false);
       setIsUploading(true);
 
-      // Calculate total compression info
+      const compressionResults = await compressMultipleImagesForUpload(
+        filesToProcess,
+        "car"
+      );
+
       const totalOriginalSize = compressionResults.reduce(
         (sum, result) => sum + result.originalSize,
         0
@@ -118,17 +426,18 @@ export default function CarImageManager({
       );
 
       if (carId) {
-        // For existing cars, upload immediately to Supabase
         const formData = new FormData();
         compressionResults.forEach((result) =>
           formData.append("files", result.file)
         );
         formData.append("carId", carId);
         formData.append("isTemp", "false");
+        formData.append("existingImageCount", images.length.toString());
 
         const result = await uploadAction(formData);
         if (result.urls.length > 0) {
-          onChange([...images, ...result.urls]);
+          const newImages = cleanImageArray([...images, ...result.urls]);
+          onChange(newImages);
           toast.success(
             `${
               result.urls.length
@@ -142,8 +451,6 @@ export default function CarImageManager({
           throw new Error(result.error);
         }
       } else {
-        // For new cars, upload to temp folder
-        // Generate temp car ID if not provided
         let currentTempId = tempCarId;
         if (!currentTempId) {
           currentTempId = generateTempId();
@@ -156,10 +463,12 @@ export default function CarImageManager({
         );
         formData.append("carId", currentTempId);
         formData.append("isTemp", "true");
+        formData.append("existingImageCount", images.length.toString());
 
         const result = await uploadAction(formData);
         if (result.urls.length > 0) {
-          onChange([...images, ...result.urls]);
+          const newImages = cleanImageArray([...images, ...result.urls]);
+          onChange(newImages);
           toast.success(
             `${
               result.urls.length
@@ -178,52 +487,17 @@ export default function CarImageManager({
       toast.error("Failed to process and upload images. Please try again.");
     } finally {
       setIsUploading(false);
-      setIsCompressing(false);
-      setCompressionProgress({ currentFile: 0, totalFiles: 0, progress: 0 });
     }
 
-    // Clear the input
     e.target.value = "";
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/html", index.toString());
+  const openReorganizeModal = () => {
+    setIsReorganizeOpen(true);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      return;
-    }
-
-    const newImages = [...images];
-    const draggedImage = newImages[draggedIndex];
-
-    // Remove the dragged image from its original position
-    newImages.splice(draggedIndex, 1);
-
-    // Insert it at the new position
-    newImages.splice(dropIndex, 0, draggedImage);
-
-    onChange(newImages);
-    setDraggedIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
+  const handleApplyReorganization = (reorderedImages: string[]) => {
+    onChange(reorderedImages);
   };
 
   return (
@@ -234,70 +508,64 @@ export default function CarImageManager({
       <CardContent className="space-y-4">
         {/* Current Images */}
         {images.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {images.map((imageUrl, index) => (
-              <div
-                key={index}
-                className={`relative group overflow-hidden rounded-lg border cursor-move transition-all ${
-                  draggedIndex === index
-                    ? "opacity-50 scale-95 rotate-2"
-                    : "hover:shadow-lg"
-                }`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={handleDragOver}
-                onDragEnter={handleDragEnter}
-                onDrop={(e) => handleDrop(e, index)}
+          <>
+            {/* Mobile Carousel */}
+            <div className="md:hidden">
+              <Carousel className="w-full max-w-sm mx-auto">
+                <CarouselContent>
+                  {images.map((imageUrl, index) => (
+                    <MobileDraggableImageItem
+                      key={imageUrl}
+                      imageUrl={imageUrl}
+                      index={index}
+                      totalImages={images.length}
+                      failedImages={failedImages}
+                      isLoading={isLoading}
+                      onImageError={handleImageError}
+                      onDeleteImage={handleDeleteImage}
+                    />
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            </div>
+
+            {/* Desktop Grid with Drag and Drop */}
+            <div className="hidden md:block space-y-4">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               >
-                <div className="relative aspect-square">
-                  {failedImages.has(imageUrl) ? (
-                    <div className="aspect-square bg-muted flex items-center justify-center">
-                      <Camera className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <Image
-                      src={imageUrl}
-                      alt={`Car image ${index + 1}`}
-                      fill
-                      className="object-cover transition-transform group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      onError={() => handleImageError(imageUrl)}
+                <SortableContext items={images} strategy={rectSortingStrategy}>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {images.map((imageUrl, index) => (
+                      <SortableImageItem
+                        key={imageUrl}
+                        imageUrl={imageUrl}
+                        index={index}
+                        failedImages={failedImages}
+                        onImageError={handleImageError}
+                        onDeleteImage={handleDeleteImage}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+                <DragOverlay adjustScale={false}>
+                  {activeId ? (
+                    <ImageItem
+                      imageUrl={activeId}
+                      index={images.indexOf(activeId)}
+                      failedImages={failedImages}
+                      onImageError={handleImageError}
+                      onDeleteImage={handleDeleteImage}
+                      isDragOverlay
                     />
-                  )}
-
-                  {/* Drag handle */}
-                  <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    <GripVertical className="h-4 w-4" />
-                  </div>
-
-                  {/* Delete button */}
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="destructive"
-                    className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleDeleteImage(imageUrl)}
-                    disabled={isLoading}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-
-                  {/* Main image indicator */}
-                  {index === 0 && (
-                    <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
-                      Main Image
-                    </div>
-                  )}
-
-                  {/* Image number */}
-                  <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-medium">
-                    {index + 1}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            </div>
+          </>
         ) : (
           <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center max-w-md mx-auto aspect-square flex flex-col items-center justify-center">
             <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
@@ -311,48 +579,35 @@ export default function CarImageManager({
         <div className="space-y-2 max-w-md mx-auto">
           <Label htmlFor="image-upload">Add Images ({images.length}/10)</Label>
 
-          {/* Compression Progress */}
-          {isCompressing && (
-            <div className="space-y-2 p-4 bg-muted rounded-lg">
-              <div className="flex items-center justify-between text-sm">
-                <span>Compressing images...</span>
-                <span>
-                  {compressionProgress.currentFile}/
-                  {compressionProgress.totalFiles}
-                </span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${compressionProgress.progress}%` }}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground text-center">
-                Processing file {compressionProgress.currentFile} of{" "}
-                {compressionProgress.totalFiles}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-start">
+          <div className="flex gap-2 justify-start">
             <Button
               type="button"
               variant="outline"
               size="sm"
               asChild
-              disabled={
-                images.length >= 10 || isLoading || isUploading || isCompressing
-              }
+              disabled={images.length >= 10 || isLoading || isUploading}
             >
               <label htmlFor="image-upload" className="cursor-pointer">
                 <Upload className="h-4 w-4 mr-2" />
-                {isCompressing
-                  ? "Compressing..."
-                  : isUploading
-                  ? "Uploading..."
-                  : "Choose Files"}
+                {isUploading ? "Uploading..." : "Choose Files"}
               </label>
             </Button>
+
+            {/* Reorganize Images Button - Available on all devices */}
+            {images.length > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openReorganizeModal}
+                disabled={isLoading || isUploading}
+                className="gap-2"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                Reorganize
+              </Button>
+            )}
+
             <Input
               id="image-upload"
               type="file"
@@ -360,9 +615,7 @@ export default function CarImageManager({
               multiple
               onChange={handleImageUpload}
               className="hidden"
-              disabled={
-                images.length >= 10 || isLoading || isUploading || isCompressing
-              }
+              disabled={images.length >= 10 || isLoading || isUploading}
             />
           </div>
           {images.length >= 10 && (
@@ -372,6 +625,17 @@ export default function CarImageManager({
           )}
         </div>
       </CardContent>
+
+      {/* Image Reorganize Modal */}
+      <ImageReorganizeModal
+        isOpen={isReorganizeOpen}
+        onOpenChange={setIsReorganizeOpen}
+        images={images}
+        onApply={handleApplyReorganization}
+        failedImages={failedImages}
+        onImageError={handleImageError}
+        isLoading={isLoading}
+      />
     </Card>
   );
 }

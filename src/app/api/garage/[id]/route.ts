@@ -3,6 +3,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/utils/supabase/server";
 
+// Cache configuration
+export const revalidate = 300; // Revalidate every 5 minutes
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

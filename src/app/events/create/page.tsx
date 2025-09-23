@@ -150,8 +150,9 @@ async function createEventAction(formData: FormData) {
   revalidatePath("/events/my-events"); // User's events page
   revalidatePath("/"); // Homepage (featured events)
   revalidateTag("events"); // All event-related cache
-  revalidateTag("home"); // Homepage cache
-  revalidateTag("latest-events"); // Featured events on homepage
+  revalidateTag("home-data"); // Homepage cache
+  revalidateTag("my-events"); // My events cache tag
+  revalidateTag(`user-${authUser.id}-events`); // User-specific events cache
 
   // Return the result for client-side navigation instead of redirect
   return { success: true, eventId: result.id };

@@ -11,7 +11,6 @@ import {
   compressImageForUpload,
   formatFileSize,
   validateImageFile,
-  type CompressionProgress,
 } from "@/lib/utils/image-compression";
 
 interface EventImageManagerProps {
@@ -35,8 +34,6 @@ export function EventImageManager({
 }: EventImageManagerProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
-  const [compressionProgress, setCompressionProgress] =
-    useState<CompressionProgress | null>(null);
 
   const handleImageError = (imageUrl: string) => {
     setFailedImages((prev) => new Set(prev).add(imageUrl));
@@ -67,17 +64,10 @@ export function EventImageManager({
     }
 
     setIsUploading(true);
-    setCompressionProgress({ progress: 0, stage: "compressing" });
 
     try {
       // Compress the image first
-      const compressionResult = await compressImageForUpload(
-        file,
-        "event",
-        (progress) => {
-          setCompressionProgress(progress);
-        }
-      );
+      const compressionResult = await compressImageForUpload(file, "event");
 
       // Show compression info
       const savings = (
@@ -105,7 +95,6 @@ export function EventImageManager({
       const result = await uploadAction(formData);
       if (result.url) {
         onImageChange(result.url);
-        toast.success("Image uploaded successfully!");
       } else {
         toast.error(
           result.error || "Failed to upload image. Please try again."
@@ -117,7 +106,6 @@ export function EventImageManager({
       toast.error(errorMessage);
     } finally {
       setIsUploading(false);
-      setCompressionProgress(null);
       e.target.value = "";
     }
   };
@@ -184,11 +172,7 @@ export function EventImageManager({
             <label htmlFor="event-image-upload" className="cursor-pointer">
               <Upload className="h-4 w-4 mr-2" />
               {isUploading
-                ? compressionProgress?.stage === "compressing"
-                  ? `Compressing... ${Math.round(
-                      compressionProgress.progress
-                    )}%`
-                  : "Uploading..."
+                ? "Uploading..."
                 : currentImage
                 ? "Replace Image"
                 : "Choose Image"}
@@ -203,23 +187,6 @@ export function EventImageManager({
             disabled={isLoading || isUploading}
           />
         </div>
-
-        {/* Compression Progress */}
-        {compressionProgress && (
-          <div className="space-y-2">
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${compressionProgress.progress}%` }}
-              ></div>
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              {compressionProgress.stage === "compressing"
-                ? "Compressing image..."
-                : "Processing..."}
-            </p>
-          </div>
-        )}
         <p className="text-xs text-muted-foreground">
           We recommend a square format image of 400px x 400px.
         </p>

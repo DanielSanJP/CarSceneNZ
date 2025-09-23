@@ -411,7 +411,7 @@ export const ClubDetailView = memo(function ClubDetailView({
                 <Link href={`/clubs/edit/${club.id}?from=${fromTab}`}>
                   <Button variant="outline" size="lg">
                     <Settings className="h-4 w-4 md:mr-2" />
-                    <span className="hidden md:inline">Edit Club</span>
+                    <span className="hidden md:inline">Edit</span>
                   </Button>
                 </Link>
               )}

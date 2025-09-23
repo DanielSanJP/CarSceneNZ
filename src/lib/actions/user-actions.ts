@@ -22,8 +22,6 @@ export async function toggleFollowUserAction(userId: string) {
 
     const supabase = await createClient();
 
-    console.log(`🔄 Server Action: Toggling follow for user ${userId}, follower ${authUser.id}`);
-
     // 1. Check if user is already following this user
     const { data: existingFollow, error: checkError } = await supabase
       .from('user_follows')
@@ -53,7 +51,6 @@ export async function toggleFollowUserAction(userId: string) {
         return { success: false, error: 'Failed to unfollow user' };
       }
 
-      console.log(`👋 User ${authUser.id} unfollowed user ${userId}`);
       isFollowing = false;
     } else {
       // Follow: Add the follow relationship
@@ -69,7 +66,6 @@ export async function toggleFollowUserAction(userId: string) {
         return { success: false, error: 'Failed to follow user' };
       }
 
-      console.log(`👥 User ${authUser.id} followed user ${userId}`);
       isFollowing = true;
     }
 
@@ -99,30 +95,6 @@ export async function toggleFollowUserAction(userId: string) {
 
     newFollowingCount = followingCount || 0;
 
-    // 4. Update both users' follow counts
-    const [updateTargetResult, updateCurrentResult] = await Promise.all([
-      supabase
-        .from('profiles')
-        .update({ total_followers: newFollowerCount })
-        .eq('id', userId),
-      supabase
-        .from('profiles')
-        .update({ total_following: newFollowingCount })
-        .eq('id', authUser.id)
-    ]);
-
-    if (updateTargetResult.error) {
-      console.error('❌ Error updating target user follower count:', updateTargetResult.error);
-      return { success: false, error: 'Failed to update target user stats' };
-    }
-
-    if (updateCurrentResult.error) {
-      console.error('❌ Error updating current user following count:', updateCurrentResult.error);
-      return { success: false, error: 'Failed to update current user stats' };
-    }
-
-    console.log(`✅ Updated follow counts - Target user ${userId}: ${newFollowerCount} followers, Current user ${authUser.id}: ${newFollowingCount} following`);
-
     // Server Actions immediately invalidate both Data Cache AND Router Cache
     revalidatePath('/profile/[id]', 'page');
     revalidatePath(`/profile/${userId}`);
@@ -135,8 +107,6 @@ export async function toggleFollowUserAction(userId: string) {
     revalidateTag(`user-${userId}-followers`);
     revalidateTag(`user-${authUser.id}-following`);
     
-    console.log(`🔄 Server Action: Cache invalidated for follow toggle between ${authUser.id} and ${userId}`);
-
     return { 
       success: true, 
       isFollowing, 

@@ -357,7 +357,9 @@ export function GarageGallery({
               <Card className="overflow-hidden pt-0 hover:shadow-lg transition-shadow">
                 {/* Car Image */}
                 <div className="relative aspect-square overflow-hidden">
-                  {failedImages.has(car.id) || !car.images?.[0] ? (
+                  {failedImages.has(car.id) ||
+                  !car.images?.[0] ||
+                  car.images[0].trim() === "" ? (
                     <div className="aspect-square bg-muted flex items-center justify-center">
                       <CarIcon className="h-16 w-16 text-muted-foreground" />
                     </div>

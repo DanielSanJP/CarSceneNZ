@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, UserIcon, Upload, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ArrowLeft,
+  UserIcon,
+  Upload,
+  Loader2,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import type { User } from "@/types/user";
 import { useRouter } from "next/navigation";
+import { compressImageForUpload } from "@/lib/utils/image-compression";
 
 interface EditProfileClientProps {
   user: User;
@@ -19,12 +28,16 @@ interface EditProfileClientProps {
   uploadAction: (
     formData: FormData
   ) => Promise<{ url: string | null; error: string | null }>;
+  checkUsernameAvailability: (
+    username: string
+  ) => Promise<{ available: boolean; message: string }>;
 }
 
 export function EditProfileClient({
   user,
   action,
   uploadAction,
+  checkUsernameAvailability,
 }: EditProfileClientProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -40,6 +53,13 @@ export function EditProfileClient({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Username validation state
+  const [usernameStatus, setUsernameStatus] = useState<{
+    message: string;
+    available: boolean | null;
+    isChecking: boolean;
+  }>({ message: "", available: null, isChecking: false });
 
   useEffect(() => {
     // Set form data from user
@@ -71,18 +91,66 @@ export function EditProfileClient({
         return;
       }
 
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("Image must be less than 5MB");
-        return;
-      }
-
       setProfileImageFile(file);
       setError("");
 
       // Create preview URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
+    }
+  };
+
+  const handleImageRemove = () => {
+    setProfileImageFile(null);
+    setPreviewUrl(null);
+    setError("");
+    // Clear the file input
+    const fileInput = document.getElementById(
+      "profile-image"
+    ) as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = "";
+    }
+  };
+
+  // Username checking function
+  const checkUsername = useCallback(
+    async (newUsername: string) => {
+      if (!newUsername || newUsername.length < 3) {
+        setUsernameStatus({ message: "", available: null, isChecking: false });
+        return;
+      }
+
+      setUsernameStatus({ message: "", available: null, isChecking: true });
+
+      try {
+        const result = await checkUsernameAvailability(newUsername);
+        setUsernameStatus({
+          message: result.message,
+          available: result.available,
+          isChecking: false,
+        });
+      } catch {
+        setUsernameStatus({
+          message: "Error checking username",
+          available: false,
+          isChecking: false,
+        });
+      }
+    },
+    [checkUsernameAvailability]
+  );
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUsername = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    setUsername(newUsername);
+
+    if (newUsername.length >= 3) {
+      setUsernameStatus({ message: "", available: null, isChecking: true });
+      // Debounce the check
+      setTimeout(() => checkUsername(newUsername), 500);
+    } else {
+      setUsernameStatus({ message: "", available: null, isChecking: false });
     }
   };
 
@@ -121,6 +189,26 @@ export function EditProfileClient({
         return;
       }
 
+      // Check username availability if it has changed
+      if (
+        username.trim() !== user.username &&
+        usernameStatus.available === false
+      ) {
+        setError("Username is not available");
+        setSaving(false);
+        return;
+      }
+
+      // If username changed but we haven't checked it yet, check now
+      if (
+        username.trim() !== user.username &&
+        usernameStatus.available === null
+      ) {
+        setError("Please wait for username availability check");
+        setSaving(false);
+        return;
+      }
+
       // Validate social media URLs
       if (instagramUrl && !isValidUrl(instagramUrl)) {
         setError(
@@ -147,33 +235,62 @@ export function EditProfileClient({
       }
 
       console.log("Starting profile update process...");
-      let finalImageUrl = user.profile_image_url;
+      let finalImageUrl: string | null = user.profile_image_url || null;
 
-      // Upload new profile image if selected
+      // Handle profile image changes
       if (profileImageFile) {
+        // Upload new profile image
         setUploadingImage(true);
-        console.log("Starting profile image upload...");
+        console.log("Starting profile image compression and upload...");
 
-        const formData = new FormData();
-        formData.append("file", profileImageFile);
-        formData.append("userId", user.id);
+        try {
+          // Compress the image first
+          const compressionResult = await compressImageForUpload(
+            profileImageFile,
+            "profile"
+          );
 
-        const uploadResult = await uploadAction(formData);
-        console.log("Image upload completed, result:", uploadResult);
+          console.log("Image compression completed:", {
+            originalSize: compressionResult.originalSize,
+            compressedSize: compressionResult.compressedSize,
+            compressionRatio: compressionResult.compressionRatio,
+          });
 
-        if (uploadResult.url) {
-          finalImageUrl = uploadResult.url;
-          console.log("Final image URL set to:", finalImageUrl);
-        } else {
-          console.error("Image upload failed:", uploadResult.error);
+          const formData = new FormData();
+          formData.append("file", compressionResult.file);
+          formData.append("userId", user.id);
+
+          const uploadResult = await uploadAction(formData);
+          console.log("Image upload completed, result:", uploadResult);
+
+          if (uploadResult.url) {
+            finalImageUrl = uploadResult.url;
+            console.log("Final image URL set to:", finalImageUrl);
+          } else {
+            console.error("Image upload failed:", uploadResult.error);
+            setError(
+              uploadResult.error || "Failed to upload image. Please try again."
+            );
+            setUploadingImage(false);
+            setSaving(false);
+            return;
+          }
+        } catch (compressionError) {
+          console.error("Image compression failed:", compressionError);
           setError(
-            uploadResult.error || "Failed to upload image. Please try again."
+            compressionError instanceof Error
+              ? compressionError.message
+              : "Failed to process image. Please try again."
           );
           setUploadingImage(false);
           setSaving(false);
           return;
         }
         setUploadingImage(false);
+      } else if (previewUrl === null && user.profile_image_url) {
+        // User removed their profile image
+        console.log("User removed profile image, setting to null");
+        finalImageUrl = null;
       }
 
       // Create FormData for server action
@@ -181,8 +298,11 @@ export function EditProfileClient({
       const formData = new FormData();
       formData.append("username", username.trim());
       formData.append("display_name", displayName.trim());
-      if (finalImageUrl) {
+      if (finalImageUrl !== null) {
         formData.append("profile_image_url", finalImageUrl);
+      } else {
+        // Explicitly set empty string to remove the image
+        formData.append("profile_image_url", "");
       }
       // Always send social media URLs (including empty strings) to allow removal
       formData.append("instagram_url", instagramUrl.trim());
@@ -271,36 +391,48 @@ export function EditProfileClient({
           {/* Profile Image */}
           <div className="space-y-4">
             <Label>Profile Image</Label>
-            <div className="flex items-center gap-4">
-              <div className="relative h-20 w-20 flex-shrink-0 rounded-full overflow-hidden bg-muted">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative h-32 w-32 flex-shrink-0 rounded-full overflow-hidden bg-muted">
                 {previewUrl ? (
                   <Image
                     src={previewUrl}
                     alt="Profile"
                     fill
                     className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    quality={25}
+                    sizes="256px"
+                    quality={90}
                     priority={true}
                     unoptimized={false}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-lg font-medium">
+                  <div className="w-full h-full flex items-center justify-center text-2xl font-medium">
                     {displayName
                       ? displayName.slice(0, 2).toUpperCase()
                       : username.slice(0, 2).toUpperCase()}
                   </div>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-image" className="cursor-pointer">
-                  <Button variant="outline" type="button" asChild>
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Image
-                    </span>
-                  </Button>
-                </Label>
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex gap-2">
+                  <Label htmlFor="profile-image" className="cursor-pointer">
+                    <Button variant="outline" type="button" asChild>
+                      <span>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload
+                      </span>
+                    </Button>
+                  </Label>
+                  {(previewUrl || user.profile_image_url) && (
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={handleImageRemove}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
                 <Input
                   id="profile-image"
                   type="file"
@@ -308,8 +440,9 @@ export function EditProfileClient({
                   onChange={handleImageChange}
                   className="hidden"
                 />
-                <p className="text-xs text-muted-foreground">
-                  JPG, PNG up to 5MB
+                <p className="text-xs text-muted-foreground text-center">
+                  JPG, PNG images supported. Click Remove to use default
+                  placeholder.
                 </p>
               </div>
             </div>
@@ -335,18 +468,50 @@ export function EditProfileClient({
           {/* Username */}
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) =>
-                setUsername(
-                  e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
-                )
-              }
-              placeholder="your_username"
-              maxLength={30}
-            />
+            <div className="relative">
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={handleUsernameChange}
+                placeholder="your_username"
+                maxLength={30}
+                className={
+                  usernameStatus.available === false
+                    ? "border-red-500 focus:border-red-500"
+                    : usernameStatus.available === true
+                    ? "border-green-500 focus:border-green-500"
+                    : ""
+                }
+              />
+              {usernameStatus.isChecking && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                </div>
+              )}
+            </div>
+            {usernameStatus.message && (
+              <>
+                {usernameStatus.available === false ? (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      {usernameStatus.message}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert
+                    variant="default"
+                    className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/50 dark:text-green-200"
+                  >
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <AlertDescription>
+                      {usernameStatus.message}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </>
+            )}
             <p className="text-xs text-muted-foreground">
               This is your unique username. Only lowercase letters, numbers, and
               underscores allowed.
@@ -419,7 +584,17 @@ export function EditProfileClient({
           </div>
 
           {/* Save Button */}
-          <div className="flex items-center gap-4 pt-4">
+          <div className="flex items-center justify-end gap-4 pt-4">
+            {uploadingImage && (
+              <p className="text-sm text-muted-foreground mr-auto">
+                Uploading image...
+              </p>
+            )}
+
+            <Link href={`/profile/${username || "user"}`}>
+              <Button variant="outline">Cancel</Button>
+            </Link>
+
             <Button
               onClick={handleSave}
               disabled={
@@ -428,7 +603,6 @@ export function EditProfileClient({
                 !displayName.trim() ||
                 !username.trim()
               }
-              className="min-w-[120px]"
             >
               {saving ? (
                 <>
@@ -436,19 +610,9 @@ export function EditProfileClient({
                   Saving...
                 </>
               ) : (
-                "Save Changes"
+                "Save"
               )}
             </Button>
-
-            {uploadingImage && (
-              <p className="text-sm text-muted-foreground">
-                Uploading image...
-              </p>
-            )}
-
-            <Link href={`/profile/${username || "user"}`}>
-              <Button variant="outline">Cancel</Button>
-            </Link>
           </div>
         </CardContent>
       </Card>

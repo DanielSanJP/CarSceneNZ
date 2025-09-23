@@ -1,127 +1,37 @@
 import { requireAuth } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect, notFound } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
 import { uploadCarImages } from "@/lib/utils/image-upload";
-import { createClient } from "@/lib/utils/supabase/server";
 import { getBaseUrl } from "@/lib/utils";
 import { Car } from "@/types";
+import { cleanupOrphanedCarImagesAction } from "@/lib/actions/delete-actions";
+import {
+  updateCarWithComponentsAction,
+  deleteCarAction as deleteCarServerAction,
+} from "@/lib/actions/car-actions";
 
-async function updateCarWithComponents(
-  carId: string,
-  carData: Record<string, string | number | unknown[] | undefined>
-): Promise<Car | null> {
-  try {
-    const supabase = await createClient();
+// Utility function to clean up image URLs and remove duplicates
+function cleanImageArray(images: string[]): string[] {
+  const cleanedImages: string[] = [];
+  const seenBaseUrls = new Set<string>();
 
-    const { data, error } = await supabase
-      .from("cars")
-      .update({
-        brand: carData.brand,
-        model: carData.model,
-        year: carData.year,
-        images: carData.images,
-        // Add all flattened fields
-        engine_code: carData.engine_code || null,
-        displacement: carData.displacement || null,
-        aspiration: carData.aspiration || null,
-        power_hp: carData.power_hp || null,
-        torque_nm: carData.torque_nm || null,
-        ecu: carData.ecu || null,
-        tuned_by: carData.tuned_by || null,
-        pistons: carData.pistons || null,
-        connecting_rods: carData.connecting_rods || null,
-        valves: carData.valves || null,
-        valve_springs: carData.valve_springs || null,
-        camshafts: carData.camshafts || null,
-        header: carData.header || null,
-        exhaust: carData.exhaust || null,
-        intake: carData.intake || null,
-        turbo: carData.turbo || null,
-        intercooler: carData.intercooler || null,
-        fuel_injectors: carData.fuel_injectors || null,
-        fuel_pump: carData.fuel_pump || null,
-        fuel_rail: carData.fuel_rail || null,
-        head_unit: carData.head_unit || null,
-        speakers: carData.speakers || null,
-        subwoofer: carData.subwoofer || null,
-        amplifier: carData.amplifier || null,
-        front_bumper: carData.front_bumper || null,
-        front_lip: carData.front_lip || null,
-        rear_bumper: carData.rear_bumper || null,
-        rear_lip: carData.rear_lip || null,
-        side_skirts: carData.side_skirts || null,
-        rear_spoiler: carData.rear_spoiler || null,
-        diffuser: carData.diffuser || null,
-        fender_flares: carData.fender_flares || null,
-        hood: carData.hood || null,
-        paint_color: carData.paint_color || null,
-        paint_finish: carData.paint_finish || null,
-        wrap_brand: carData.wrap_brand || null,
-        wrap_color: carData.wrap_color || null,
-        front_seats: carData.front_seats || null,
-        rear_seats: carData.rear_seats || null,
-        steering_wheel: carData.steering_wheel || null,
-        headlights: carData.headlights || null,
-        taillights: carData.taillights || null,
-        fog_lights: carData.fog_lights || null,
-        underglow: carData.underglow || null,
-        interior_lighting: carData.interior_lighting || null,
-        // JSON fields
-        brakes: carData.brakes || null,
-        suspension: carData.suspension || null,
-        wheels: carData.wheels || null,
-        gauges: carData.gauges || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", carId)
-      .select()
-      .single();
+  // Process images from newest to oldest (keep the most recent version)
+  for (let i = images.length - 1; i >= 0; i--) {
+    const imageUrl = images[i];
+    if (!imageUrl) continue;
 
-    if (error || !data) {
-      console.error("Error updating car:", error);
-      return null;
+    // Extract base URL without timestamp parameter
+    const baseUrl = imageUrl.split("?v=")[0];
+
+    // Only keep the first occurrence (newest) of each base URL
+    if (!seenBaseUrls.has(baseUrl)) {
+      seenBaseUrls.add(baseUrl);
+      cleanedImages.unshift(imageUrl); // Add to beginning to maintain order
     }
-
-    return {
-      id: data.id,
-      owner_id: data.owner_id,
-      brand: data.brand,
-      model: data.model,
-      year: data.year,
-      images: data.images || [],
-      total_likes: data.total_likes || 0,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      owner: {
-        id: data.owner_id,
-        username: "",
-        display_name: "",
-        profile_image_url: undefined,
-      },
-    };
-  } catch (error) {
-    console.error("Error updating car:", error);
-    return null;
   }
-}
 
-async function deleteCar(carId: string): Promise<boolean> {
-  try {
-    const supabase = await createClient();
-
-    const { error } = await supabase.from("cars").delete().eq("id", carId);
-
-    if (error) {
-      console.error("Error deleting car:", error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error deleting car:", error);
-    return false;
-  }
+  return cleanedImages;
 }
 
 interface EditCarPageProps {
@@ -137,12 +47,19 @@ async function uploadCarImagesServerAction(
     const files = formData.getAll("files") as File[];
     const carId = formData.get("carId") as string;
     const isTemp = formData.get("isTemp") === "true";
+    const existingImageCount =
+      parseInt(formData.get("existingImageCount") as string) || 0;
 
     if (!files || files.length === 0 || !carId) {
       return { urls: [], error: "Missing files or car ID" };
     }
 
-    const urls = await uploadCarImages(files, carId, isTemp);
+    const urls = await uploadCarImages(
+      files,
+      carId,
+      isTemp,
+      existingImageCount
+    );
     return { urls, error: null };
   } catch (error) {
     console.error("Upload error:", error);
@@ -167,9 +84,13 @@ async function updateCarAction(carId: string, formData: FormData) {
   }
 
   // Parse images
-  let images = [];
+  let images: string[] = [];
   try {
-    if (imagesJson) images = JSON.parse(imagesJson);
+    if (imagesJson) {
+      const parsedImages = JSON.parse(imagesJson);
+      // Clean up duplicate images (handle corrupted data)
+      images = cleanImageArray(parsedImages);
+    }
   } catch (error) {
     console.error("Error parsing images:", error);
   }
@@ -255,14 +176,47 @@ async function updateCarAction(carId: string, formData: FormData) {
     }
   });
 
-  const result = await updateCarWithComponents(carId, carData);
+  const result = await updateCarWithComponentsAction(carId, carData);
 
   if (!result) {
     throw new Error("Failed to update car");
   }
 
-  revalidatePath("/garage");
-  revalidatePath(`/garage/${carId}`);
+  // Cleanup any orphaned images that may have been replaced
+  try {
+    const currentImages = result.images || [];
+    await cleanupOrphanedCarImagesAction(carId, currentImages);
+    console.log(`🧹 Car Update: Cleanup completed for car ${carId}`);
+  } catch (cleanupError) {
+    console.error("Error during image cleanup:", cleanupError);
+    // Don't fail the update if cleanup fails
+  }
+
+  console.log(
+    `🔄 Car Update: Starting comprehensive cache revalidation for car ${carId}`
+  );
+
+  // Revalidate all garage-related paths
+  revalidatePath("/garage"); // Main garage page
+  revalidatePath(`/garage/${carId}`); // Car detail page
+  revalidatePath("/garage/my-garage"); // User's garage
+  revalidatePath("/"); // Home page (shows recent cars)
+  revalidatePath("/search"); // Search page
+  revalidatePath("/leaderboards"); // Leaderboards page
+  revalidatePath(`/profile/${result.owner_id}`); // Car owner's profile page
+
+  // Revalidate cache tags for comprehensive data consistency
+  revalidateTag("garage"); // All garage data
+  revalidateTag("cars"); // All car data
+  revalidateTag(`car-${carId}`); // Specific car data
+  revalidateTag(`user-${result.owner_id}-cars`); // User-specific car data
+  revalidateTag("home-data"); // Home page data
+  revalidateTag("search-data"); // Search data
+  revalidateTag("leaderboards"); // Leaderboard data
+  revalidateTag("users"); // User profiles data
+
+  console.log(`✅ Car Update: Cache revalidation completed for car ${carId}`);
+
   redirect(`/garage/${carId}`);
 }
 
@@ -292,14 +246,38 @@ async function deleteCarAction(carId: string) {
     throw new Error("Car not found or unauthorized");
   }
 
-  const success = await deleteCar(carId);
+  const success = await deleteCarServerAction(carId);
 
   if (!success) {
     throw new Error("Failed to delete car");
   }
 
-  revalidatePath("/garage");
-  revalidatePath("/garage/my-garage");
+  console.log(
+    `🔄 Car Delete: Starting comprehensive cache revalidation for deleted car ${carId}`
+  );
+
+  // Revalidate all garage-related paths
+  revalidatePath("/garage"); // Main garage page
+  revalidatePath("/garage/my-garage"); // User's garage
+  revalidatePath("/"); // Home page (shows recent cars)
+  revalidatePath("/search"); // Search page
+  revalidatePath("/leaderboards"); // Leaderboards page
+  revalidatePath(`/profile/${authUser.id}`); // User's profile page
+
+  // Revalidate cache tags for comprehensive data consistency
+  revalidateTag("garage"); // All garage data
+  revalidateTag("cars"); // All car data
+  revalidateTag(`car-${carId}`); // Specific car data
+  revalidateTag(`user-${authUser.id}-cars`); // User-specific car data
+  revalidateTag("home-data"); // Home page data
+  revalidateTag("search-data"); // Search data
+  revalidateTag("leaderboards"); // Leaderboard data
+  revalidateTag("users"); // User profiles data
+
+  console.log(
+    `✅ Car Delete: Cache revalidation completed for deleted car ${carId}`
+  );
+
   redirect("/garage");
 }
 

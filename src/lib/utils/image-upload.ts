@@ -1,6 +1,5 @@
 'use server'
 import { createClient } from '@/lib/utils/supabase/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type StorageBucket = 'profiles' | 'cars' | 'clubs' | 'events'
 
@@ -28,8 +27,9 @@ function generateFileName(options: UploadOptions): string {
     case 'profiles':
       return `${resourceId}_profile.${fileExt}`
     case 'cars':
+      const timestamp = Date.now()
       const carIndex = fileIndex !== undefined ? `_${fileIndex}` : ''
-      return `${resourceId}${carIndex}.${fileExt}`
+      return `${resourceId}${carIndex}_${timestamp}.${fileExt}`
     case 'clubs':
       return `${resourceId}_banner.${fileExt}`
     case 'events':
@@ -41,8 +41,9 @@ function generateFileName(options: UploadOptions): string {
 
 /**
  * Remove existing files for a resource
+ * NOTE: Currently disabled to preserve existing images when adding new ones
  */
-async function removeExistingFiles(
+/* async function removeExistingFiles(
   supabase: SupabaseClient,
   bucket: StorageBucket,
   resourceId: string
@@ -86,7 +87,7 @@ async function removeExistingFiles(
     console.warn(`Error during cleanup for ${bucket}/${resourceId}:`, error)
     // Continue anyway - cleanup errors shouldn't block upload
   }
-}
+} */
 
 /**
  * Upload a single image file (SERVER ONLY)
@@ -104,9 +105,12 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
     const fileName = generateFileName(options)
     console.log('Generated filename:', fileName)
     
-    // Remove existing files if not a temp upload
-    if (!options.isTemp) {
-      await removeExistingFiles(supabase, options.bucket, options.resourceId)
+    // Remove existing files only if explicitly replacing all images
+    // For adding images to existing cars, we should NOT remove existing files
+    if (!options.isTemp && options.fileIndex === 0) {
+      // Only remove existing files when starting fresh (fileIndex === 0)
+      // This preserves existing images when adding new ones
+      console.log('Preserving existing images - not removing files')
     }
     
     console.log('Starting file upload...')
@@ -116,7 +120,7 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
       .from(options.bucket)
       .upload(fileName, options.file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: true // Allow overwriting existing files
       })
     
     console.log('Upload operation completed')
@@ -180,11 +184,13 @@ export async function uploadMultipleImages(
   files: File[],
   resourceId: string,
   bucket: StorageBucket = 'cars',
-  isTemp: boolean = false
+  isTemp: boolean = false,
+  existingImageCount: number = 0 // New parameter to track existing images
 ): Promise<string[]> {
   try {
     console.log(`Starting multiple ${bucket} images upload for ${resourceId}`)
     console.log('Number of files:', files.length)
+    console.log('Existing image count:', existingImageCount)
     
     const uploadPromises = files.map((file, index) => 
       uploadImage({
@@ -192,7 +198,7 @@ export async function uploadMultipleImages(
         resourceId,
         file,
         isTemp,
-        fileIndex: index
+        fileIndex: existingImageCount + index // Start from next available index
       })
     )
     
@@ -313,8 +319,8 @@ export const uploadProfileImage = async (file: File, userId: string): Promise<st
   return result.url
 }
 
-export const uploadCarImages = async (files: File[], carId: string, isTemp: boolean = false): Promise<string[]> => {
-  return uploadMultipleImages(files, carId, 'cars', isTemp)
+export const uploadCarImages = async (files: File[], carId: string, isTemp: boolean = false, existingImageCount: number = 0): Promise<string[]> => {
+  return uploadMultipleImages(files, carId, 'cars', isTemp, existingImageCount)
 }
 
 export const uploadClubImage = async (file: File, clubId: string, isTemp: boolean = false): Promise<string | null> => {

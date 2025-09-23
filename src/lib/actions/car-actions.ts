@@ -3,6 +3,8 @@
 import { getAuthUser } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
 import { revalidateTag, revalidatePath } from 'next/cache';
+import { Car } from '@/types';
+import { deleteMultipleCarImagesAction } from './delete-actions';
 
 export async function likeCarAction(carId: string) {
   try {
@@ -125,5 +127,267 @@ export async function likeCarAction(carId: string) {
   } catch (error) {
     console.error('❌ Error in like car action:', error);
     return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Server action for updating a car with all its components
+ */
+export async function updateCarWithComponentsAction(
+  carId: string,
+  carData: Record<string, string | number | unknown[] | undefined>
+): Promise<Car | null> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("cars")
+      .update({
+        brand: carData.brand,
+        model: carData.model,
+        year: carData.year,
+        images: carData.images,
+        // Add all flattened fields
+        engine_code: carData.engine_code || null,
+        displacement: carData.displacement || null,
+        aspiration: carData.aspiration || null,
+        power_hp: carData.power_hp || null,
+        torque_nm: carData.torque_nm || null,
+        ecu: carData.ecu || null,
+        tuned_by: carData.tuned_by || null,
+        pistons: carData.pistons || null,
+        connecting_rods: carData.connecting_rods || null,
+        valves: carData.valves || null,
+        valve_springs: carData.valve_springs || null,
+        camshafts: carData.camshafts || null,
+        header: carData.header || null,
+        exhaust: carData.exhaust || null,
+        intake: carData.intake || null,
+        turbo: carData.turbo || null,
+        intercooler: carData.intercooler || null,
+        fuel_injectors: carData.fuel_injectors || null,
+        fuel_pump: carData.fuel_pump || null,
+        fuel_rail: carData.fuel_rail || null,
+        head_unit: carData.head_unit || null,
+        speakers: carData.speakers || null,
+        subwoofer: carData.subwoofer || null,
+        amplifier: carData.amplifier || null,
+        front_bumper: carData.front_bumper || null,
+        front_lip: carData.front_lip || null,
+        rear_bumper: carData.rear_bumper || null,
+        rear_lip: carData.rear_lip || null,
+        side_skirts: carData.side_skirts || null,
+        rear_spoiler: carData.rear_spoiler || null,
+        diffuser: carData.diffuser || null,
+        fender_flares: carData.fender_flares || null,
+        hood: carData.hood || null,
+        paint_color: carData.paint_color || null,
+        paint_finish: carData.paint_finish || null,
+        wrap_brand: carData.wrap_brand || null,
+        wrap_color: carData.wrap_color || null,
+        front_seats: carData.front_seats || null,
+        rear_seats: carData.rear_seats || null,
+        steering_wheel: carData.steering_wheel || null,
+        headlights: carData.headlights || null,
+        taillights: carData.taillights || null,
+        fog_lights: carData.fog_lights || null,
+        underglow: carData.underglow || null,
+        interior_lighting: carData.interior_lighting || null,
+        // JSON fields
+        brakes: carData.brakes || null,
+        suspension: carData.suspension || null,
+        wheels: carData.wheels || null,
+        gauges: carData.gauges || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", carId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error("Error updating car:", error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      owner_id: data.owner_id,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      images: data.images || [],
+      total_likes: data.total_likes || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      owner: {
+        id: data.owner_id,
+        username: "",
+        display_name: "",
+        profile_image_url: undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Error updating car:", error);
+    return null;
+  }
+}
+
+/**
+ * Server action for deleting a car and all its associated images
+ */
+export async function deleteCarAction(carId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+
+    // First, get the car's images to clean them up
+    const { data: carData, error: fetchError } = await supabase
+      .from("cars")
+      .select("images")
+      .eq("id", carId)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching car for deletion:", fetchError);
+      return false;
+    }
+
+    // Clean up all car images from storage before deleting the record
+    if (carData?.images && carData.images.length > 0) {
+      try {
+        const result = await deleteMultipleCarImagesAction(carData.images);
+        console.log(
+          `🗑️ Car Delete: Cleaned up ${result.successCount}/${carData.images.length} images`
+        );
+        if (result.error) {
+          console.warn("Warning during image cleanup:", result.error);
+        }
+      } catch (cleanupError) {
+        console.error("Error cleaning up car images:", cleanupError);
+        // Continue with deletion even if image cleanup fails
+      }
+    }
+
+    // Now delete the car record
+    const { error } = await supabase.from("cars").delete().eq("id", carId);
+
+    if (error) {
+      console.error("Error deleting car:", error);
+      return false;
+    }
+
+    console.log(
+      `✅ Car Delete: Successfully deleted car ${carId} and its images`
+    );
+    return true;
+  } catch (error) {
+    console.error("Error deleting car:", error);
+    return false;
+  }
+}
+
+/**
+ * Server action for creating a car with all its components
+ */
+export async function createCarWithComponentsAction(carData: {
+  owner_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  images: string[];
+  [key: string]: unknown; // Allow any additional flattened fields
+}): Promise<Car | null> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("cars")
+      .insert({
+        owner_id: carData.owner_id,
+        brand: carData.brand,
+        model: carData.model,
+        year: carData.year,
+        images: carData.images,
+        // Add all flattened fields
+        engine_code: carData.engine_code || null,
+        displacement: carData.displacement || null,
+        aspiration: carData.aspiration || null,
+        power_hp: carData.power_hp || null,
+        torque_nm: carData.torque_nm || null,
+        ecu: carData.ecu || null,
+        tuned_by: carData.tuned_by || null,
+        pistons: carData.pistons || null,
+        connecting_rods: carData.connecting_rods || null,
+        valves: carData.valves || null,
+        valve_springs: carData.valve_springs || null,
+        camshafts: carData.camshafts || null,
+        header: carData.header || null,
+        exhaust: carData.exhaust || null,
+        intake: carData.intake || null,
+        turbo: carData.turbo || null,
+        intercooler: carData.intercooler || null,
+        fuel_injectors: carData.fuel_injectors || null,
+        fuel_pump: carData.fuel_pump || null,
+        fuel_rail: carData.fuel_rail || null,
+        head_unit: carData.head_unit || null,
+        speakers: carData.speakers || null,
+        subwoofer: carData.subwoofer || null,
+        amplifier: carData.amplifier || null,
+        front_bumper: carData.front_bumper || null,
+        front_lip: carData.front_lip || null,
+        rear_bumper: carData.rear_bumper || null,
+        rear_lip: carData.rear_lip || null,
+        side_skirts: carData.side_skirts || null,
+        rear_spoiler: carData.rear_spoiler || null,
+        diffuser: carData.diffuser || null,
+        fender_flares: carData.fender_flares || null,
+        hood: carData.hood || null,
+        paint_color: carData.paint_color || null,
+        paint_finish: carData.paint_finish || null,
+        wrap_brand: carData.wrap_brand || null,
+        wrap_color: carData.wrap_color || null,
+        front_seats: carData.front_seats || null,
+        rear_seats: carData.rear_seats || null,
+        steering_wheel: carData.steering_wheel || null,
+        headlights: carData.headlights || null,
+        taillights: carData.taillights || null,
+        fog_lights: carData.fog_lights || null,
+        underglow: carData.underglow || null,
+        interior_lighting: carData.interior_lighting || null,
+        // JSON fields
+        brakes: carData.brakes || null,
+        suspension: carData.suspension || null,
+        wheels: carData.wheels || null,
+        gauges: carData.gauges || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error("Error creating car:", error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      owner_id: data.owner_id,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      images: data.images || [],
+      total_likes: data.total_likes || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      owner: {
+        id: data.owner_id,
+        username: "",
+        display_name: "",
+        profile_image_url: undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Error creating car:", error);
+    return null;
   }
 }

@@ -4,6 +4,7 @@ import type { HomeData } from "@/components/homepage";
 export async function GET() {
   console.log("🔍 API Route: /api/home-data called");
   console.log("🔍 API Route: Current time:", new Date().toISOString());
+  console.log("🔍 API Route: Cache tags: ['home-data', 'cars', 'events']");
   console.log("🔍 API Route: Environment check:", {
     hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
@@ -34,7 +35,7 @@ export async function GET() {
         // Enable Next.js caching with 15 minute revalidation
         next: { 
           revalidate: 900, // 15 minutes
-          tags: ["home-data"] // Add cache tags for selective invalidation
+          tags: ["home-data", "cars", "events"] // Add cache tags for selective invalidation
         }
       }
     );
@@ -59,10 +60,10 @@ export async function GET() {
     console.log("🔍 API Route: Events count:", homeData.events?.length || 0);
     console.log("🔍 API Route: Cars count:", homeData.cars?.length || 0);
 
-    // Return with cache headers for additional browser caching
+    // Return with headers optimized for fetch-level caching
     return NextResponse.json(homeData, {
       headers: {
-        'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900', // 5 min cache, 15 min stale
       }
     });
 

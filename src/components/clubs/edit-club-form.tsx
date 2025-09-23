@@ -410,7 +410,7 @@ export function EditClubForm({
             </Button>
           </Link>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update Club"}
+            {isLoading ? "Saving..." : "Save"}
           </Button>
         </div>
       </form>

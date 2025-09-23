@@ -38,7 +38,6 @@ export function ClubImageManager({
 }: ClubImageManagerProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [compressionProgress, setCompressionProgress] = useState(0);
   const [isCompressing, setIsCompressing] = useState(false);
 
   const handleImageError = () => {
@@ -58,17 +57,10 @@ export function ClubImageManager({
 
     try {
       // Reset compression state
-      setCompressionProgress(0);
       setIsCompressing(true);
 
       // Compress image
-      const compressionResult = await compressImageForUpload(
-        file,
-        "club",
-        (progress) => {
-          setCompressionProgress(progress.progress);
-        }
-      );
+      const compressionResult = await compressImageForUpload(file, "club");
 
       setIsCompressing(false);
       setIsUploading(true);
@@ -84,7 +76,6 @@ export function ClubImageManager({
       if (result.url) {
         onImageChange(result.url, isTemp ? tempClubId || undefined : undefined);
         setImageError(false);
-        toast.success("Image uploaded successfully!");
       } else {
         toast.error(
           result.error || "Failed to upload image. Please try again."
@@ -96,7 +87,6 @@ export function ClubImageManager({
     } finally {
       setIsUploading(false);
       setIsCompressing(false);
-      setCompressionProgress(0);
       e.target.value = "";
     }
   };
@@ -144,22 +134,7 @@ export function ClubImageManager({
           Upload Club Logo {currentImage ? "(Replace)" : ""}
         </Label>
 
-        {/* Compression Progress */}
-        {isCompressing && (
-          <div className="space-y-2 p-4 bg-muted rounded-lg">
-            <div className="flex items-center justify-between text-sm">
-              <span>Compressing image...</span>
-              <span>{compressionProgress}%</span>
-            </div>
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div
-                className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `${compressionProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
+        {/* Upload Controls */}
         <div className="flex justify-start">
           <Button
             type="button"

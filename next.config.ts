@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     // Use modern formats for better compression and quality
     formats: ['image/webp', 'image/avif'],
     // Configure allowed quality values
-    qualities: [25, 50, 75, 100],
+    qualities: [25, 50, 75, 90, 100],
     // Configure imageSizes for small fixed-size images like avatars
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     // Configure deviceSizes for responsive images
@@ -26,12 +26,7 @@ const nextConfig: NextConfig = {
     // Additional image optimization settings
     minimumCacheTTL: 60 * 60 * 24 * 30, // Cache for 30 days
   },
-  // Configure server actions
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '10mb', // Increase limit for handling image data
-    },
-  },
+
 };
 
 export default nextConfig;

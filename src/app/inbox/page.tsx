@@ -5,7 +5,6 @@ import type { InboxMessage } from "@/types/inbox";
 
 // No caching - we want fresh data for inbox
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default async function InboxPage() {
   // Get the current user

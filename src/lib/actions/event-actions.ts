@@ -113,6 +113,9 @@ export async function toggleEventAttendanceAction(eventId: string, status?: "int
     revalidateTag('events');
     revalidateTag('event-attendees'); // Revalidate user-statuses API cache
     revalidateTag(`user-${authUser.id}-attendees`); // Revalidate user-specific attendance cache
+    revalidateTag(`user-${authUser.id}-events`); // Revalidate user-specific events cache
+    revalidateTag('my-events'); // Revalidate my-events cache tag
+    revalidateTag('home-data'); // Revalidate home data cache tag
     
     console.log(`🔄 Server Action: Cache invalidated for event ${eventId} attendance toggle`);
 

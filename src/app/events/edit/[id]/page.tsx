@@ -1,5 +1,5 @@
 import { redirect, notFound } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { EditEventForm } from "@/components/events/edit-event-form";
 import { requireAuth, getUserProfile } from "@/lib/auth";
 import { uploadEventImage } from "@/lib/utils/image-upload";
@@ -149,6 +149,9 @@ async function updateEventAction(
 ) {
   "use server";
 
+  // Get current user for user-specific cache invalidation
+  const user = await requireAuth();
+
   // Extract form data
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
@@ -192,8 +195,31 @@ async function updateEventAction(
 
   await updateEvent(eventId, eventData);
 
+  console.log(
+    `🔄 Event Update: Starting cache revalidation for event ${eventId}`
+  );
+
+  // Revalidate all relevant paths to show updated data
   revalidatePath("/events");
   revalidatePath(`/events/${eventId}`);
+  revalidatePath("/"); // Revalidate home page since it displays upcoming events
+
+  console.log(`🔄 Event Update: Revalidating cache tags for event ${eventId}`);
+  revalidateTag("home-data"); // Revalidate home data cache tag
+  revalidateTag("events"); // Revalidate events cache tag
+  revalidateTag("event-attendees"); // Revalidate event attendance data
+  revalidateTag("my-events"); // Revalidate my-events cache tag
+
+  // Revalidate user-specific caches
+  revalidateTag(`user-${user.id}-events`); // User-specific events cache tag
+
+  // Revalidate my-events related caches
+  revalidatePath("/events/my-events"); // My events page
+  revalidatePath("/api/events/my-events"); // My events API route
+
+  console.log(
+    `🔄 Event Update: Cache revalidation completed for event ${eventId}`
+  );
 
   if (from === "my-events") {
     redirect("/events/my-events");
@@ -205,9 +231,37 @@ async function updateEventAction(
 async function deleteEventAction(eventId: string, from: string | undefined) {
   "use server";
 
+  // Get current user for user-specific cache invalidation
+  const user = await requireAuth();
+
   await deleteEvent(eventId);
 
+  console.log(
+    `🔄 Event Delete: Starting cache revalidation for deleted event ${eventId}`
+  );
+
+  // Revalidate all relevant paths to remove deleted event
   revalidatePath("/events");
+  revalidatePath("/events/my-events");
+  revalidatePath("/"); // Revalidate home page since it displays upcoming events
+
+  console.log(
+    `🔄 Event Delete: Revalidating cache tags for deleted event ${eventId}`
+  );
+  revalidateTag("home-data"); // Revalidate home data cache tag
+  revalidateTag("events"); // Revalidate events cache tag
+  revalidateTag("event-attendees"); // Revalidate event attendance data
+  revalidateTag("my-events"); // Revalidate my-events cache tag
+
+  // Revalidate user-specific caches
+  revalidateTag(`user-${user.id}-events`); // User-specific events cache tag
+
+  // Revalidate my-events related caches
+  revalidatePath("/api/events/my-events"); // My events API route
+
+  console.log(
+    `🔄 Event Delete: Cache revalidation completed for deleted event ${eventId}`
+  );
 
   if (from === "my-events") {
     redirect("/events/my-events");
