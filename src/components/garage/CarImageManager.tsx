@@ -16,10 +16,7 @@ import {
 import { Camera, Upload, X, ArrowUpDown, GripVertical } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
-import {
-  compressMultipleImagesForUpload,
-  formatFileSize,
-} from "@/lib/utils/image-compression";
+import { compressMultipleImagesForUpload } from "@/lib/utils/image-compression";
 import { deleteCarImageAction } from "@/lib/actions/delete-actions";
 import { ImageReorganizeModal } from "./ImageReorganizeModal";
 import {
@@ -372,7 +369,6 @@ export default function CarImageManager({
         const result = await deleteCarImageAction(imageUrl);
 
         if (result.success) {
-          console.log("✅ Successfully deleted image from storage");
         } else {
           console.error(
             "❌ Failed to delete image from storage:",
@@ -445,13 +441,7 @@ export default function CarImageManager({
           const newImages = cleanImageArray([...images, ...result.urls]);
           onChange(newImages);
           toast.success(
-            `${
-              result.urls.length
-            } image(s) uploaded successfully! Compressed from ${formatFileSize(
-              totalOriginalSize
-            )} to ${formatFileSize(
-              totalCompressedSize
-            )} (${totalSavingsPercent}% savings)`
+            `${result.urls.length} image(s) uploaded successfully!`
           );
         } else if (result.error) {
           throw new Error(result.error);
@@ -476,13 +466,7 @@ export default function CarImageManager({
           const newImages = cleanImageArray([...images, ...result.urls]);
           onChange(newImages);
           toast.success(
-            `${
-              result.urls.length
-            } image(s) uploaded successfully! Compressed from ${formatFileSize(
-              totalOriginalSize
-            )} to ${formatFileSize(
-              totalCompressedSize
-            )} (${totalSavingsPercent}% savings)`
+            `${result.urls.length} image(s) uploaded successfully!`
           );
         } else if (result.error) {
           throw new Error(result.error);

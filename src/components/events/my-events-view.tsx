@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Calendar,
-  Clock,
   MapPin,
   Users,
   Edit3,
@@ -15,6 +14,7 @@ import {
   ImageIcon,
   Star,
 } from "lucide-react";
+import { EventDateDisplay } from "./event-date-display";
 import Link from "next/link";
 import Image from "next/image";
 import type { Event } from "@/types/event";
@@ -42,38 +42,6 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
   const getInterestedCount = (event: Event & { interestedCount?: number }) => {
     return event.interestedCount || 0;
   };
-  const formatDate = (
-    dailySchedule: Array<{
-      date: string;
-      start_time?: string;
-      end_time?: string;
-    }>
-  ) => {
-    if (!dailySchedule || dailySchedule.length === 0) {
-      return { full: "TBD", time: "TBD" };
-    }
-
-    const schedule = dailySchedule[0];
-    const date = schedule?.date ? new Date(schedule.date) : null;
-    const time = schedule?.start_time;
-
-    return {
-      full: date
-        ? date.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })
-        : "TBD",
-      time: time
-        ? new Date(`1970-01-01T${time}`).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          })
-        : "TBD",
-    };
-  };
 
   return (
     <>
@@ -81,7 +49,6 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
       {userEvents.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {userEvents.map((event) => {
-            const dateInfo = formatDate(event.daily_schedule);
             const attendeeCount = getAttendeeCount(event);
             const interestedCount = getInterestedCount(event);
 
@@ -131,20 +98,9 @@ function MyEventsViewComponent({ events: userEvents }: MyEventsViewProps) {
 
                   <CardContent className="space-y-3 flex-1 flex flex-col">
                     {/* Date and Time */}
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
-                        <Calendar className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">
-                          {dateInfo.full}
-                        </div>
-                        <div className="text-muted-foreground text-sm flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {dateInfo.time}
-                        </div>
-                      </div>
-                    </div>
+                    <EventDateDisplay
+                      dailySchedule={event.daily_schedule || []}
+                    />
 
                     <Separator />
 

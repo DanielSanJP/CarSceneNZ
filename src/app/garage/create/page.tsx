@@ -94,6 +94,8 @@ async function createCarAction(formData: FormData) {
     "exhaust",
     "intake",
     "turbo",
+    "supercharger",
+    "twin_turbo_setup",
     "intercooler",
     "fuel_injectors",
     "fuel_pump",
@@ -186,9 +188,6 @@ async function createCarAction(formData: FormData) {
             // After successful move and update, cleanup any remaining temp files
             try {
               await cleanupOrphanedCarImagesAction(result.id, newImageUrls);
-              console.log(
-                `🧹 Car Create: Cleanup completed for new car ${result.id}`
-              );
             } catch (cleanupError) {
               console.error("Error during temp cleanup:", cleanupError);
               // Don't fail the creation if cleanup fails
@@ -200,10 +199,6 @@ async function createCarAction(formData: FormData) {
         // Car was created but images failed to move - log but don't fail
       }
     }
-
-    console.log(
-      `🔄 Car Create: Starting comprehensive cache revalidation for new car ${result.id}`
-    );
 
     // Revalidate all garage-related paths
     revalidatePath("/garage"); // Main garage page
@@ -224,9 +219,6 @@ async function createCarAction(formData: FormData) {
     revalidateTag("leaderboards"); // Leaderboard data
     revalidateTag("users"); // User profiles data
 
-    console.log(
-      `✅ Car Create: Cache revalidation completed for new car ${result.id}`
-    );
     redirect(`/garage/${result.id}`);
   } catch (error) {
     // If car creation failed and we have temp images, clean them up

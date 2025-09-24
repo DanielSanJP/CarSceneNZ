@@ -22,7 +22,7 @@ import {
 } from "./car-detail-cards";
 import type { User } from "@/types/user";
 import type { Car, CarDetailData } from "@/types/car";
-import { getEngineData } from "@/lib/utils/car-helpers";
+import { getEngineData, hasEngineData } from "@/lib/utils/car-helpers";
 
 interface CarDetailViewProps {
   user?: User | null;
@@ -58,18 +58,6 @@ export const CarDetailView = React.memo(function CarDetailView({
       gauges,
     } = carDetailData;
 
-    // DEBUG: Log the actual structure to understand what we're getting
-    console.log("🔍 CarDetailData Structure:", {
-      brakes: brakes,
-      suspension: suspension,
-      wheels: wheels,
-      gauges: gauges,
-      brakesType: Array.isArray(brakes) ? "array" : typeof brakes,
-      suspensionType: Array.isArray(suspension) ? "array" : typeof suspension,
-      wheelsType: Array.isArray(wheels) ? "array" : typeof wheels,
-      gaugesType: Array.isArray(gauges) ? "array" : typeof gauges,
-    });
-
     // Check if the data is already in JSONB format (direct from database)
     // vs array format (from RPC conversion)
     const brakesIsJsonb =
@@ -83,7 +71,6 @@ export const CarDetailView = React.memo(function CarDetailView({
 
     // If data is already JSONB format, use it directly
     if (brakesIsJsonb && suspensionIsJsonb && wheelsIsJsonb) {
-      console.log("✅ Using direct JSONB format");
       return {
         ...car,
         ...engine,
@@ -96,7 +83,6 @@ export const CarDetailView = React.memo(function CarDetailView({
       };
     }
 
-    console.log("🔄 Converting from array format");
     // Note: This code path is mostly for fallback compatibility
     // The main path now uses JSONB data directly above
 
@@ -260,7 +246,7 @@ export const CarDetailView = React.memo(function CarDetailView({
           <BasicCarInfo car={carFormatted} />
 
           {/* Engine Details */}
-          <EngineDetails engine={engineData} />
+          {hasEngineData(engineData) && <EngineDetails engine={engineData} />}
 
           {/* Engine Modifications */}
           <EngineModifications car={carFormatted} />

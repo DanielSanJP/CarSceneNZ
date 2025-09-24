@@ -103,8 +103,17 @@ async function getProfileDataSSR(
         body: JSON.stringify({
           currentUserId: currentUserId || null,
         }),
-        // Leverage the API route's caching
-        next: { revalidate: 300 },
+        // Leverage the API route's caching with proper tags
+        next: {
+          revalidate: 300,
+          tags: [
+            "users",
+            `user-${usernameOrId}`,
+            `user-${usernameOrId}-cars`,
+            `user-${usernameOrId}-clubs`,
+            "clubs",
+          ],
+        },
       }
     );
 

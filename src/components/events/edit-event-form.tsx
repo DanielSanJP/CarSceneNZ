@@ -157,7 +157,7 @@ export function EditEventForm({
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <>
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link
@@ -296,6 +296,6 @@ export function EditEventForm({
         itemName={event.title}
         isLoading={isLoading}
       />
-    </div>
+    </>
   );
 }

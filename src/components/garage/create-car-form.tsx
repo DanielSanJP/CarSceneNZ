@@ -51,8 +51,10 @@ interface CreateCarFormData {
   exhaust?: string;
   intake?: string;
 
-  // Turbo system
+  // Forced induction system
   turbo?: string;
+  supercharger?: string;
+  twin_turbo_setup?: string;
   intercooler?: string;
 
   // Fuel system
@@ -191,6 +193,8 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
     exhaust: undefined,
     intake: undefined,
     turbo: undefined,
+    supercharger: undefined,
+    twin_turbo_setup: undefined,
     intercooler: undefined,
     fuel_injectors: undefined,
     fuel_pump: undefined,
@@ -359,6 +363,8 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
             },
             turbo_system: {
               turbo: formData.turbo,
+              supercharger: formData.supercharger,
+              twin_turbo_setup: formData.twin_turbo_setup,
               intercooler: formData.intercooler,
             },
             exhaust_system: {
@@ -402,6 +408,12 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
             if (updates.turbo_system) {
               if (updates.turbo_system.turbo !== undefined)
                 flattenedUpdates.turbo = updates.turbo_system.turbo;
+              if (updates.turbo_system.supercharger !== undefined)
+                flattenedUpdates.supercharger =
+                  updates.turbo_system.supercharger;
+              if (updates.turbo_system.twin_turbo_setup !== undefined)
+                flattenedUpdates.twin_turbo_setup =
+                  updates.turbo_system.twin_turbo_setup;
               if (updates.turbo_system.intercooler !== undefined)
                 flattenedUpdates.intercooler = updates.turbo_system.intercooler;
             }
@@ -823,8 +835,8 @@ export function CreateCarForm({ action, uploadAction }: CreateCarFormProps) {
       </div>
 
       {/* Bottom Create Button */}
-      <div className="mt-12 text-center">
-        <div className="flex items-center justify-center gap-2">
+      <div className="mt-12">
+        <div className="flex items-center justify-end gap-2">
           <Button onClick={handleSubmit} disabled={isLoading} size="lg">
             {isLoading ? "Creating..." : "Create Car"}
           </Button>

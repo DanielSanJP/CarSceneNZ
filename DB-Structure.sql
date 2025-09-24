@@ -35,6 +35,8 @@ CREATE TABLE public.cars (
     exhaust character varying,
     intake character varying,
     turbo character varying,
+    supercharger character varying,
+    twin_turbo_setup character varying,
     intercooler character varying,
     fuel_injectors character varying,
     fuel_pump character varying,
@@ -169,6 +171,18 @@ CREATE TABLE public.users (
     display_name character varying,
     last_seen_inbox timestamp with time zone DEFAULT now(),
     email text NOT NULL UNIQUE,
+    instagram_url text CHECK (
+        instagram_url IS NULL
+        OR instagram_url ~ '^https?://.*'::text
+    ),
+    facebook_url text CHECK (
+        facebook_url IS NULL
+        OR facebook_url ~ '^https?://.*'::text
+    ),
+    tiktok_url text CHECK (
+        tiktok_url IS NULL
+        OR tiktok_url ~ '^https?://.*'::text
+    ),
     CONSTRAINT users_pkey PRIMARY KEY (id),
     CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

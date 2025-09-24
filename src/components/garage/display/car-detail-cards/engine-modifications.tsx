@@ -53,13 +53,15 @@ export const EngineModifications = React.memo(function EngineModifications({
   // Memoize derived objects to avoid recreation on each render
   const turboSystem = useMemo(
     () =>
-      car.turbo || car.intercooler
+      car.turbo || car.supercharger || car.twin_turbo_setup || car.intercooler
         ? {
             turbo: car.turbo,
+            supercharger: car.supercharger,
+            twin_turbo_setup: car.twin_turbo_setup,
             intercooler: car.intercooler,
           }
         : undefined,
-    [car.turbo, car.intercooler]
+    [car.turbo, car.supercharger, car.twin_turbo_setup, car.intercooler]
   );
 
   const exhaustSystem = useMemo(
@@ -131,7 +133,7 @@ export const EngineModifications = React.memo(function EngineModifications({
         <CardTitle>Engine Modifications</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <TurboSystem turboSystem={turboSystem} />
+        <TurboSystem turboSystem={turboSystem} aspiration={car.aspiration} />
         <ExhaustSystem exhaustSystem={exhaustSystem} />
         <EngineManagement engineManagement={engineManagement} />
         <InternalComponents internalComponents={internalComponents} />

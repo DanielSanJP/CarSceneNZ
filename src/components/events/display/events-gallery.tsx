@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Event, EventsData } from "@/types/event";
+import { EventDateDisplay } from "../event-date-display";
 import {
   Card,
   CardContent,
@@ -26,7 +27,6 @@ import {
   Calendar,
   MapPin,
   Users,
-  Clock,
   Filter,
   ImageIcon,
   Star,
@@ -360,30 +360,6 @@ export function EventsGallery({
     return filtered;
   }, [events, filters.location, filters.sortOrder]);
 
-  // Helper function to format date and time period for daily schedule
-  const formatDate = (schedule: unknown) => {
-    if (!schedule || !Array.isArray(schedule) || schedule.length === 0)
-      return { day: "", date: "", time: "", full: "" };
-
-    const firstDay = (
-      schedule as { date: string; start_time: string; end_time: string }[]
-    )[0];
-    const lastDay = (
-      schedule as { date: string; start_time: string; end_time: string }[]
-    )[schedule.length - 1];
-
-    const startDate = new Date(`${firstDay.date}T${firstDay.start_time}`);
-    const date = startDate.toLocaleDateString("en-NZ", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-
-    const time = `${firstDay.start_time} - ${lastDay.end_time}`;
-
-    return { day: date, date, time, full: `${date} at ${time}` };
-  };
-
   // Helper function to get event attendees count (using SSR data only)
   const getAttendeeCount = (eventId: string) => {
     return attendeeCounts?.[eventId]?.going || 0;
@@ -561,7 +537,6 @@ export function EventsGallery({
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedEvents.map((event) => {
-            const dateInfo = formatDate(event.daily_schedule);
             const attendeeCount = getAttendeeCount(event.id);
             const interestedCount = getInterestedCount(event.id);
             const host = getHostInfo(event.host);
@@ -625,20 +600,9 @@ export function EventsGallery({
 
                   <CardContent className="space-y-3 flex-1 flex flex-col">
                     {/* Date and Time */}
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
-                        <Calendar className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">
-                          {dateInfo.full}
-                        </div>
-                        <div className="text-muted-foreground text-sm flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {dateInfo.time}
-                        </div>
-                      </div>
-                    </div>
+                    <EventDateDisplay
+                      dailySchedule={event.daily_schedule || []}
+                    />
 
                     <Separator />
 

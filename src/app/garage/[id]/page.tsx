@@ -13,12 +13,6 @@ async function getCarDetailData(
   carId: string,
   userId?: string
 ): Promise<CarDetailData> {
-  const startTime = Date.now();
-
-  console.log(
-    `🚀 FETCH CACHE: Fetching car ${carId} details using API route...`
-  );
-
   try {
     // Use our API route with Next.js native fetch for caching
     const url = new URL(`${getBaseUrl()}/api/garage/${carId}`);
@@ -46,11 +40,6 @@ async function getCarDetailData(
     }
 
     const carDetailData = await response.json();
-
-    const endTime = Date.now();
-    console.log(
-      `✅ FETCH CACHE: Car ${carId} details fetched in ${endTime - startTime}ms`
-    );
 
     return carDetailData;
   } catch (error) {

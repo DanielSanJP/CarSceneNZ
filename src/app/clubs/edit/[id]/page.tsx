@@ -180,6 +180,14 @@ async function updateClubServerAction(formData: FormData) {
       revalidateTag("clubs");
       revalidateTag(`club-${clubId}`);
 
+      // Revalidate user-specific club cache for profile pages
+      revalidateTag(`user-${result.leader_id}-clubs`);
+      revalidateTag("users"); // Invalidate all user profiles since club data changed
+
+      // Revalidate all profile pages that might show this club
+      revalidatePath("/profile/[id]", "page");
+      revalidatePath(`/profile/${result.leader_id}`);
+
       return { success: true, error: null };
     } else {
       return { success: false, error: "Failed to update club" };

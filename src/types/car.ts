@@ -35,8 +35,10 @@ export interface Car {
   exhaust?: string;
   intake?: string;
 
-  // Turbo system
+  // Forced induction system
   turbo?: string;
+  supercharger?: string;
+  twin_turbo_setup?: string;
   intercooler?: string;
 
   // Fuel system
@@ -161,6 +163,8 @@ export interface CarEngine {
 
 export interface CarTurboSystem {
   turbo?: string;
+  supercharger?: string;
+  twin_turbo_setup?: string;
   intercooler?: string;
 }
 

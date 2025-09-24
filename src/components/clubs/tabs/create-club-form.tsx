@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Users, Shield, Globe, Lock, MapPin, Star } from "lucide-react";
+import { Users, Shield, Globe, Lock, MapPin, Star } from "lucide-react";
 import { ClubImageManager } from "../club-image-manager";
 
 // import {
@@ -383,8 +383,7 @@ export function CreateClubForm({
 
                   {/* Member count */}
                   <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    1/50
+                    <Users className="h-3 w-3" />1
                   </div>
 
                   {/* Club type badge */}
@@ -437,14 +436,7 @@ export function CreateClubForm({
         {/* Submit */}
         <div className="flex justify-end">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>Creating...</>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Create Club
-              </>
-            )}
+            {isLoading ? <>Creating...</> : <>Create Club</>}
           </Button>
         </div>
       </form>

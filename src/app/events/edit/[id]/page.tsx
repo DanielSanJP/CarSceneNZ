@@ -303,17 +303,15 @@ export default async function EditEventPage({
   const deleteAction = deleteEventAction.bind(null, eventId, from);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <EditEventForm
-          event={event}
-          user={user}
-          updateAction={updateAction}
-          deleteAction={deleteAction}
-          uploadAction={uploadEventImageServerAction}
-          from={from}
-        />
-      </div>
-    </div>
+    <>
+      <EditEventForm
+        event={event}
+        user={user}
+        updateAction={updateAction}
+        deleteAction={deleteAction}
+        uploadAction={uploadEventImageServerAction}
+        from={from}
+      />
+    </>
   );
 }

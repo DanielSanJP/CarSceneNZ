@@ -25,8 +25,11 @@ export default async function MyGaragePage() {
     body: JSON.stringify({
       userId: authUser.id,
     }),
-    // Leverage the API route's caching
-    next: { revalidate: 60 },
+    // Leverage the API route's caching with proper tags
+    next: {
+      revalidate: 60,
+      tags: ["garage", "cars", `user-${authUser.id}-cars`],
+    },
   });
 
   if (!response.ok) {

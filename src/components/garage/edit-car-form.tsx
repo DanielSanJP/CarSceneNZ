@@ -52,8 +52,10 @@ interface CompleteEditCarFormData {
   exhaust?: string;
   intake?: string;
 
-  // Turbo system
+  // Forced induction system
   turbo?: string;
+  supercharger?: string;
+  twin_turbo_setup?: string;
   intercooler?: string;
 
   // Fuel system
@@ -206,8 +208,10 @@ export function EditCarForm({
     exhaust: car.exhaust || "",
     intake: car.intake || "",
 
-    // Turbo system
+    // Forced induction system
     turbo: car.turbo || "",
+    supercharger: car.supercharger || "",
+    twin_turbo_setup: car.twin_turbo_setup || "",
     intercooler: car.intercooler || "",
 
     // Fuel system
@@ -304,6 +308,8 @@ export function EditCarForm({
       "exhaust",
       "intake",
       "turbo",
+      "supercharger",
+      "twin_turbo_setup",
       "intercooler",
       "fuel_injectors",
       "fuel_pump",
@@ -338,6 +344,12 @@ export function EditCarForm({
     fieldsToAdd.forEach((field) => {
       const value = formData[field as keyof CompleteEditCarFormData];
       if (value !== undefined && value !== "" && value !== null) {
+        if (field === "supercharger" || field === "twin_turbo_setup") {
+          console.log(
+            `📝 EditForm Submit: Adding ${field} to FormData:`,
+            value
+          );
+        }
         formDataObj.append(field, String(value));
       }
     });
@@ -387,22 +399,26 @@ export function EditCarForm({
     setIsDeleting(true);
     try {
       await onDelete();
-    } catch {
+    } catch (error) {
+      // Check if this is a Next.js redirect (expected behavior)
+      if (
+        error &&
+        typeof error === "object" &&
+        ("digest" in error || error.constructor.name === "RedirectError")
+      ) {
+        // This is a redirect, which is expected - don't show error
+        return;
+      }
+
       toast.error("Failed to delete car. Please try again.");
-    } finally {
       setIsDeleting(false);
+    } finally {
       setShowDeleteDialog(false);
     }
   };
 
   const handleCancel = () => {
-    const hasUnsavedChanges = window.confirm(
-      "Are you sure you want to cancel? Any unsaved changes will be lost."
-    );
-
-    if (hasUnsavedChanges) {
-      handleBackClick();
-    }
+    handleBackClick();
   };
 
   return (
@@ -463,6 +479,8 @@ export function EditCarForm({
             },
             turbo_system: {
               turbo: formData.turbo,
+              supercharger: formData.supercharger,
+              twin_turbo_setup: formData.twin_turbo_setup,
               intercooler: formData.intercooler,
             },
             exhaust_system: {
@@ -504,8 +522,27 @@ export function EditCarForm({
             }
 
             if (updates.turbo_system) {
+              console.log(
+                `🚗 EditForm: Received turbo_system updates:`,
+                updates.turbo_system
+              );
               if (updates.turbo_system.turbo !== undefined)
                 flatUpdates.turbo = updates.turbo_system.turbo;
+              if (updates.turbo_system.supercharger !== undefined) {
+                console.log(
+                  `🚗 EditForm: Setting supercharger to:`,
+                  updates.turbo_system.supercharger
+                );
+                flatUpdates.supercharger = updates.turbo_system.supercharger;
+              }
+              if (updates.turbo_system.twin_turbo_setup !== undefined) {
+                console.log(
+                  `🚗 EditForm: Setting twin_turbo_setup to:`,
+                  updates.turbo_system.twin_turbo_setup
+                );
+                flatUpdates.twin_turbo_setup =
+                  updates.turbo_system.twin_turbo_setup;
+              }
               if (updates.turbo_system.intercooler !== undefined)
                 flatUpdates.intercooler = updates.turbo_system.intercooler;
             }

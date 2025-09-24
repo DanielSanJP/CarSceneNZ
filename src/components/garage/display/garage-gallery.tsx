@@ -225,38 +225,11 @@ export function GarageGallery({
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Car Gallery</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              Discover amazing builds from the community
-            </p>
-          </div>
-          {currentUser && (
-            <div className="flex gap-2 sm:gap-3">
-              <Link href="/garage/my-garage" className="flex-1 sm:flex-none">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5"
-                >
-                  <CarIcon className="h-3.5 w-3.5" />
-                  <span className="hidden xs:inline">My Garage</span>
-                  <span className="xs:hidden">My Cars</span>
-                </Button>
-              </Link>
-              <Link href="/garage/create" className="flex-1 sm:flex-none">
-                <Button
-                  size="sm"
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span className="hidden xs:inline">Add Car</span>
-                  <span className="xs:hidden">Add</span>
-                </Button>
-              </Link>
-            </div>
-          )}
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Car Gallery</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Discover amazing builds from the community
+          </p>
         </div>
       </div>
 

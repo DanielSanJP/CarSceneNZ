@@ -44,8 +44,11 @@ async function getClubsGalleryDataSSR(
         headers: {
           "Content-Type": "application/json",
         },
-        // Leverage the API route's caching
-        next: { revalidate: 300 },
+        // Leverage the API route's caching with proper tags
+        next: {
+          revalidate: 300,
+          tags: ["clubs"],
+        },
       }
     );
 

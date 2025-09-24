@@ -11,9 +11,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Camera, GripVertical } from "lucide-react";
+import { CustomScrollbar } from "@/components/ui/custom-scrollbar";
 import {
   DndContext,
-  closestCenter,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -76,7 +77,7 @@ const ModalImageItem = React.forwardRef<HTMLDivElement, ModalImageItemProps>(
 
           {/* Drag handle */}
           {!isDragOverlay && (
-            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-grab active:cursor-grabbing">
+            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white p-2 rounded-md opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 cursor-grab active:cursor-grabbing">
               <GripVertical className="h-4 w-4" />
             </div>
           )}
@@ -146,7 +147,10 @@ function SortableModalImageItem({
         {...listeners}
         className="w-full h-full"
         style={{
-          touchAction: "manipulation", // Allow scrolling but prevent browser zoom/pan
+          touchAction: "none", // Disable all touch actions for better drag control
+          userSelect: "none", // Prevent text selection during drag
+          WebkitUserSelect: "none", // Safari support
+          msUserSelect: "none", // IE support
         }}
       >
         <ModalImageItem
@@ -182,13 +186,37 @@ export function ImageReorganizeModal({
   const [tempImages, setTempImages] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Optimized @dnd-kit sensors with better activation constraints (matching main CarImageManager)
+  // Ref for the scrollable container
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Hide native scrollbar with CSS
+  React.useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      .hidden-scrollbar {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+      }
+      .hidden-scrollbar::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
+
+  // Optimized @dnd-kit sensors with better activation constraints for mobile touch
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 15, // Require 15px movement before activating (increased for mobile)
-        delay: 200, // 200ms delay before drag activates (helps with scrolling)
-        tolerance: 5, // 5px tolerance for slight finger movement
+        distance: 5, // Even shorter distance for immediate response
+        delay: 50, // Very short delay to prevent scroll interference
+        tolerance: 2, // Very tight tolerance
       },
     }),
     useSensor(KeyboardSensor, {
@@ -207,6 +235,9 @@ export function ImageReorganizeModal({
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setActiveId(null);
+      // Ensure scroll is restored when modal closes
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
     }
     onOpenChange(open);
   };
@@ -214,6 +245,10 @@ export function ImageReorganizeModal({
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     setActiveId(active.id as string);
+
+    // Prevent scrolling during drag
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
   };
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -227,6 +262,10 @@ export function ImageReorganizeModal({
     }
 
     setActiveId(null);
+
+    // Restore scrolling after drag
+    document.body.style.overflow = "";
+    document.body.style.touchAction = "";
   };
 
   const applyReorganization = () => {
@@ -244,10 +283,11 @@ export function ImageReorganizeModal({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Reorganize Images</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 flex-1 overflow-y-auto pb-6">
+        <div className="space-y-4 flex-1 overflow-hidden pb-6">
           <p className="text-sm text-muted-foreground">
-            Drag and drop to reorder your images. On mobile, hold and drag to
-            move images. The first image will be your main image.
+            Drag and drop to reorder your images. On mobile, press and hold on
+            an image then drag to move it to a new position. The first image
+            will be your main image.
           </p>
 
           {tempImages.length === 0 ? (
@@ -257,7 +297,7 @@ export function ImageReorganizeModal({
           ) : (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={pointerWithin}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
@@ -265,16 +305,36 @@ export function ImageReorganizeModal({
                 items={tempImages}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] md:max-h-[50vh] overflow-y-auto overscroll-y-contain">
-                  {tempImages.map((imageUrl, index) => (
-                    <SortableModalImageItem
-                      key={imageUrl}
-                      imageUrl={imageUrl}
-                      index={index}
-                      failedImages={failedImages}
-                      onImageError={onImageError}
+                {/* Gallery with external scrollbar */}
+                <div className="flex justify-center">
+                  <div className="w-full max-w-4xl flex items-start">
+                    {/* Image gallery - full width, no scrollbar padding */}
+                    <div
+                      ref={scrollContainerRef}
+                      className="hidden-scrollbar grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] md:max-h-[50vh] overflow-y-auto overscroll-y-contain flex-1"
+                      style={{
+                        touchAction: activeId ? "none" : "auto",
+                        overflowY: activeId ? "hidden" : "auto",
+                        WebkitOverflowScrolling: "touch",
+                      }}
+                    >
+                      {tempImages.map((imageUrl, index) => (
+                        <SortableModalImageItem
+                          key={imageUrl}
+                          imageUrl={imageUrl}
+                          index={index}
+                          failedImages={failedImages}
+                          onImageError={onImageError}
+                        />
+                      ))}
+                    </div>
+
+                    {/* External custom scrollbar */}
+                    <CustomScrollbar
+                      scrollContainerRef={scrollContainerRef}
+                      dependencies={[tempImages]}
                     />
-                  ))}
+                  </div>
                 </div>
               </SortableContext>
               {createPortal(

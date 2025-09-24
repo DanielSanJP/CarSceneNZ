@@ -90,3 +90,16 @@ export function getGaugesArray(car: Car): CarGauge[] {
     ...gauge,
   }));
 }
+
+// Helper function to check if engine data has any meaningful information
+export function hasEngineData(engineData: CarEngine | null | undefined): boolean {
+  if (!engineData) return false;
+  
+  return !!(
+    engineData.engine_code ||
+    engineData.displacement ||
+    engineData.aspiration ||
+    (engineData.power_hp && engineData.power_hp > 0) ||
+    (engineData.torque_nm && engineData.torque_nm > 0)
+  );
+}

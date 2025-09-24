@@ -121,6 +121,8 @@ async function updateCarAction(carId: string, formData: FormData) {
     "exhaust",
     "intake",
     "turbo",
+    "supercharger",
+    "twin_turbo_setup",
     "intercooler",
     "fuel_injectors",
     "fuel_pump",
@@ -176,6 +178,13 @@ async function updateCarAction(carId: string, formData: FormData) {
     }
   });
 
+  console.log(`🛠️ Server Action: Final carData being sent to database:`, {
+    supercharger: carData.supercharger,
+    twin_turbo_setup: carData.twin_turbo_setup,
+    turbo: carData.turbo,
+    intercooler: carData.intercooler,
+  });
+
   const result = await updateCarWithComponentsAction(carId, carData);
 
   if (!result) {
@@ -191,10 +200,6 @@ async function updateCarAction(carId: string, formData: FormData) {
     console.error("Error during image cleanup:", cleanupError);
     // Don't fail the update if cleanup fails
   }
-
-  console.log(
-    `🔄 Car Update: Starting comprehensive cache revalidation for car ${carId}`
-  );
 
   // Revalidate all garage-related paths
   revalidatePath("/garage"); // Main garage page
@@ -214,8 +219,6 @@ async function updateCarAction(carId: string, formData: FormData) {
   revalidateTag("search-data"); // Search data
   revalidateTag("leaderboards"); // Leaderboard data
   revalidateTag("users"); // User profiles data
-
-  console.log(`✅ Car Update: Cache revalidation completed for car ${carId}`);
 
   redirect(`/garage/${carId}`);
 }

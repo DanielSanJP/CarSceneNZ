@@ -30,7 +30,13 @@ import type {
 type EngineData = Omit<
   CarEngine,
   "id" | "car_id" | "created_at" | "updated_at"
->;
+> & {
+  // Add forced induction fields directly to engine data
+  turbo?: string;
+  supercharger?: string;
+  twin_turbo_setup?: string;
+  intercooler?: string;
+};
 type TurboSystemData = Omit<
   CarTurboSystem,
   "id" | "car_id" | "created_at" | "updated_at"
@@ -173,32 +179,6 @@ export default function EngineDetails({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Aspiration</Label>
-                      <Select
-                        value={data.engine?.aspiration || ""}
-                        onValueChange={(value) =>
-                          handleEngineChange("aspiration", value)
-                        }
-                        disabled={isLoading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select aspiration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="naturally_aspirated">
-                            Naturally Aspirated
-                          </SelectItem>
-                          <SelectItem value="turbocharged">
-                            Turbocharged
-                          </SelectItem>
-                          <SelectItem value="supercharged">
-                            Supercharged
-                          </SelectItem>
-                          <SelectItem value="twin_turbo">Twin Turbo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
                       <Label>Power (HP)</Label>
                       <Input
                         type="number"
@@ -228,6 +208,32 @@ export default function EngineDetails({
                         disabled={isLoading}
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Aspiration</Label>
+                      <Select
+                        value={data.engine?.aspiration || ""}
+                        onValueChange={(value) =>
+                          handleEngineChange("aspiration", value)
+                        }
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select aspiration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="naturally_aspirated">
+                            Naturally Aspirated
+                          </SelectItem>
+                          <SelectItem value="turbocharged">
+                            Turbocharged
+                          </SelectItem>
+                          <SelectItem value="supercharged">
+                            Supercharged
+                          </SelectItem>
+                          <SelectItem value="twin_turbo">Twin Turbo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
@@ -237,34 +243,76 @@ export default function EngineDetails({
                 <div>
                   <h4 className="font-medium mb-4">Engine Modifications</h4>
                   <div className="space-y-4">
-                    {/* Turbo/Supercharger */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Turbo</Label>
-                        <Input
-                          value={data.turbo_system?.turbo || ""}
-                          onChange={(e) =>
-                            handleTurboSystemChange("turbo", e.target.value)
-                          }
-                          placeholder="e.g., Garrett GT2860RS"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Intercooler</Label>
-                        <Input
-                          value={data.turbo_system?.intercooler || ""}
-                          onChange={(e) =>
-                            handleTurboSystemChange(
-                              "intercooler",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g., Process West Verticooler"
-                          disabled={isLoading}
-                        />
-                      </div>
-                    </div>
+                    {/* Forced Induction System - Dynamic based on aspiration */}
+                    {data.engine?.aspiration &&
+                      data.engine.aspiration !== "naturally_aspirated" && (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {data.engine.aspiration === "turbocharged" && (
+                            <div className="space-y-2">
+                              <Label>Turbo</Label>
+                              <Input
+                                value={data.turbo_system?.turbo || ""}
+                                onChange={(e) =>
+                                  handleTurboSystemChange(
+                                    "turbo",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., Garrett GT2860RS"
+                                disabled={isLoading}
+                              />
+                            </div>
+                          )}
+                          {data.engine.aspiration === "supercharged" && (
+                            <div className="space-y-2">
+                              <Label>Supercharger</Label>
+                              <Input
+                                value={data.turbo_system?.supercharger || ""}
+                                onChange={(e) =>
+                                  handleTurboSystemChange(
+                                    "supercharger",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., Eaton TVS1900"
+                                disabled={isLoading}
+                              />
+                            </div>
+                          )}
+                          {data.engine.aspiration === "twin_turbo" && (
+                            <div className="space-y-2">
+                              <Label>Twin Turbo Setup</Label>
+                              <Input
+                                value={
+                                  data.turbo_system?.twin_turbo_setup || ""
+                                }
+                                onChange={(e) =>
+                                  handleTurboSystemChange(
+                                    "twin_turbo_setup",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., BorgWarner K03 (x2)"
+                                disabled={isLoading}
+                              />
+                            </div>
+                          )}
+                          <div className="space-y-2">
+                            <Label>Intercooler</Label>
+                            <Input
+                              value={data.turbo_system?.intercooler || ""}
+                              onChange={(e) =>
+                                handleTurboSystemChange(
+                                  "intercooler",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="e.g., Process West Verticooler"
+                              disabled={isLoading}
+                            />
+                          </div>
+                        </div>
+                      )}
 
                     {/* Exhaust System */}
                     <div>

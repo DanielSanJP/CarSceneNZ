@@ -24,8 +24,11 @@ export default async function MyClubsPage() {
       body: JSON.stringify({
         userId: authUser.id,
       }),
-      // Leverage the API route's caching
-      next: { revalidate: 60 },
+      // Leverage the API route's caching with proper tags
+      next: {
+        revalidate: 60,
+        tags: ["clubs", `user-${authUser.id}-clubs`],
+      },
     });
 
     if (!response.ok) {

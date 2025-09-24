@@ -34,35 +34,39 @@ export const EngineDetails = React.memo(function EngineDetails({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="flex flex-wrap gap-4 text-sm">
           {engine.engine_code && (
-            <div>
+            <div className="min-w-[120px] flex-1">
               <p className="text-muted-foreground">Engine Code</p>
               <p className="font-medium">{engine.engine_code}</p>
             </div>
           )}
           {engine.displacement && (
-            <div>
+            <div className="min-w-[120px] flex-1">
               <p className="text-muted-foreground">Displacement</p>
               <p className="font-medium">{engine.displacement}</p>
             </div>
           )}
-          {engine.aspiration && (
-            <div>
-              <p className="text-muted-foreground">Aspiration</p>
-              <p className="font-medium capitalize">{engine.aspiration}</p>
-            </div>
-          )}
           {engine.power_hp && engine.power_hp > 0 && (
-            <div>
+            <div className="min-w-[120px] flex-1">
               <p className="text-muted-foreground">Power</p>
               <p className="font-medium">{engine.power_hp} HP</p>
             </div>
           )}
           {engine.torque_nm && engine.torque_nm > 0 && (
-            <div>
+            <div className="min-w-[120px] flex-1">
               <p className="text-muted-foreground">Torque</p>
               <p className="font-medium">{engine.torque_nm} Nm</p>
+            </div>
+          )}
+          {engine.aspiration && (
+            <div className="min-w-[120px] flex-1">
+              <p className="text-muted-foreground">Aspiration</p>
+              <p className="font-medium text-sm sm:text-base break-words">
+                {engine.aspiration
+                  .replace(/[-_]/g, " ")
+                  .replace(/\b\w/g, (l) => l.toUpperCase())}
+              </p>
             </div>
           )}
         </div>

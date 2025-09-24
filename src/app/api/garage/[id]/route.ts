@@ -107,6 +107,8 @@ export async function GET(
         exhaust: carData.exhaust,
         intake: carData.intake,
         turbo: carData.turbo,
+        supercharger: carData.supercharger,
+        twin_turbo_setup: carData.twin_turbo_setup,
         intercooler: carData.intercooler,
         fuel_injectors: carData.fuel_injectors,
         fuel_pump: carData.fuel_pump,
