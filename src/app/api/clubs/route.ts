@@ -147,7 +147,6 @@ export async function GET(request: NextRequest) {
       ...club,
       total_likes: club.calculated_total_likes, // Map calculated_total_likes to total_likes for compatibility
       leader: leadersMap[club.leader_id] || null, // Add leader info manually
-      is_invite_only: club.club_type === 'invite', // Derive from club_type
       memberCount: club.member_count || 0, // Use pre-calculated member_count from view
       isUserMember: userId ? userMemberships[club.id] || false : undefined
     })) || [];

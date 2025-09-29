@@ -3,11 +3,10 @@ export interface Club {
   name: string;
   description?: string;
   banner_image_url?: string;
-  club_type?: string;
+  club_type?: "open" | "invite" | "closed";
   location?: string;
   leader_id: string; // References User.id
   total_likes: number;
-  is_invite_only?: boolean;
   created_at: string;
   updated_at: string;
   leader?: {

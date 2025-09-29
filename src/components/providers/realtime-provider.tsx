@@ -6,9 +6,11 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/utils/supabase/client";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface RealtimeContextValue {
   unreadCount: number;
@@ -23,200 +25,246 @@ interface RealtimeProviderProps {
   userId: string | null;
 }
 
+// Environment-based debug logging
+const isDev = process.env.NODE_ENV === "development";
+const debug = (message: string, ...args: unknown[]) => {
+  if (isDev) console.log(message, ...args);
+};
+
 export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const pathname = usePathname();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const supabaseRef = useRef(createClient());
 
-  // Simple cache to prevent excessive API calls
-  const [cache, setCache] = useState<{
-    count: number;
-    timestamp: number;
-  } | null>(null);
-  const CACHE_DURATION = 30000; // 30 seconds
-
-  // Determine if current page needs immediate inbox count
-  const needsInboxCount = useCallback(() => {
-    if (!pathname) return false;
-
-    // Only load immediately on these critical pages
-    return (
-      pathname.includes("/inbox") ||
-      pathname === "/" ||
-      pathname.includes("/profile") ||
-      pathname.includes("/nav") // Navigation always shows badge
-    );
-  }, [pathname]);
-
-  // Function to fetch current unread count via API
+  // Fetch unread count from API
   const fetchUnreadCount = useCallback(async (): Promise<number> => {
     if (!userId) return 0;
 
-    // Check cache first
-    const now = Date.now();
-    if (cache && now - cache.timestamp < CACHE_DURATION) {
-      console.log("📬 BROADCAST: Using cached unread count:", cache.count);
-      return cache.count;
-    }
-
     try {
-      console.log("📬 BROADCAST: Fetching unread count via API...");
-
+      debug(`🔢 REALTIME: Fetching unread count for user: ${userId}`);
       const response = await fetch("/api/inbox/unread-count", {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
 
       if (!response.ok) {
-        console.error("❌ API response not ok:", response.status);
-        return cache?.count || 0; // Return cached value if available
+        console.error(
+          "❌ REALTIME: Failed to fetch unread count:",
+          response.status
+        );
+        return 0;
       }
 
       const data = await response.json();
-      const unreadCount = data.count || 0; // API returns 'count', not 'unreadCount'
+      const count = data.count || 0;
 
-      // Update cache
-      setCache({ count: unreadCount, timestamp: now });
-
-      console.log("📬 BROADCAST: Fetched count via API:", unreadCount);
-      return unreadCount;
+      debug(`✅ REALTIME: Unread count for user ${userId}: ${count}`);
+      return count;
     } catch (error) {
-      console.error("❌ Error fetching unread count via API:", error);
-      return cache?.count || 0; // Return cached value if available
+      console.error("❌ REALTIME: Error fetching unread count:", error);
+      return 0;
     }
-  }, [userId, cache, CACHE_DURATION]);
+  }, [userId]);
 
-  // Refresh function that can be called externally
+  // Refresh unread count and update state
   const refreshUnreadCount = useCallback(async (): Promise<void> => {
-    if (!userId) return;
+    const count = await fetchUnreadCount();
+    setUnreadCount(count);
+    debug(`🔔 REALTIME: Refreshed unread count to: ${count}`);
+  }, [fetchUnreadCount]);
 
-    try {
-      const count = await fetchUnreadCount();
-      setUnreadCount(count);
-      console.log(`🔔 Global: Refreshed unread count: ${count}`);
-    } catch (error) {
-      console.error("❌ Global: Error refreshing unread count:", error);
-    }
-  }, [userId, fetchUnreadCount]);
+  // Check if current page needs immediate unread count
+  const needsImmediateCount = useCallback((): boolean => {
+    if (!pathname) return false;
+    return (
+      pathname === "/" ||
+      pathname.includes("/inbox") ||
+      pathname.includes("/profile")
+    );
+  }, [pathname]);
 
   useEffect(() => {
     if (!userId) {
-      console.log("📬 BROADCAST: No userId provided, skipping setup");
+      debug("⚠️ REALTIME: No userId provided, skipping setup");
       setUnreadCount(0);
       setIsConnected(false);
       return;
     }
 
-    console.log(`📬 BROADCAST: Starting setup for user: ${userId}`);
+    debug(`🚀 REALTIME: Setting up for user: ${userId}`);
+    debug(`🚀 REALTIME: Current pathname: ${pathname}`);
 
-    const supabase = createClient();
-    let cleanup: (() => void) | undefined;
+    let mounted = true;
+    const supabase = supabaseRef.current;
 
-    const setupBroadcastRealtime = async () => {
+    const setupRealtime = async () => {
       try {
-        // 1. Get initial unread count (with smart timing)
-        const isInboxCritical = needsInboxCount();
-
-        if (isInboxCritical) {
-          // Load immediately for inbox-critical pages
-          console.log(
-            "📬 BROADCAST: Loading unread count immediately (critical page)"
+        // 1. Load initial unread count
+        if (needsImmediateCount()) {
+          debug(
+            "📱 REALTIME: Loading unread count immediately (critical page)"
           );
-          const initialCount = await fetchUnreadCount();
-          setUnreadCount(initialCount);
-          console.log(`📬 BROADCAST: Initial unread count: ${initialCount}`);
+          await refreshUnreadCount();
         } else {
-          // Load in background for other pages (non-blocking)
-          console.log(
-            "📬 BROADCAST: Deferring unread count (non-critical page)"
-          );
+          debug("⏳ REALTIME: Deferring unread count load (non-critical page)");
+          // Load in background for non-critical pages
           setTimeout(async () => {
-            console.log("📬 BROADCAST: Loading unread count in background");
-            const initialCount = await fetchUnreadCount();
-            setUnreadCount(initialCount);
-            console.log(
-              `📬 BROADCAST: Background unread count: ${initialCount}`
-            );
-          }, 100); // Small delay to not block page rendering
+            if (mounted) {
+              debug("🔄 REALTIME: Loading unread count in background");
+              await refreshUnreadCount();
+            }
+          }, 1000);
         }
 
-        // 2. Set up simple broadcast subscription
-        console.log(`📬 BROADCAST: Creating broadcast channel...`);
+        // 2. Set up Supabase Realtime subscription
+        debug("🔌 REALTIME: Setting up Supabase Realtime subscription...");
+
+        // Clean up existing channel
+        if (channelRef.current) {
+          debug("🧹 REALTIME: Cleaning up existing channel");
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+
+        // Get current session for authentication
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          console.error(
+            "❌ REALTIME: No active session - cannot subscribe to realtime"
+          );
+          return;
+        }
+
+        debug(
+          "🔑 REALTIME: Active session found, setting up authenticated channel"
+        );
+
+        // Create channel with proper authentication
+        const channelName = `user:${userId}:unread`;
+        debug(`📡 REALTIME: Creating channel: ${channelName}`);
+
         const channel = supabase
-          .channel(`unread-messages-${userId}`)
-          .on(
-            "broadcast",
-            { event: "unread_count_changed" },
-            async (payload) => {
-              console.log("📬 BROADCAST: Unread count change event received!");
-              console.log("📬 BROADCAST: Payload:", payload);
+          .channel(channelName, {
+            config: {
+              broadcast: {
+                self: false, // Don't receive our own messages
+              },
+            },
+          })
+          .on("broadcast", { event: "unread_count_changed" }, (payload) => {
+            debug("📨 REALTIME: Received broadcast event!");
+            debug(
+              "📨 REALTIME: Full payload:",
+              JSON.stringify(payload, null, 2)
+            );
+
+            if (payload && payload.payload) {
+              const eventData = payload.payload;
+              debug(
+                "📨 REALTIME: Event data:",
+                JSON.stringify(eventData, null, 2)
+              );
 
               // Check if this event is for the current user
-              if (payload.payload?.userId === userId) {
-                console.log(
-                  "📬 BROADCAST: Event is for current user, refreshing count"
+              if (eventData.userId === userId) {
+                debug(
+                  "✅ REALTIME: Event is for current user - refreshing count!"
                 );
-                await refreshUnreadCount();
+                debug("📨 REALTIME: Action:", eventData.action);
+                debug("📨 REALTIME: Message Type:", eventData.messageType);
+
+                // Refresh the unread count
+                if (mounted) {
+                  refreshUnreadCount();
+                }
               } else {
-                console.log(
-                  "📬 BROADCAST: Event is for different user, ignoring"
+                debug(
+                  `⚠️ REALTIME: Event is for different user: expected ${userId}, got ${eventData.userId}`
                 );
               }
+            } else {
+              debug("⚠️ REALTIME: Received event with no payload");
             }
-          )
-          .subscribe((status) => {
-            console.log("📬 BROADCAST: Subscription status:", status);
+          })
+          .subscribe((status, err) => {
+            debug(`📡 REALTIME: Subscription status: ${status}`);
+
+            if (err) {
+              console.error("❌ REALTIME: Subscription error:", err);
+            }
 
             if (status === "SUBSCRIBED") {
-              console.log("✅ 📬 BROADCAST: Successfully subscribed!");
-              setIsConnected(true);
+              debug(
+                "✅ REALTIME: Successfully subscribed to realtime channel!"
+              );
+              debug(`✅ REALTIME: Channel: ${channelName}`);
+              debug("✅ REALTIME: Listening for: unread_count_changed");
+
+              if (mounted) {
+                setIsConnected(true);
+              }
             } else if (status === "CLOSED") {
-              console.log("❌ 📬 BROADCAST: Subscription closed");
-              setIsConnected(false);
+              debug("❌ REALTIME: Channel subscription closed");
+              if (mounted) {
+                setIsConnected(false);
+              }
             } else if (status === "CHANNEL_ERROR") {
-              console.log("⚠️ 📬 BROADCAST: Channel error occurred");
-              setIsConnected(false);
-            } else {
-              console.log(`🔄 📬 BROADCAST: Status changed to: ${status}`);
-              setIsConnected(false);
+              console.error("❌ REALTIME: Channel error");
+              if (mounted) {
+                setIsConnected(false);
+              }
             }
           });
 
-        cleanup = () => {
-          console.log("🧹 📬 BROADCAST: Cleaning up subscription");
-          supabase.removeChannel(channel);
-        };
+        channelRef.current = channel;
       } catch (error) {
-        console.error("❌ 📬 BROADCAST: Error setting up realtime:", error);
+        console.error("❌ REALTIME: Setup error:", error);
         setIsConnected(false);
       }
     };
 
-    setupBroadcastRealtime();
+    setupRealtime();
 
+    // Cleanup function
     return () => {
-      console.log("🔄 📬 BROADCAST: Component unmounting, cleaning up...");
-      if (cleanup) cleanup();
+      debug("🧹 REALTIME: Cleaning up realtime provider");
+      mounted = false;
+
+      if (channelRef.current) {
+        debug("🧹 REALTIME: Unsubscribing from channel");
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      setIsConnected(false);
     };
-  }, [userId, fetchUnreadCount, refreshUnreadCount, needsInboxCount]);
+  }, [userId, pathname, refreshUnreadCount, needsImmediateCount]);
+
+  const value: RealtimeContextValue = {
+    unreadCount,
+    isConnected,
+    refreshUnreadCount,
+  };
 
   return (
-    <RealtimeContext.Provider
-      value={{ unreadCount, isConnected, refreshUnreadCount }}
-    >
+    <RealtimeContext.Provider value={value}>
       {children}
     </RealtimeContext.Provider>
   );
 }
 
-export function useRealtimeContext() {
+export function useRealtime(): RealtimeContextValue {
   const context = useContext(RealtimeContext);
   if (!context) {
-    throw new Error(
-      "useRealtimeContext must be used within a RealtimeProvider"
-    );
+    throw new Error("useRealtime must be used within a RealtimeProvider");
   }
   return context;
 }
+
+// Backward compatibility export
+export const useRealtimeContext = useRealtime;

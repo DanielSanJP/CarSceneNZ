@@ -261,7 +261,7 @@ async function joinClubAction(
   return await joinClub(clubId, userId);
 }
 
-// Server action wrapper for sending club join request
+// Server action that directly handles club join requests
 async function sendClubJoinRequestAction(
   clubId: string,
   message?: string
@@ -270,21 +270,28 @@ async function sendClubJoinRequestAction(
 
   try {
     const authUser = await requireAuth();
-    const user = await getUserProfile(authUser.id);
+    const currentUser = await getUserProfile(authUser.id);
 
-    if (!user) {
-      return {
-        success: false,
-        error: "Failed to load user profile",
-      };
+    if (!currentUser) {
+      return { success: false, error: "Failed to load user profile" };
+    }
+
+    console.log("📥 Join request received:", {
+      clubId,
+      message,
+      clubIdType: typeof clubId,
+    });
+
+    if (!clubId) {
+      return { success: false, error: "Club ID is required" };
     }
 
     const supabase = await createClient();
 
-    // Check if club exists
+    // Check if club exists and get its type
     const { data: club, error: clubError } = await supabase
       .from("clubs")
-      .select("id, name, leader_id")
+      .select("id, name, leader_id, club_type")
       .eq("id", clubId)
       .single();
 
@@ -297,49 +304,81 @@ async function sendClubJoinRequestAction(
       .from("club_members")
       .select("id")
       .eq("club_id", clubId)
-      .eq("user_id", user.id)
+      .eq("user_id", currentUser.id)
       .single();
 
     if (existingMember) {
       return { success: false, error: "You are already a member of this club" };
     }
 
-    // Check if request already exists
+    // Check if user already has a pending request
     const { data: existingRequest } = await supabase
       .from("messages")
       .select("id")
-      .eq("receiver_id", club.leader_id)
-      .eq("sender_id", user.id)
+      .eq("club_id", clubId)
+      .eq("sender_id", currentUser.id)
       .eq("message_type", "club_join_request")
+      .eq("is_read", false)
       .single();
 
     if (existingRequest) {
       return {
         success: false,
-        error: "You have already sent a join request to this club",
+        error: "You already have a pending request to join this club",
       };
     }
 
-    // Send join request message
-    const { error: messageError } = await supabase.from("messages").insert({
-      receiver_id: club.leader_id,
-      sender_id: user.id,
-      subject: `Join Request for ${club.name}`,
-      message:
-        message || `${user.username} wants to join your club "${club.name}"`,
-      message_type: "club_join_request",
-      created_at: new Date().toISOString(),
-      is_read: false, // Mark new messages as unread
-    });
-
-    if (messageError) {
-      console.error("Error sending join request:", messageError);
-      return { success: false, error: "Failed to send join request" };
+    // Validate club allows join requests
+    if (club.club_type === "closed") {
+      return {
+        success: false,
+        error: "This club is closed and not accepting new members",
+      };
     }
 
-    return { success: true };
+    if (club.club_type === "open") {
+      return {
+        success: false,
+        error:
+          "This is an open club. You can join directly without requesting permission.",
+      };
+    }
+
+    // For invite-only clubs, send a request to club leaders
+    if (club.club_type === "invite") {
+      const messageText =
+        message ||
+        `${currentUser.username} wants to join your club "${club.name}"`;
+
+      const { error: messageError } = await supabase.from("messages").insert({
+        sender_id: currentUser.id,
+        receiver_id: club.leader_id,
+        subject: `Join Request for ${club.name}`,
+        message: messageText,
+        message_type: "club_join_request",
+        club_id: clubId,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      });
+
+      if (messageError) {
+        console.error("❌ Error sending join request message:", messageError);
+        return { success: false, error: "Failed to send join request" };
+      }
+
+      // Note: Database trigger will handle real-time notifications
+
+      console.log(`✅ Join request sent for invite-only club ${club.name}`);
+
+      // Only revalidate inbox since that's where the message will appear
+      revalidatePath("/inbox");
+
+      return { success: true };
+    }
+
+    return { success: false, error: "Invalid club type" };
   } catch (error) {
-    console.error("Error sending club join request:", error);
+    console.error("Error sending join request:", error);
     return { success: false, error: "Failed to send join request" };
   }
 }

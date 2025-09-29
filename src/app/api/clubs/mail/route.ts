@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getUserProfile } from '@/lib/auth';
+import { getAuthUser, getUserProfile } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
 import { revalidateTag, revalidatePath } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const authUser = await getAuthUser();
+    
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
     const currentUser = await getUserProfile(authUser.id);
     
     if (!currentUser) {
@@ -113,35 +121,8 @@ export async function POST(request: NextRequest) {
     // Revalidate inbox page for real-time updates
     revalidatePath('/inbox');
 
-    // Broadcast unread count change to all recipients (simple approach!)
-    console.log('📡 Broadcasting unread count change to all recipients...');
-    
-    // For each recipient, broadcast an unread count change event
-    for (const member of members) {
-      try {
-        const memberChannel = supabase.channel(`unread-messages-${member.user_id}`);
-        
-        await memberChannel.send({
-          type: 'broadcast',
-          event: 'unread_count_changed',
-          payload: {
-            userId: member.user_id,
-            clubId: club_id,
-            timestamp: new Date().toISOString()
-          }
-        });
-        
-        console.log(`📡 Broadcasted to user ${member.user_id}`);
-        
-        // Clean up the channel
-        supabase.removeChannel(memberChannel);
-      } catch (broadcastError) {
-        console.error(`❌ Failed to broadcast to user ${member.user_id}:`, broadcastError);
-        // Don't fail the whole operation if broadcast fails
-      }
-    }
-
-    console.log('✅ Broadcast complete - clients should refresh their unread counts!');
+    // ✅ Real-time notifications handled automatically by database trigger for each inserted message
+    console.log(`✅ Club mail sent - database trigger will notify all ${members.length} recipients`);
 
     return NextResponse.json({ 
       success: true, 

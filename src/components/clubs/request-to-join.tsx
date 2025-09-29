@@ -34,6 +34,7 @@ export function RequestToJoin({
   const [message, setMessage] = useState(`I'd like to join your club`);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
   const handleSend = async () => {
     if (!message.trim()) {
@@ -48,27 +49,37 @@ export function RequestToJoin({
       const result = await sendClubJoinRequestAction(clubId, message.trim());
 
       if (result.success) {
-        setIsOpen(false);
-        setMessage(`I'd like to join your club`);
-        // Show success toast
+        // Start closing animation
+        setIsClosing(true);
+
+        // Show success toast immediately
         toast.success("Join request sent!", {
           description: `Your request to join ${clubName} has been sent to the club leaders.`,
         });
+
+        // Close dialog after a brief delay to allow toast to show
+        setTimeout(() => {
+          setIsSending(false);
+          setError(null);
+          setMessage(`I'd like to join your club`);
+          setIsClosing(false);
+          setIsOpen(false);
+        }, 50);
       } else {
         setError(result.error || "Failed to send join request");
+        setIsSending(false);
       }
     } catch {
       setError("An unexpected error occurred");
+      setIsSending(false);
       toast.error("Failed to send join request", {
         description: "An unexpected error occurred. Please try again.",
       });
-    } finally {
-      setIsSending(false);
     }
   };
 
   const defaultTrigger = (
-    <Button variant="default" size="sm" disabled={isSending}>
+    <Button variant="default" size="sm" disabled={isSending || isClosing}>
       <UserPlus className="h-4 w-4 mr-2" />
       Request to Join
     </Button>
@@ -93,7 +104,7 @@ export function RequestToJoin({
               placeholder="Tell the club leaders why you'd like to join..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              disabled={isSending}
+              disabled={isSending || isClosing}
               rows={6}
               className="resize-none"
             />
@@ -111,16 +122,21 @@ export function RequestToJoin({
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
-              disabled={isSending}
+              disabled={isSending || isClosing}
             >
               Cancel
             </Button>
             <Button
               type="button"
               onClick={handleSend}
-              disabled={isSending || !message.trim()}
+              disabled={isSending || isClosing || !message.trim()}
             >
-              {isSending ? (
+              {isClosing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Success!
+                </>
+              ) : isSending ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                   Sending...

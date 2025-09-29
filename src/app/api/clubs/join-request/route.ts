@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getUserProfile } from '@/lib/auth';
+import { getAuthUser, getUserProfile } from '@/lib/auth';
 import { createClient } from '@/lib/utils/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    // Use getAuthUser() for API routes - returns null if not authenticated
+    const authUser = await getAuthUser();
+    
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
     const currentUser = await getUserProfile(authUser.id);
     
     if (!currentUser) {
@@ -15,6 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { clubId, message } = await request.json();
+
+    console.log('📥 Join request received:', { clubId, message, clubIdType: typeof clubId });
 
     if (!clubId) {
       return NextResponse.json(
@@ -89,7 +100,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Send join request message
-    const { data: insertedMessage, error: messageError } = await supabase
+    console.log('💾 About to insert message with clubId:', clubId, 'for club:', club.name);
+    
+    const { error: messageError } = await supabase
       .from('messages')
       .insert({
         receiver_id: club.leader_id,
@@ -120,45 +133,8 @@ export async function POST(request: NextRequest) {
     revalidateTag(`user-${club.leader_id}-inbox`);
     revalidateTag(`user-${club.leader_id}-unread`);
 
-    // Send real-time notification to the club leader
-    try {
-      const messageForBroadcast = {
-        id: insertedMessage.id,
-        receiver_id: club.leader_id,
-        sender_id: currentUser.id,
-        subject: `Join Request for ${club.name}`,
-        message: message || `${currentUser.username} wants to join your club "${club.name}"`,
-        message_type: 'club_join_request',
-        created_at: new Date().toISOString(),
-        sender_username: currentUser.username,
-        sender_display_name: currentUser.display_name,
-        sender_profile_image_url: currentUser.profile_image_url,
-        club_name: club.name,
-      };
-
-      // Send new message broadcast for React Query
-      await supabase.channel(`inbox-messages-${club.leader_id}`).send({
-        type: 'broadcast',
-        event: 'new_message',
-        payload: messageForBroadcast,
-      });
-
-      // Send badge count broadcast for InboxProvider
-      await supabase.channel(`inbox-badges-${club.leader_id}`).send({
-        type: 'broadcast',
-        event: 'new_message_badge',
-        payload: {
-          receiver_id: club.leader_id,
-          message_type: 'club_join_request',
-          club_name: club.name,
-        },
-      });
-
-      console.log(`✅ Real-time notification sent to club leader ${club.leader_id}`);
-    } catch (broadcastError) {
-      console.error('Error sending real-time notification:', broadcastError);
-      // Don't fail the request if broadcast fails
-    }
+    // ✅ Real-time notification handled automatically by database trigger
+    console.log(`✅ Join request sent - database trigger will notify leader ${club.leader_id}`);
 
     return NextResponse.json({ success: true });
 

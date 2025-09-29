@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
-import { requireAuth } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 
 // Ensure this route is always dynamic and never cached
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,15 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     // Use authenticated user instead of accepting userId parameter
-    const currentUser = await requireAuth();
+    const currentUser = await getAuthUser();
+    
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
     const userId = currentUser.id;
 
     console.log(`🔢 Fetching unread count for user: ${userId}`);

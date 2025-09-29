@@ -89,7 +89,6 @@ export async function POST(request: NextRequest) {
             location: club?.location,
             leader_id: club?.leader_id,
             total_likes: club?.calculated_total_likes || 0, // Use calculated value from view
-            is_invite_only: club?.club_type === 'invite',
             created_at: club?.created_at,
             updated_at: club?.updated_at,
             leader: leader ? {

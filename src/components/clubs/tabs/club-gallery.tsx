@@ -361,7 +361,7 @@ export const ClubGallery = memo(function ClubGallery({
                           View Club
                         </Button>
                       </Link>
-                    ) : club.club_type === "invite" || club.is_invite_only ? (
+                    ) : club.club_type === "invite" ? (
                       sendClubJoinRequestAction ? (
                         <RequestToJoin
                           clubId={club.id}

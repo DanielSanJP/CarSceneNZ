@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
-import { requireAuth } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 
 async function getUserLeaderClubs(userId: string) {
   try {
@@ -128,7 +128,14 @@ async function sendClubInvitation(
 
 export async function GET() {
   try {
-    const currentUser = await requireAuth();
+    const currentUser = await getAuthUser();
+    
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const leaderClubsRaw = await getUserLeaderClubs(currentUser.id);
     const leaderClubs = leaderClubsRaw.map((club) =>
@@ -156,7 +163,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await requireAuth();
+    const currentUser = await getAuthUser();
+    
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const { targetUserId, clubId, message } = await request.json();
 

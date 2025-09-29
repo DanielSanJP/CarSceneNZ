@@ -414,18 +414,17 @@ export default function CarImageManager({
         "car"
       );
 
-      const totalOriginalSize = compressionResults.reduce(
-        (sum, result) => sum + result.originalSize,
-        0
-      );
-      const totalCompressedSize = compressionResults.reduce(
-        (sum, result) => sum + result.compressedSize,
-        0
-      );
-      const totalSavings = totalOriginalSize - totalCompressedSize;
-      const totalSavingsPercent = Math.round(
-        (totalSavings / totalOriginalSize) * 100
-      );
+      // Compression stats tracking (commented out until needed)
+      // const totalOriginalSize = compressionResults.reduce(
+      //   (sum, result) => sum + result.originalSize,
+      //   0
+      // );
+      // const totalCompressedSize = compressionResults.reduce(
+      //   (sum, result) => sum + result.compressedSize,
+      //   0
+      // );
+      // const totalSavings = totalOriginalSize - totalCompressedSize;
+      // const totalSavingsPercent = Math.round((totalSavings / totalOriginalSize) * 100);
 
       if (carId) {
         const formData = new FormData();

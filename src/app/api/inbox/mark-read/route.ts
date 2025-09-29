@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/server';
-import { requireAuth } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 
 export async function POST() {
   try {
     // Use authenticated user instead of accepting userId parameter
-    const currentUser = await requireAuth();
+    const currentUser = await getAuthUser();
+    
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
     const userId = currentUser.id;
 
     console.log(`📨 Marking all unread messages as read for user: ${userId}`);

@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -64,6 +63,7 @@ export const ClubDetailView = memo(function ClubDetailView({
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showLeaveHelpDialog, setShowLeaveHelpDialog] = useState(false);
   const [managingMemberId, setManagingMemberId] = useState<string | null>(null);
   const [showKickDialog, setShowKickDialog] = useState(false);
   const [memberToKick, setMemberToKick] = useState<{
@@ -119,7 +119,13 @@ export const ClubDetailView = memo(function ClubDetailView({
 
       if (result.success) {
         // Server Action automatically invalidates both Data Cache and Router Cache
-        toast.success("Successfully left the club");
+        if ("deleted" in result && result.deleted) {
+          toast.success(result.message || "Left club and club was deleted");
+          // Redirect to clubs page since club no longer exists
+          window.location.href = "/clubs";
+        } else {
+          toast.success("Successfully left the club");
+        }
       } else {
         toast.error(result.message || "Failed to leave club");
       }
@@ -129,6 +135,13 @@ export const ClubDetailView = memo(function ClubDetailView({
     } finally {
       setIsLeaving(false);
       setShowLeaveDialog(false);
+    }
+  };
+
+  // Handle disabled leave button click
+  const handleDisabledLeaveClick = () => {
+    if (isLeader && memberCount > 1) {
+      setShowLeaveHelpDialog(true);
     }
   };
 
@@ -175,7 +188,7 @@ export const ClubDetailView = memo(function ClubDetailView({
 
   // Member management actions
   const handleMemberAction = async (
-    action: "promote" | "demote" | "kick",
+    action: "promote" | "demote" | "kick" | "promote_to_leader",
     targetUserId: string
   ): Promise<{ success: boolean; error?: string }> => {
     setManagingMemberId(targetUserId);
@@ -191,6 +204,8 @@ export const ClubDetailView = memo(function ClubDetailView({
           toast.success("Member promoted successfully");
         } else if (action === "demote") {
           toast.success("Member demoted successfully");
+        } else if (action === "promote_to_leader") {
+          toast.success("Leadership transferred successfully");
         }
       } else {
         toast.error(result.error || "Failed to manage member");
@@ -239,6 +254,64 @@ export const ClubDetailView = memo(function ClubDetailView({
   };
 
   const typeInfo = getClubTypeInfo(club.club_type || "open");
+
+  // Helper function to render the appropriate join button based on club type
+  const renderJoinButton = () => {
+    if (!currentUser) {
+      return (
+        <Link href="/login">
+          <Button size="lg">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Sign In to Join
+          </Button>
+        </Link>
+      );
+    }
+
+    const clubType = club.club_type || "open";
+
+    switch (clubType) {
+      case "closed":
+        return (
+          <Button disabled size="lg">
+            <Lock className="h-4 w-4 mr-2" />
+            Closed
+          </Button>
+        );
+
+      case "open":
+        return (
+          <Button onClick={handleJoinClub} disabled={isJoining} size="lg">
+            {isJoining ? (
+              "Joining..."
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Join Club
+              </>
+            )}
+          </Button>
+        );
+
+      case "invite":
+        return (
+          <RequestToJoin
+            clubId={club.id}
+            clubName={club.name}
+            sendClubJoinRequestAction={sendClubJoinRequestAction}
+            trigger={
+              <Button size="lg">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Join Club
+              </Button>
+            }
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -370,7 +443,7 @@ export const ClubDetailView = memo(function ClubDetailView({
                   <MapPin className="h-3 w-3" />
                   <span className="text-xs">Location</span>
                 </div>
-                <span className="font-semibold text-base text-center truncate w-full">
+                <span className="font-semibold text-base text-center w-full leading-tight">
                   {club.location}
                 </span>
               </div>
@@ -381,7 +454,7 @@ export const ClubDetailView = memo(function ClubDetailView({
                   <span className="text-lg">{typeInfo.icon}</span>
                   <span className="text-xs">Type</span>
                 </div>
-                <span className="font-semibold text-base text-center truncate w-full">
+                <span className="font-semibold text-base text-center w-full leading-tight">
                   {typeInfo.text}
                 </span>
               </div>
@@ -434,94 +507,82 @@ export const ClubDetailView = memo(function ClubDetailView({
             {/* Right side - Join/Leave buttons */}
             <div>
               {isUserMember ? (
-                <Dialog
-                  open={showLeaveDialog}
-                  onOpenChange={setShowLeaveDialog}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      disabled={isLeaving || isLeader}
-                      size="lg"
-                      title={
-                        isLeader
-                          ? "Leaders cannot leave the club. Transfer leadership first."
-                          : undefined
+                <>
+                  <Button
+                    variant="destructive"
+                    size="lg"
+                    onClick={() => {
+                      if (isLeader && memberCount > 1) {
+                        handleDisabledLeaveClick();
+                      } else {
+                        setShowLeaveDialog(true);
                       }
-                    >
-                      {isLeaving ? (
-                        "Leaving..."
-                      ) : (
-                        <>
-                          <UserMinus className="h-4 w-4 mr-2" />
-                          Leave
-                        </>
-                      )}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Leave Club</DialogTitle>
-                      <DialogDescription>
-                        {isLeader
-                          ? "As the leader, you'll need to transfer leadership before leaving this club. This action cannot be undone."
-                          : "Are you sure you want to leave this club?"}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowLeaveDialog(false)}
-                        disabled={isLeaving}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={handleLeaveClub}
-                        disabled={isLeaving || isLeader}
-                      >
-                        {isLeaving ? "Leaving..." : "Leave Club"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              ) : !currentUser ? (
-                <Link href="/login">
-                  <Button size="lg">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Sign In to Join
+                    }}
+                    disabled={isLeaving}
+                    className={
+                      isLeader && memberCount > 1
+                        ? "opacity-50 cursor-pointer hover:opacity-60"
+                        : undefined
+                    }
+                    title={
+                      isLeader && memberCount > 1
+                        ? "Click to see how to leave this club"
+                        : isLeader && memberCount === 1
+                        ? "Leave and delete club (you are the only member)"
+                        : undefined
+                    }
+                  >
+                    {isLeaving ? (
+                      "Leaving..."
+                    ) : (
+                      <>
+                        <UserMinus className="h-4 w-4 mr-2" />
+                        Leave
+                      </>
+                    )}
                   </Button>
-                </Link>
-              ) : club.club_type === "closed" ? (
-                <Button disabled size="lg">
-                  <Lock className="h-4 w-4 mr-2" />
-                  Closed
-                </Button>
-              ) : club.club_type === "open" ? (
-                <Button onClick={handleJoinClub} disabled={isJoining} size="lg">
-                  {isJoining ? (
-                    "Joining..."
-                  ) : (
-                    <>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Join Club
-                    </>
-                  )}
-                </Button>
-              ) : club.club_type === "invite" || club.is_invite_only ? (
-                <RequestToJoin
-                  clubId={club.id}
-                  clubName={club.name}
-                  sendClubJoinRequestAction={sendClubJoinRequestAction}
-                  trigger={
-                    <Button size="lg">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Join Club
-                    </Button>
-                  }
-                />
-              ) : null}
+
+                  <Dialog
+                    open={showLeaveDialog}
+                    onOpenChange={setShowLeaveDialog}
+                  >
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Leave Club</DialogTitle>
+                        <DialogDescription>
+                          {isLeader
+                            ? memberCount === 1
+                              ? "You are the only member of this club. Leaving will permanently delete the club. This action cannot be undone."
+                              : "As the leader, you'll need to transfer leadership to another member or remove all other members before leaving this club."
+                            : "Are you sure you want to leave this club?"}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowLeaveDialog(false)}
+                          disabled={isLeaving}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleLeaveClub}
+                          disabled={isLeaving || (isLeader && memberCount > 1)}
+                        >
+                          {isLeaving
+                            ? "Leaving..."
+                            : isLeader && memberCount === 1
+                            ? "Delete Club & Leave"
+                            : "Leave Club"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              ) : (
+                renderJoinButton()
+              )}
             </div>
           </div>
         </CardContent>
@@ -632,20 +693,36 @@ export const ClubDetailView = memo(function ClubDetailView({
                             </DropdownMenuItem>
                           )}
                           {member.role === "co-leader" && (
-                            <DropdownMenuItem
-                              disabled={managingMemberId === member.user.id}
-                              onClick={async () => {
-                                await handleMemberAction(
-                                  "demote",
-                                  member.user.id
-                                );
-                              }}
-                            >
-                              <UserMinus className="h-4 w-4 mr-2" />
-                              {managingMemberId === member.user.id
-                                ? "Demoting..."
-                                : "Demote to Member"}
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                disabled={managingMemberId === member.user.id}
+                                onClick={async () => {
+                                  await handleMemberAction(
+                                    "promote_to_leader",
+                                    member.user.id
+                                  );
+                                }}
+                              >
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                {managingMemberId === member.user.id
+                                  ? "Transferring Leadership..."
+                                  : "Promote to Leader"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={managingMemberId === member.user.id}
+                                onClick={async () => {
+                                  await handleMemberAction(
+                                    "demote",
+                                    member.user.id
+                                  );
+                                }}
+                              >
+                                <UserMinus className="h-4 w-4 mr-2" />
+                                {managingMemberId === member.user.id
+                                  ? "Demoting..."
+                                  : "Demote to Member"}
+                              </DropdownMenuItem>
+                            </>
                           )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -718,6 +795,47 @@ export const ClubDetailView = memo(function ClubDetailView({
               {managingMemberId === memberToKick?.id
                 ? "Kicking..."
                 : "Kick Member"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Help Dialog for Leaders Who Can't Leave */}
+      <Dialog open={showLeaveHelpDialog} onOpenChange={setShowLeaveHelpDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Can&apos;t Leave Club Yet</DialogTitle>
+            <DialogDescription>
+              As the club leader, you need to do one of the following before you
+              can leave:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border p-4">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <UserCheck className="h-4 w-4" />
+                Option 1: Transfer Leadership
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Promote a co-leader to leader using the dropdown menu next to
+                their name in the members list below.
+              </p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <UserMinus className="h-4 w-4" />
+                Option 2: Ask Members to Leave
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Consider asking other members to leave the club voluntarily, or
+                remove them if necessary. Once you&apos;re the only member, you
+                can leave (which will delete the empty club).
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowLeaveHelpDialog(false)}>
+              Got it
             </Button>
           </DialogFooter>
         </DialogContent>
