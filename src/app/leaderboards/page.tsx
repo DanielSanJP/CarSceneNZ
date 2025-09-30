@@ -13,6 +13,11 @@ interface TopCarRPC {
   created_at: string;
   updated_at: string;
   owner_id: string;
+  owner_username: string;
+  owner_display_name?: string;
+  owner_profile_image_url?: string;
+  owner_created_at: string;
+  owner_updated_at: string;
 }
 
 interface TopOwnerRPC {
@@ -98,6 +103,14 @@ async function getLeaderboardsData(): Promise<LeaderboardsData> {
           created_at: item.created_at,
           updated_at: item.updated_at,
           owner_id: item.owner_id,
+          owner: {
+            id: item.owner_id,
+            username: item.owner_username,
+            display_name: item.owner_display_name,
+            profile_image_url: item.owner_profile_image_url,
+            created_at: item.owner_created_at,
+            updated_at: item.owner_updated_at,
+          },
         },
         rank: index + 1,
         likes: item.total_likes,

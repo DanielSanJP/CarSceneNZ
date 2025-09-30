@@ -141,7 +141,47 @@ async function getEventsData(page: number, limit: number): Promise<EventsData> {
       `🔍 DEBUG: Fetched ${events?.length || 0} events from database`
     );
 
-    // Transform events to handle host relationship (Supabase returns arrays, we need single objects)
+    // Get attendee counts for all events in parallel
+    const eventIds = events?.map((event) => event.id) || [];
+    const attendeeCounts: Record<
+      string,
+      { interested: number; going: number }
+    > = {};
+
+    if (eventIds.length > 0) {
+      console.log(
+        `🔍 DEBUG: Fetching attendee counts for ${eventIds.length} events`
+      );
+
+      const { data: attendeeData, error: attendeeError } = await supabase
+        .from("event_attendees")
+        .select("event_id, status")
+        .in("event_id", eventIds);
+
+      if (attendeeError) {
+        console.error("❌ Error fetching attendee counts:", attendeeError);
+      } else {
+        // Count attendees by status for each event
+        attendeeData?.forEach((attendee) => {
+          if (!attendeeCounts[attendee.event_id]) {
+            attendeeCounts[attendee.event_id] = { interested: 0, going: 0 };
+          }
+          if (attendee.status === "interested") {
+            attendeeCounts[attendee.event_id].interested++;
+          } else if (attendee.status === "going") {
+            attendeeCounts[attendee.event_id].going++;
+          }
+        });
+
+        console.log(
+          `✅ DEBUG: Calculated attendee counts for ${
+            Object.keys(attendeeCounts).length
+          } events`
+        );
+      }
+    }
+
+    // Transform events to handle host relationship and add attendee counts
     const transformedEvents =
       events?.map((event) => ({
         ...event,
@@ -149,6 +189,8 @@ async function getEventsData(page: number, limit: number): Promise<EventsData> {
           Array.isArray(event.host) && event.host.length > 0
             ? event.host[0]
             : undefined,
+        interestedCount: attendeeCounts[event.id]?.interested || 0,
+        attendeeCount: attendeeCounts[event.id]?.going || 0,
       })) || [];
 
     const endTime = Date.now();
