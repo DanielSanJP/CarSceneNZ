@@ -183,15 +183,22 @@ async function getEventsData(page: number, limit: number): Promise<EventsData> {
 
     // Transform events to handle host relationship and add attendee counts
     const transformedEvents =
-      events?.map((event) => ({
-        ...event,
-        host:
-          Array.isArray(event.host) && event.host.length > 0
-            ? event.host[0]
-            : undefined,
-        interestedCount: attendeeCounts[event.id]?.interested || 0,
-        attendeeCount: attendeeCounts[event.id]?.going || 0,
-      })) || [];
+      events?.map((event) => {
+        // Handle both array and object cases for host data
+        let hostData;
+        if (Array.isArray(event.host)) {
+          hostData = event.host.length > 0 ? event.host[0] : undefined;
+        } else {
+          hostData = event.host || undefined;
+        }
+
+        return {
+          ...event,
+          host: hostData,
+          interestedCount: attendeeCounts[event.id]?.interested || 0,
+          attendeeCount: attendeeCounts[event.id]?.going || 0,
+        };
+      }) || [];
 
     const endTime = Date.now();
     console.log(

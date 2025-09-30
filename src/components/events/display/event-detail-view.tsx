@@ -342,7 +342,7 @@ export function EventDetailView({
                   )}
                   <div>
                     <div className="text-xs text-muted-foreground">
-                      Event by
+                      Hosted by
                     </div>
                     <Link href={`/profile/${event.host.username}`}>
                       <div className="text-sm font-medium hover:underline">
