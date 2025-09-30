@@ -1,60 +1,74 @@
 import MyGarageView from "@/components/garage/my-garage-view";
 import { requireAuth } from "@/lib/auth";
 import { UserGarageData } from "@/types/car";
+import { createClient } from "@/lib/utils/supabase/server";
 
 // Cache this page for 5 minutes, then revalidate in the background
 export const revalidate = 300; // 5 minutes
-
-import { getBaseUrl } from "@/lib/utils";
 
 export default async function MyGaragePage() {
   // Server-side auth check - this will redirect if not authenticated
   const authUser = await requireAuth();
 
-  console.log(
-    "🚀 SSR CACHE: Fetching user garage data via cached API route..."
-  );
+  console.log("🚀 SSR CACHE: Fetching user garage data via direct queries...");
   const startTime = Date.now();
 
-  // Use native fetch to call our cached API route
-  const response = await fetch(`${getBaseUrl()}/api/garage/my-garage`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      userId: authUser.id,
-    }),
-    // Leverage the API route's caching with proper tags
-    next: {
-      revalidate: 60,
-      tags: ["garage", "cars", `user-${authUser.id}-cars`],
-    },
-  });
+  const supabase = await createClient();
 
-  if (!response.ok) {
-    console.error(
-      `❌ My garage API route failed: ${response.status} ${response.statusText}`
-    );
+  // Get user's cars - simple query!
+  const { data: userCars, error: carsError } = await supabase
+    .from("cars")
+    .select(
+      `
+      id,
+      brand,
+      model,
+      year,
+      images,
+      total_likes,
+      created_at,
+      updated_at,
+      owner_id
+    `
+    )
+    .eq("owner_id", authUser.id)
+    .order("created_at", { ascending: false });
+
+  if (carsError) {
+    console.error("❌ Error fetching user cars:", carsError);
     throw new Error("Failed to load your garage");
   }
 
-  const garageData: UserGarageData = await response.json();
-
   console.log(
-    `✅ SSR CACHE: User garage data fetched via API route in ${
-      Date.now() - startTime
-    }ms`
+    `🔍 DEBUG: Found ${userCars?.length || 0} cars for user ${authUser.id}`
   );
 
-  const finalGarageData: UserGarageData = garageData || {
-    cars: [],
-    total: 0,
+  const garageData: UserGarageData = {
+    cars:
+      userCars?.map((car) => ({
+        id: car.id,
+        brand: car.brand,
+        model: car.model,
+        year: car.year,
+        images: car.images || [],
+        total_likes: car.total_likes,
+        created_at: car.created_at,
+        updated_at: car.updated_at,
+        owner_id: car.owner_id,
+      })) || [],
+    total: userCars?.length || 0,
     meta: {
       generated_at: new Date().toISOString(),
-      cache_key: "",
+      cache_key: `user_garage_${authUser.id}_${Date.now()}`,
     },
   };
 
-  return <MyGarageView garageData={finalGarageData} />;
+  console.log(
+    `✅ SSR CACHE: User garage data fetched via direct queries in ${
+      Date.now() - startTime
+    }ms`
+  );
+  console.log(`📊 Final data - User cars: ${garageData.total}`);
+
+  return <MyGarageView garageData={garageData} />;
 }

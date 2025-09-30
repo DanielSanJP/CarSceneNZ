@@ -2,9 +2,10 @@ import { EventsGallery } from "@/components/events";
 import { toggleEventAttendanceAction } from "@/lib/actions";
 import type { EventsData } from "@/types/event";
 import { getAuthUser, getUserProfile } from "@/lib/auth";
-import { getBaseUrl } from "@/lib/utils";
+import { createClient } from "@/lib/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5 minutes
 
 // Helper function to get basic user info for SSR (cached via React cache)
 async function getUserHints() {
@@ -49,125 +50,133 @@ async function getUserEventStatuses(userId: string, eventIds: string[]) {
 
   try {
     console.log(
-      `🔍 DEBUG: Fetching user statuses for ${eventIds.length} events via cached API route`
+      `🔍 DEBUG: Fetching user statuses for ${eventIds.length} events via direct queries`
     );
 
-    // Use our cached API route with the same pattern as event detail
-    const response = await fetch(`${getBaseUrl()}/api/events/user-statuses`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: userId,
-        eventIds: eventIds,
-      }),
-      // Enable Next.js caching with short revalidation for SSR
-      next: {
-        revalidate: 60, // 1 minute cache for user attendance data
-        tags: ["event-attendees", `user-${userId}-attendees`],
-      },
-    });
+    const supabase = await createClient();
 
-    if (!response.ok) {
-      console.error(
-        "Error fetching user event statuses via API:",
-        response.status
-      );
+    const { data: attendanceRecords, error } = await supabase
+      .from("event_attendees")
+      .select("event_id, status")
+      .eq("user_id", userId)
+      .in("event_id", eventIds);
+
+    if (error) {
+      console.error("Error fetching user event statuses:", error);
       return {};
     }
 
-    const data = await response.json();
+    // Convert array of {event_id, status} to {eventId: status} object
+    const userStatuses: Record<string, string> = {};
+    if (Array.isArray(attendanceRecords)) {
+      attendanceRecords.forEach((record) => {
+        userStatuses[record.event_id] = record.status;
+      });
+    }
+
     console.log(
       `✅ DEBUG: Fetched user statuses for ${
-        Object.keys(data.userStatuses || {}).length
-      } events via cached API`
+        Object.keys(userStatuses).length
+      } events via direct queries`
     );
 
-    return data.userStatuses || {};
+    return userStatuses;
   } catch (error) {
     console.error("Error in getUserEventStatuses:", error);
     return {};
   }
 }
 
-// Helper function to get events data using the same logic as our API route
+// Helper function to get events data using direct Supabase queries
 async function getEventsData(page: number, limit: number): Promise<EventsData> {
   console.log(
-    `🚀 FETCH CACHE: Fetching events page ${page} using API route logic...`
+    `🚀 FETCH CACHE: Fetching events page ${page} using direct queries...`
   );
   console.log(`🔍 DEBUG: Current time: ${new Date().toISOString()}`);
   console.log(`🔍 DEBUG: Revalidate setting: 300 seconds`);
 
   try {
-    // Get environment variables
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey =
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    console.log(`🔍 DEBUG: About to call direct Supabase queries...`);
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("❌ Missing Supabase environment variables");
-      throw new Error("Server configuration error");
-    }
+    // Use direct Supabase queries instead of API route
+    const supabase = await createClient();
+    const startTime = Date.now();
+    const offset = (page - 1) * limit;
 
-    console.log(`🔍 DEBUG: Using Supabase URL: ${supabaseUrl}`);
-    console.log(`🔍 DEBUG: About to call our simplified events API...`);
-
-    // Use our simplified API route instead of RPC - include pagination
-    const eventsResponse = await fetch(
-      `${getBaseUrl()}/api/events?page=${page}&limit=${limit}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        // Enable Next.js caching with 5 minute revalidation
-        next: {
-          revalidate: 300, // 5 minutes
-          tags: ["events"],
-        },
-      }
+    console.log(
+      `🚀 FETCH CACHE: Events direct query called - Page ${page}, Limit ${limit}`
     );
 
-    console.log(`🔍 DEBUG: Fetch response status: ${eventsResponse.status}`);
-    console.log(`🔍 DEBUG: Fetch cache headers:`, {
-      cacheControl: eventsResponse.headers.get("cache-control"),
-      age: eventsResponse.headers.get("age"),
-    });
+    // Get events with host information using direct query
+    const { data: events, error: eventsError } = await supabase
+      .from("events")
+      .select(
+        `
+        id,
+        host_id,
+        title,
+        description,
+        poster_image_url,
+        daily_schedule,
+        location,
+        created_at,
+        updated_at,
+        host:users!events_host_id_fkey(
+          id,
+          username,
+          display_name,
+          profile_image_url
+        )
+      `
+      )
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
-    if (!eventsResponse.ok) {
-      console.error(
-        `❌ Events RPC failed: ${eventsResponse.status} ${eventsResponse.statusText}`
-      );
-      throw new Error(`Failed to fetch events: ${eventsResponse.status}`);
+    if (eventsError) {
+      console.error("❌ Error fetching events:", eventsError);
+      throw eventsError;
     }
 
-    console.log(`🔍 DEBUG: Supabase RPC call completed`);
-    const events = await eventsResponse.json();
+    console.log(
+      `🔍 DEBUG: Fetched ${events?.length || 0} events from database`
+    );
+
+    // Transform events to handle host relationship (Supabase returns arrays, we need single objects)
+    const transformedEvents =
+      events?.map((event) => ({
+        ...event,
+        host:
+          Array.isArray(event.host) && event.host.length > 0
+            ? event.host[0]
+            : undefined,
+      })) || [];
+
+    const endTime = Date.now();
+    console.log(
+      `✅ FETCH CACHE: Events data processed in ${endTime - startTime}ms`
+    );
     console.log(`🔍 DEBUG: getEventsData() returning data`);
 
-    // The API returns an object with events array, not direct array
     console.log(
-      `🔍 DEBUG: Events response structure:`,
-      JSON.stringify(events, null, 2)
+      `📊 Final data - Events: ${transformedEvents.length}, Has more: ${
+        (events?.length || 0) === limit
+      }`
     );
 
-    // Return the events data directly from the API (it's already in the correct format)
-    if (events && typeof events === "object" && "events" in events) {
-      return events as EventsData;
-    }
+    console.log(
+      `✅ FETCH CACHE: Events fetched successfully - ${transformedEvents.length} events found`
+    );
 
-    // Fallback: if response format is unexpected, return empty data
-    console.warn("⚠️ Unexpected events response format, returning empty data");
+    // Return the events data in the correct format
     return {
-      events: [],
+      events: transformedEvents,
+      pagination: {
+        page: page,
+        limit: limit,
+        hasMore: (events?.length || 0) === limit,
+      },
       userStatuses: {},
       currentUser: null,
-      pagination: {
-        page: 1,
-        limit: 20,
-        hasMore: false,
-      },
     };
   } catch (error) {
     console.error("❌ Error fetching events data:", error);
@@ -180,7 +189,7 @@ interface EventsPageProps {
 }
 
 // Cache this page for 5 minutes with ISR, then revalidate in the background
-export const revalidate = 300; // 5 minutes
+// (Already exported at top of file)
 
 // Alternative: Generate static pages for first few pages
 export async function generateStaticParams() {

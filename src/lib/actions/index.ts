@@ -3,3 +3,4 @@ export { joinClubAction, leaveClubAction, manageMemberAction, updateClubTotalLik
 export { likeCarAction } from './car-actions';
 export { toggleEventAttendanceAction } from './event-actions';
 export { toggleFollowUserAction } from './user-actions';
+export { getProfileData, getLeaderClubsData } from './profile-actions';

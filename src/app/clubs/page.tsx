@@ -6,10 +6,9 @@ import { uploadClubImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
 import { Club } from "@/types";
 import type { ClubsGalleryData } from "@/types/club";
-import { getBaseUrl } from "@/lib/utils";
-
 // Force dynamic rendering - don't try to build statically
 export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5 minutes
 
 // Server-side clubs gallery data fetching using cached API route
 async function getClubsGalleryDataSSR(
@@ -26,54 +25,190 @@ async function getClubsGalleryDataSSR(
   const startTime = Date.now();
 
   try {
-    console.log(`🚀 SSR CACHE: Fetching clubs gallery via cached API route...`);
+    console.log(`🚀 SSR CACHE: Fetching clubs gallery via direct queries...`);
 
-    // Use native fetch to call our cached API route
-    const response = await fetch(
-      `${getBaseUrl()}/api/clubs?${new URLSearchParams({
-        ...(filters.search && { search: filters.search }),
-        ...(filters.location && { location: filters.location }),
-        ...(filters.club_type && { club_type: filters.club_type }),
-        sortBy: filters.sortBy || "likes",
-        page: (filters.page || 1).toString(),
-        limit: (filters.limit || 12).toString(),
-        ...(currentUserId && { userId: currentUserId }),
-      })}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        // Leverage the API route's caching with proper tags
-        next: {
-          revalidate: 300,
-          tags: ["clubs"],
-        },
-      }
-    );
+    const supabase = await createClient();
 
-    if (!response.ok) {
-      console.error(
-        `❌ Clubs API route failed: ${response.status} ${response.statusText}`
-      );
-      throw new Error(`Failed to fetch clubs gallery data: ${response.status}`);
-    }
-
-    const data = await response.json();
+    // Get query parameters
+    const search = filters.search || null;
+    const location = filters.location || null;
+    const club_type = filters.club_type || null;
+    const sortBy = filters.sortBy || "likes";
+    const page = filters.page || 1;
+    const limit = Math.min(filters.limit || 12, 50);
 
     console.log(
-      `✅ SSR CACHE: Clubs gallery data fetched via API route in ${
+      `🔍 DEBUG: Fetching clubs - Page ${page}, Limit ${limit}, Sort: ${sortBy}`
+    );
+    console.log(
+      `🔍 DEBUG: Filters - Search: ${search}, Location: ${location}, Type: ${club_type}`
+    );
+
+    const offset = (page - 1) * limit;
+
+    // Build the query dynamically with filters using club_stats view for accurate total_likes
+    let query = supabase.from("club_stats").select(`
+        id,
+        name,
+        description,
+        banner_image_url,
+        club_type,
+        location,
+        leader_id,
+        calculated_total_likes,
+        member_count,
+        total_cars,
+        created_at,
+        updated_at
+      `);
+
+    // Apply search filter
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+
+    // Apply location filter
+    if (location) {
+      query = query.eq("location", location);
+    }
+
+    // Apply club type filter
+    if (club_type) {
+      query = query.eq("club_type", club_type);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case "likes":
+        query = query.order("calculated_total_likes", { ascending: false });
+        break;
+      case "newest":
+        query = query.order("created_at", { ascending: false });
+        break;
+      case "oldest":
+        query = query.order("created_at", { ascending: true });
+        break;
+      case "name":
+        query = query.order("name", { ascending: true });
+        break;
+      default:
+        query = query.order("calculated_total_likes", { ascending: false });
+    }
+
+    // Get total count for pagination (with same filters) using club_stats view
+    let countQuery = supabase
+      .from("club_stats")
+      .select("*", { count: "exact", head: true });
+
+    // Apply same filters to count query
+    if (search) {
+      countQuery = countQuery.or(
+        `name.ilike.%${search}%,description.ilike.%${search}%`
+      );
+    }
+    if (location) {
+      countQuery = countQuery.eq("location", location);
+    }
+    if (club_type) {
+      countQuery = countQuery.eq("club_type", club_type);
+    }
+
+    const { count: totalCount } = await countQuery;
+
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1);
+
+    const { data: clubs, error: clubsError } = await query;
+
+    if (clubsError) {
+      console.error("❌ Error fetching clubs:", clubsError);
+      throw clubsError;
+    }
+
+    console.log(
+      `🔍 DEBUG: Fetched ${clubs?.length || 0} clubs from club_stats view`
+    );
+
+    // Get leader info for all clubs manually (since views don't have foreign key relationships)
+    const leaderIds = clubs?.map((club) => club.leader_id) || [];
+    const leadersMap: Record<
+      string,
+      {
+        id: string;
+        username: string;
+        display_name: string | null;
+        profile_image_url: string | null;
+      }
+    > = {};
+
+    if (leaderIds.length > 0) {
+      const { data: leaders } = await supabase
+        .from("users")
+        .select("id, username, display_name, profile_image_url")
+        .in("id", leaderIds);
+
+      leaders?.forEach((leader) => {
+        leadersMap[leader.id] = leader;
+      });
+    }
+
+    // Get user memberships if userId is provided
+    const clubIds = clubs?.map((club) => club.id) || [];
+    const userMemberships: Record<string, boolean> = {};
+
+    if (clubIds.length > 0 && currentUserId) {
+      const { data: userMembershipData } = await supabase
+        .from("club_members")
+        .select("club_id")
+        .eq("user_id", currentUserId)
+        .in("club_id", clubIds);
+
+      userMembershipData?.forEach((membership) => {
+        userMemberships[membership.club_id] = true;
+      });
+    }
+
+    console.log(
+      `✅ SSR CACHE: Clubs gallery data fetched via direct queries in ${
         Date.now() - startTime
       }ms`
     );
 
+    // Transform clubs data to match interface
+    const transformedClubs =
+      clubs?.map((club) => ({
+        id: club.id,
+        name: club.name,
+        description: club.description,
+        banner_image_url: club.banner_image_url,
+        club_type: club.club_type,
+        location: club.location,
+        leader_id: club.leader_id,
+        total_likes: club.calculated_total_likes,
+        created_at: club.created_at,
+        updated_at: club.updated_at,
+        leader: leadersMap[club.leader_id]
+          ? {
+              ...leadersMap[club.leader_id],
+              display_name:
+                leadersMap[club.leader_id].display_name || undefined,
+              profile_image_url:
+                leadersMap[club.leader_id].profile_image_url || undefined,
+            }
+          : undefined,
+        memberCount: club.member_count,
+        isUserMember: currentUserId ? userMemberships[club.id] || false : false,
+      })) || [];
+
+    const totalPages = Math.ceil((totalCount || 0) / limit);
+
     return {
-      clubs: data?.clubs || [],
-      pagination: data?.pagination || {
-        total: 0,
-        page: filters.page || 1,
-        limit: filters.limit || 12,
-        totalPages: 0,
+      clubs: transformedClubs,
+      pagination: {
+        total: totalCount || 0,
+        page,
+        limit,
+        totalPages,
       },
       filters: {
         search: filters.search || "",

@@ -1,9 +1,12 @@
 import { UserProfileDisplay } from "@/components/profile/user-profile-display";
 import { getAuthUser, getUserProfile } from "@/lib/auth";
-import { toggleFollowUserAction } from "@/lib/actions";
+import {
+  toggleFollowUserAction,
+  getProfileData,
+  getLeaderClubsData,
+} from "@/lib/actions";
 import type { ProfileData, LeaderClubsData } from "@/types/user";
 import { revalidatePath } from "next/cache";
-import { getBaseUrl } from "@/lib/utils";
 
 interface UserProfilePageProps {
   params: Promise<{ id: string }>;
@@ -11,6 +14,8 @@ interface UserProfilePageProps {
 
 // Force dynamic rendering - don't try to build these pages statically
 export const dynamic = "force-dynamic";
+// Cache this page for 5 minutes, then revalidate in the background
+export const revalidate = 300; // 5 minutes
 
 // Server action for following/unfollowing users
 async function followUserAction(targetUserId: string) {
@@ -36,119 +41,6 @@ async function followUserAction(targetUserId: string) {
   };
 }
 
-// Server-side leader clubs data fetching using cached API route
-async function getLeaderClubsDataSSR(
-  userId: string
-): Promise<LeaderClubsData | null> {
-  const startTime = Date.now();
-
-  try {
-    console.log(
-      `🚀 SSR CACHE: Fetching leader clubs for user ${userId} via cached API route...`
-    );
-
-    const response = await fetch(`${getBaseUrl()}/api/profile/leader-clubs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: userId,
-      }),
-      // Leverage the API route's caching
-      next: { revalidate: 300 },
-    });
-
-    if (!response.ok) {
-      console.error(
-        `❌ Leader clubs API route failed: ${response.status} ${response.statusText}`
-      );
-      return null; // Don't fail the whole page, just don't show invite buttons
-    }
-
-    const leaderClubsData = await response.json();
-
-    console.log(
-      `✅ SSR CACHE: Leader clubs for user ${userId} fetched via API route in ${
-        Date.now() - startTime
-      }ms - ${leaderClubsData.leaderClubs?.length || 0} clubs`
-    );
-
-    return leaderClubsData as LeaderClubsData;
-  } catch (error) {
-    console.error("Error fetching leader clubs data:", error);
-    return null; // Don't fail the whole page, just don't show invite buttons
-  }
-}
-
-// Server-side profile data fetching using cached API route
-async function getProfileDataSSR(
-  usernameOrId: string,
-  currentUserId?: string
-): Promise<ProfileData> {
-  const startTime = Date.now();
-
-  try {
-    console.log(
-      `🚀 SSR CACHE: Fetching profile ${usernameOrId} via cached API route...`
-    );
-
-    const response = await fetch(
-      `${getBaseUrl()}/api/profile/${usernameOrId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentUserId: currentUserId || null,
-        }),
-        // Leverage the API route's caching with proper tags
-        next: {
-          revalidate: 300,
-          tags: [
-            "users",
-            `user-${usernameOrId}`,
-            `user-${usernameOrId}-cars`,
-            `user-${usernameOrId}-clubs`,
-            "clubs",
-          ],
-        },
-      }
-    );
-
-    if (!response.ok) {
-      console.error(
-        `❌ Profile API route failed: ${response.status} ${response.statusText}`
-      );
-      throw new Error("User not found");
-    }
-
-    const responseData = await response.json();
-    const profileData = responseData.profileData;
-
-    console.log(`🔍 DEBUG: SSR Response structure:`, {
-      hasResponseData: !!responseData,
-      hasProfileData: !!profileData,
-      hasProfileUser: !!profileData?.profileUser,
-      profileUserKeys: profileData?.profileUser
-        ? Object.keys(profileData.profileUser)
-        : "none",
-    });
-
-    console.log(
-      `✅ SSR CACHE: Profile ${usernameOrId} data fetched via API route in ${
-        Date.now() - startTime
-      }ms`
-    );
-
-    return profileData as ProfileData;
-  } catch (error) {
-    console.error("Error fetching profile data:", error);
-    throw new Error("Failed to fetch profile data");
-  }
-}
-
 export default async function UserProfilePage({
   params,
 }: UserProfilePageProps) {
@@ -158,11 +50,13 @@ export default async function UserProfilePage({
   const authUser = await getAuthUser();
   const currentUser = authUser ? await getUserProfile(authUser.id) : null;
 
-  // Fetch profile data using cached API route
+  // Fetch profile data using server actions
   let profileData: ProfileData | null = null;
 
   try {
-    profileData = await getProfileDataSSR(usernameOrId, currentUser?.id);
+    profileData = await getProfileData(usernameOrId, currentUser?.id);
+    // Set currentUser in the profile data
+    profileData.currentUser = currentUser;
   } catch (error) {
     console.error("Failed to fetch profile data on server:", error);
     // Return error state
@@ -183,7 +77,7 @@ export default async function UserProfilePage({
   const isOwnProfile = currentUser?.id === profileData?.profileUser?.id;
 
   if (currentUser && !isOwnProfile) {
-    leaderClubsData = await getLeaderClubsDataSSR(currentUser.id);
+    leaderClubsData = await getLeaderClubsData(currentUser.id);
   }
 
   return (
