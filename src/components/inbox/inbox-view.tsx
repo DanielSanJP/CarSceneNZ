@@ -10,6 +10,11 @@ import { Check, X, Clock, Users } from "lucide-react";
 import Link from "next/link";
 import type { InboxMessage } from "@/types/inbox";
 import { toast } from "sonner";
+import {
+  handleJoinRequest as handleJoinRequestAction,
+  handleClubInvitation as handleClubInvitationAction,
+} from "@/lib/actions";
+import { useRealtimeContext } from "@/components/providers/realtime-provider";
 
 // Helper function to format relative time
 function getRelativeTime(date: string | Date): string {
@@ -72,44 +77,46 @@ function InboxViewComponent({
     null
   );
 
-  // Local state for real-time updates - start with server data
-  const [messages, setMessages] = useState<InboxMessage[]>(initialMessages);
+  // Use RealtimeProvider as single source of truth (no local state needed)
 
-  // Update local state when server data changes (on page refresh/navigation)
+  // Use the enhanced RealtimeProvider for messages (no separate subscription needed)
+  const {
+    messages: realtimeMessages,
+    markAllAsRead,
+    removeMessage,
+  } = useRealtimeContext();
+
+  // Use initialMessages if realtimeMessages is empty (first load scenario)
+  const messages =
+    realtimeMessages.length > 0 ? realtimeMessages : initialMessages;
+
+  // Mark inbox as read when on inbox page (initial load and new messages)
   useEffect(() => {
-    setMessages(initialMessages);
-  }, [initialMessages]);
+    // Check if there are any unread messages before calling the server action
+    const hasUnreadMessages = messages.some((msg) => !msg.is_read);
 
-  // Mark inbox as read when component mounts
-  useEffect(() => {
-    // Mark as read via API
-    const markAsRead = async () => {
-      try {
-        console.log("📨 Marking messages as read via API...");
-        const response = await fetch("/api/inbox/mark-read", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+    if (!hasUnreadMessages) {
+      console.log("ℹ️ No unread messages found - skipping mark as read");
+      return;
+    }
 
-        if (!response.ok) {
-          console.error("❌ API response not ok:", response.status);
-          return;
-        }
+    const unreadCount = messages.filter((m) => !m.is_read).length;
+    console.log(
+      `📨 INBOX: Marking ${unreadCount} unread messages as read (user is viewing inbox)...`
+    );
 
-        const data = await response.json();
-        console.log("✅ Marked messages as read via API:", data);
-      } catch (error) {
-        console.error("❌ Error marking as read via API:", error);
-      }
-    };
+    // Add a small delay to avoid conflicts with realtime updates
+    const timeoutId = setTimeout(() => {
+      markAllAsRead();
+    }, 500);
 
-    markAsRead();
-  }, [currentUserId]);
+    return () => clearTimeout(timeoutId);
+  }, [messages, markAllAsRead, currentUserId]);
 
-  // No local realtime subscription needed - RealtimeProvider handles this globally
-  // InboxView just manages local state for the inbox page
+  // Using combined messages (initialMessages + realtimeMessages)
+  console.log(
+    `📡 INBOX: Using ${messages.length} total messages (${realtimeMessages.length} from RealtimeProvider, ${initialMessages.length} initial)`
+  );
 
   // Function to clean message content by removing metadata
   const getCleanMessage = (message: string): string => {
@@ -126,26 +133,29 @@ function InboxViewComponent({
   ) => {
     setProcessingRequest(msg.id);
     try {
-      const response = await fetch("/api/inbox/handle-join-request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messageId: msg.id,
-          action,
-          clubId: msg.club_id || "",
-          senderId: msg.sender_id,
-        }),
-      });
+      const result = await handleJoinRequestAction(
+        msg.id,
+        action,
+        msg.sender_id,
+        msg.club_id || ""
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to handle join request");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to handle join request");
       }
 
       toast.success(`Successfully ${action}ed join request`);
-      // Refresh the page to show updated data
-      window.location.reload();
+
+      // Update RealtimeProvider state based on action
+      if (action === "reject") {
+        // Remove rejected message from RealtimeProvider state (it's deleted on server)
+        await removeMessage(msg.id);
+      } else {
+        // Message will be updated to read via database trigger, no manual state update needed
+        console.log(
+          `📨 Join request approved - database trigger will handle state update`
+        );
+      }
     } catch {
       toast.error(`Failed to ${action} join request`);
     } finally {
@@ -172,21 +182,29 @@ function InboxViewComponent({
 
       console.log("🔍 DEBUG - Sending request data:", requestData);
 
-      const response = await fetch("/api/inbox/handle-club-invitation", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestData),
-      });
+      const result = await handleClubInvitationAction(
+        msg.id,
+        action,
+        msg.club_id || "",
+        msg.sender_id
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to handle club invitation");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to handle club invitation");
       }
 
       toast.success(`Successfully ${action}ed club invitation`);
-      // Refresh the page to show updated data
-      window.location.reload();
+
+      // Update RealtimeProvider state based on action
+      if (action === "reject") {
+        // Remove rejected invitation from RealtimeProvider state (it's deleted on server)
+        await removeMessage(msg.id);
+      } else {
+        // Message will be updated to read via database trigger, no manual state update needed
+        console.log(
+          `📨 Club invitation accepted - database trigger will handle state update`
+        );
+      }
     } catch {
       toast.error(`Failed to ${action} club invitation`);
     } finally {

@@ -8,14 +8,18 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/utils/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { InboxMessage } from "@/types/inbox";
 
 interface RealtimeContextValue {
   unreadCount: number;
+  messages: InboxMessage[];
   isConnected: boolean;
   refreshUnreadCount: () => Promise<void>;
+  refreshMessages: () => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  removeMessage: (messageId: string) => Promise<void>;
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -31,40 +35,61 @@ const debug = (message: string, ...args: unknown[]) => {
   if (isDev) console.log(message, ...args);
 };
 
+// Create stable supabase client
+const supabase = createClient();
+
 export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const pathname = usePathname();
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const supabaseRef = useRef(createClient());
 
-  // Fetch unread count from API
+  // Fetch unread count from server action
   const fetchUnreadCount = useCallback(async (): Promise<number> => {
     if (!userId) return 0;
 
     try {
       debug(`🔢 REALTIME: Fetching unread count for user: ${userId}`);
-      const response = await fetch("/api/inbox/unread-count", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
+      const { getUnreadCount } = await import("@/lib/actions");
+      const result = await getUnreadCount();
 
-      if (!response.ok) {
+      if (!result.success) {
         console.error(
           "❌ REALTIME: Failed to fetch unread count:",
-          response.status
+          result.error
         );
         return 0;
       }
 
-      const data = await response.json();
-      const count = data.count || 0;
-
+      const count = result.count || 0;
       debug(`✅ REALTIME: Unread count for user ${userId}: ${count}`);
       return count;
     } catch (error) {
       console.error("❌ REALTIME: Error fetching unread count:", error);
       return 0;
+    }
+  }, [userId]);
+
+  // Fetch messages from server action
+  const fetchMessages = useCallback(async (): Promise<InboxMessage[]> => {
+    if (!userId) return [];
+
+    try {
+      debug(`📬 REALTIME: Fetching messages for user: ${userId}`);
+      const { getInboxMessages } = await import("@/lib/actions");
+      const result = await getInboxMessages();
+
+      if (!result.success) {
+        console.error("❌ REALTIME: Failed to fetch messages:", result.error);
+        return [];
+      }
+
+      const messageList = result.messages || [];
+      debug(`✅ REALTIME: Messages for user ${userId}: ${messageList.length}`);
+      return messageList as InboxMessage[];
+    } catch (error) {
+      console.error("❌ REALTIME: Error fetching messages:", error);
+      return [];
     }
   }, [userId]);
 
@@ -75,16 +100,64 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
     debug(`🔔 REALTIME: Refreshed unread count to: ${count}`);
   }, [fetchUnreadCount]);
 
-  // Check if current page needs immediate unread count
-  const needsImmediateCount = useCallback((): boolean => {
-    if (!pathname) return false;
-    return (
-      pathname === "/" ||
-      pathname.includes("/inbox") ||
-      pathname.includes("/profile")
-    );
-  }, [pathname]);
+  // Refresh messages and update state
+  const refreshMessages = useCallback(async (): Promise<void> => {
+    const messageList = await fetchMessages();
+    setMessages(messageList);
+    debug(`📬 REALTIME: Refreshed messages to: ${messageList.length}`);
+  }, [fetchMessages]);
 
+  // Mark all messages as read
+  const markAllAsRead = useCallback(async (): Promise<void> => {
+    if (!userId) return;
+
+    try {
+      debug(`📨 REALTIME: Marking all messages as read for user: ${userId}`);
+      const { markAllMessagesAsRead } = await import("@/lib/actions");
+      const result = await markAllMessagesAsRead();
+
+      if (!result.success) {
+        console.error(
+          "❌ REALTIME: Failed to mark messages as read:",
+          result.error
+        );
+        return;
+      }
+
+      debug(`✅ REALTIME: Marked ${result.markedCount || 0} messages as read`);
+
+      // Update local state
+      setMessages((prev) => prev.map((msg) => ({ ...msg, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("❌ REALTIME: Error marking messages as read:", error);
+    }
+  }, [userId]);
+
+  // Remove a message from local state (for deletions like rejections)
+  const removeMessage = useCallback(
+    async (messageId: string): Promise<void> => {
+      debug(`🗑️ REALTIME: Removing message ${messageId} from local state`);
+
+      setMessages((prev) => {
+        const messageToRemove = prev.find((msg) => msg.id === messageId);
+        const filteredMessages = prev.filter((msg) => msg.id !== messageId);
+
+        // If the removed message was unread, decrement unread count
+        if (messageToRemove && !messageToRemove.is_read) {
+          setUnreadCount((prevCount) => Math.max(0, prevCount - 1));
+        }
+
+        debug(
+          `✅ REALTIME: Removed message ${messageId}, ${filteredMessages.length} messages remaining`
+        );
+        return filteredMessages;
+      });
+    },
+    []
+  );
+
+  // Simple subscription setup - only runs when userId changes
   useEffect(() => {
     if (!userId) {
       debug("⚠️ REALTIME: No userId provided, skipping setup");
@@ -93,162 +166,114 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
       return;
     }
 
-    debug(`🚀 REALTIME: Setting up for user: ${userId}`);
-    debug(`🚀 REALTIME: Current pathname: ${pathname}`);
+    debug(`🚀 REALTIME: Setting up realtime for user: ${userId}`);
 
-    let mounted = true;
-    const supabase = supabaseRef.current;
+    // Load initial data
+    const loadInitialData = async () => {
+      const count = await fetchUnreadCount();
+      setUnreadCount(count);
+      debug(`🔔 REALTIME: Initial unread count: ${count}`);
 
-    const setupRealtime = async () => {
-      try {
-        // 1. Load initial unread count
-        if (needsImmediateCount()) {
-          debug(
-            "📱 REALTIME: Loading unread count immediately (critical page)"
-          );
-          await refreshUnreadCount();
-        } else {
-          debug("⏳ REALTIME: Deferring unread count load (non-critical page)");
-          // Load in background for non-critical pages
-          setTimeout(async () => {
-            if (mounted) {
-              debug("🔄 REALTIME: Loading unread count in background");
-              await refreshUnreadCount();
-            }
-          }, 1000);
-        }
-
-        // 2. Set up Supabase Realtime subscription
-        debug("🔌 REALTIME: Setting up Supabase Realtime subscription...");
-
-        // Clean up existing channel
-        if (channelRef.current) {
-          debug("🧹 REALTIME: Cleaning up existing channel");
-          supabase.removeChannel(channelRef.current);
-          channelRef.current = null;
-        }
-
-        // Get current session for authentication
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session) {
-          console.error(
-            "❌ REALTIME: No active session - cannot subscribe to realtime"
-          );
-          return;
-        }
-
-        debug(
-          "🔑 REALTIME: Active session found, setting up authenticated channel"
-        );
-
-        // Create channel with proper authentication
-        const channelName = `user:${userId}:unread`;
-        debug(`📡 REALTIME: Creating channel: ${channelName}`);
-
-        const channel = supabase
-          .channel(channelName, {
-            config: {
-              broadcast: {
-                self: false, // Don't receive our own messages
-              },
-            },
-          })
-          .on("broadcast", { event: "unread_count_changed" }, (payload) => {
-            debug("📨 REALTIME: Received broadcast event!");
-            debug(
-              "📨 REALTIME: Full payload:",
-              JSON.stringify(payload, null, 2)
-            );
-
-            if (payload && payload.payload) {
-              const eventData = payload.payload;
-              debug(
-                "📨 REALTIME: Event data:",
-                JSON.stringify(eventData, null, 2)
-              );
-
-              // Check if this event is for the current user
-              if (eventData.userId === userId) {
-                debug(
-                  "✅ REALTIME: Event is for current user - refreshing count!"
-                );
-                debug("📨 REALTIME: Action:", eventData.action);
-                debug("📨 REALTIME: Message Type:", eventData.messageType);
-
-                // Refresh the unread count
-                if (mounted) {
-                  refreshUnreadCount();
-                }
-              } else {
-                debug(
-                  `⚠️ REALTIME: Event is for different user: expected ${userId}, got ${eventData.userId}`
-                );
-              }
-            } else {
-              debug("⚠️ REALTIME: Received event with no payload");
-            }
-          })
-          .subscribe((status, err) => {
-            debug(`📡 REALTIME: Subscription status: ${status}`);
-
-            if (err) {
-              console.error("❌ REALTIME: Subscription error:", err);
-            }
-
-            if (status === "SUBSCRIBED") {
-              debug(
-                "✅ REALTIME: Successfully subscribed to realtime channel!"
-              );
-              debug(`✅ REALTIME: Channel: ${channelName}`);
-              debug("✅ REALTIME: Listening for: unread_count_changed");
-
-              if (mounted) {
-                setIsConnected(true);
-              }
-            } else if (status === "CLOSED") {
-              debug("❌ REALTIME: Channel subscription closed");
-              if (mounted) {
-                setIsConnected(false);
-              }
-            } else if (status === "CHANNEL_ERROR") {
-              console.error("❌ REALTIME: Channel error");
-              if (mounted) {
-                setIsConnected(false);
-              }
-            }
-          });
-
-        channelRef.current = channel;
-      } catch (error) {
-        console.error("❌ REALTIME: Setup error:", error);
-        setIsConnected(false);
-      }
+      const messageList = await fetchMessages();
+      setMessages(messageList);
+      debug(`📬 REALTIME: Initial messages loaded: ${messageList.length}`);
     };
 
-    setupRealtime();
+    loadInitialData();
+
+    // Create channel - simple naming convention
+    const channelName = `user:${userId}:unread`;
+    debug(`📡 REALTIME: Creating channel: ${channelName}`);
+
+    const channel = supabase
+      .channel(channelName, {
+        config: {
+          broadcast: {
+            self: false, // Don't receive our own messages
+          },
+        },
+      })
+      .on("broadcast", { event: "unread_count_changed" }, (payload) => {
+        debug("📨 REALTIME: Received broadcast event!");
+        debug("📨 REALTIME: Payload:", payload);
+
+        if (payload && payload.payload) {
+          const eventData = payload.payload;
+
+          // Check if this event is for the current user
+          if (eventData.userId === userId) {
+            debug("✅ REALTIME: Event is for current user");
+
+            // Use database count directly from trigger (bulletproof approach)
+            if (eventData.unreadCount !== undefined) {
+              setUnreadCount(eventData.unreadCount);
+              debug(
+                `🔔 REALTIME: Updated unread count to: ${eventData.unreadCount}`
+              );
+            }
+
+            // Handle different actions
+            if (eventData.action === "new_message") {
+              refreshMessages(); // Refresh messages list
+            } else if (eventData.action === "message_read") {
+              // Update specific message
+              if (eventData.messageId) {
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === eventData.messageId
+                      ? { ...msg, is_read: true }
+                      : msg
+                  )
+                );
+              }
+            } else if (eventData.action === "message_deleted") {
+              // Remove deleted message
+              setMessages((prev) =>
+                prev.filter((msg) => msg.id !== eventData.messageId)
+              );
+            }
+          }
+        }
+      })
+      .subscribe((status) => {
+        debug(`📡 REALTIME: Subscription status: ${status}`);
+
+        if (status === "SUBSCRIBED") {
+          setIsConnected(true);
+          debug("✅ REALTIME: Successfully connected!");
+        } else if (status === "CLOSED") {
+          setIsConnected(false);
+          debug("❌ REALTIME: Connection closed");
+        } else if (status === "CHANNEL_ERROR") {
+          setIsConnected(false);
+          console.error("❌ REALTIME: Channel error");
+        } else if (status === "TIMED_OUT") {
+          setIsConnected(false);
+          console.error("⏰ REALTIME: Connection timed out");
+        }
+      });
+
+    channelRef.current = channel;
 
     // Cleanup function
     return () => {
-      debug("🧹 REALTIME: Cleaning up realtime provider");
-      mounted = false;
-
+      debug("🧹 REALTIME: Cleaning up subscription");
       if (channelRef.current) {
-        debug("🧹 REALTIME: Unsubscribing from channel");
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-
       setIsConnected(false);
     };
-  }, [userId, pathname, refreshUnreadCount, needsImmediateCount]);
+  }, [userId, fetchUnreadCount, fetchMessages, refreshMessages]); // Include all dependencies
 
   const value: RealtimeContextValue = {
     unreadCount,
+    messages,
     isConnected,
     refreshUnreadCount,
+    refreshMessages,
+    markAllAsRead,
+    removeMessage,
   };
 
   return (

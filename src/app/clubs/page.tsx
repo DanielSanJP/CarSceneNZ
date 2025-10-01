@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { uploadClubImage } from "@/lib/utils/image-upload";
 import { createClient } from "@/lib/utils/supabase/server";
+import { joinClubAction, sendJoinRequest } from "@/lib/actions";
 import { Club } from "@/types";
 import type { ClubsGalleryData } from "@/types/club";
 // Force dynamic rendering - don't try to build statically
@@ -304,66 +305,6 @@ async function createClub(clubData: {
   }
 }
 
-async function joinClub(
-  clubId: string,
-  userId: string
-): Promise<{ success: boolean; message?: string }> {
-  try {
-    const supabase = await createClient();
-
-    // Check if already a member
-    const { data: existingMember, error: checkError } = await supabase
-      .from("club_members")
-      .select("id")
-      .eq("club_id", clubId)
-      .eq("user_id", userId)
-      .single();
-
-    if (checkError && checkError.code !== "PGRST116") {
-      console.error("Error checking existing membership:", checkError);
-      return { success: false, message: "Failed to check membership status" };
-    }
-
-    if (existingMember) {
-      return { success: false, message: "Already a member of this club" };
-    }
-
-    // Add user to club
-    const { error: insertError } = await supabase.from("club_members").insert({
-      club_id: clubId,
-      user_id: userId,
-      role: "member",
-    });
-
-    if (insertError) {
-      console.error("Error joining club:", insertError);
-      return { success: false, message: "Failed to join club" };
-    }
-
-    // Force revalidation of club pages and related data after successful join
-    try {
-      // Revalidate the specific club page
-      revalidatePath(`/clubs/${clubId}`);
-      // Revalidate the user's clubs page
-      revalidatePath("/clubs/my-clubs");
-      // Revalidate general clubs page
-      revalidatePath("/clubs");
-
-      console.log(
-        `🔄 Cache invalidated for club ${clubId} and user ${userId} after join`
-      );
-    } catch (revalidateError) {
-      console.error("❌ Error during cache revalidation:", revalidateError);
-      // Don't fail the request if revalidation fails
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error in joinClub:", error);
-    return { success: false, message: "Failed to join club" };
-  }
-}
-
 async function uploadClubImageServerAction(formData: FormData) {
   "use server";
 
@@ -384,137 +325,6 @@ async function uploadClubImageServerAction(formData: FormData) {
       url: null,
       error: error instanceof Error ? error.message : "Upload failed",
     };
-  }
-}
-
-// Server action wrapper for joining a club
-async function joinClubAction(
-  clubId: string,
-  userId: string
-): Promise<{ success: boolean; message?: string }> {
-  "use server";
-  return await joinClub(clubId, userId);
-}
-
-// Server action that directly handles club join requests
-async function sendClubJoinRequestAction(
-  clubId: string,
-  message?: string
-): Promise<{ success: boolean; error?: string }> {
-  "use server";
-
-  try {
-    const authUser = await requireAuth();
-    const currentUser = await getUserProfile(authUser.id);
-
-    if (!currentUser) {
-      return { success: false, error: "Failed to load user profile" };
-    }
-
-    console.log("📥 Join request received:", {
-      clubId,
-      message,
-      clubIdType: typeof clubId,
-    });
-
-    if (!clubId) {
-      return { success: false, error: "Club ID is required" };
-    }
-
-    const supabase = await createClient();
-
-    // Check if club exists and get its type
-    const { data: club, error: clubError } = await supabase
-      .from("clubs")
-      .select("id, name, leader_id, club_type")
-      .eq("id", clubId)
-      .single();
-
-    if (clubError || !club) {
-      return { success: false, error: "Club not found" };
-    }
-
-    // Check if user is already a member
-    const { data: existingMember } = await supabase
-      .from("club_members")
-      .select("id")
-      .eq("club_id", clubId)
-      .eq("user_id", currentUser.id)
-      .single();
-
-    if (existingMember) {
-      return { success: false, error: "You are already a member of this club" };
-    }
-
-    // Check if user already has a pending request
-    const { data: existingRequest } = await supabase
-      .from("messages")
-      .select("id")
-      .eq("club_id", clubId)
-      .eq("sender_id", currentUser.id)
-      .eq("message_type", "club_join_request")
-      .eq("is_read", false)
-      .single();
-
-    if (existingRequest) {
-      return {
-        success: false,
-        error: "You already have a pending request to join this club",
-      };
-    }
-
-    // Validate club allows join requests
-    if (club.club_type === "closed") {
-      return {
-        success: false,
-        error: "This club is closed and not accepting new members",
-      };
-    }
-
-    if (club.club_type === "open") {
-      return {
-        success: false,
-        error:
-          "This is an open club. You can join directly without requesting permission.",
-      };
-    }
-
-    // For invite-only clubs, send a request to club leaders
-    if (club.club_type === "invite") {
-      const messageText =
-        message ||
-        `${currentUser.username} wants to join your club "${club.name}"`;
-
-      const { error: messageError } = await supabase.from("messages").insert({
-        sender_id: currentUser.id,
-        receiver_id: club.leader_id,
-        subject: `Join Request for ${club.name}`,
-        message: messageText,
-        message_type: "club_join_request",
-        club_id: clubId,
-        is_read: false,
-        created_at: new Date().toISOString(),
-      });
-
-      if (messageError) {
-        console.error("❌ Error sending join request message:", messageError);
-        return { success: false, error: "Failed to send join request" };
-      }
-
-      // Note: Database trigger will handle real-time notifications
-
-      console.log(`✅ Join request sent for invite-only club ${club.name}`);
-
-      // Only revalidate inbox since that's where the message will appear
-      revalidatePath("/inbox");
-
-      return { success: true };
-    }
-
-    return { success: false, error: "Invalid club type" };
-  } catch (error) {
-    console.error("Error sending join request:", error);
-    return { success: false, error: "Failed to send join request" };
   }
 }
 
@@ -679,7 +489,7 @@ export default async function ClubsPage({
       createClubAction={createClubAction}
       uploadAction={uploadClubImageServerAction}
       joinClubAction={joinClubAction}
-      sendClubJoinRequestAction={sendClubJoinRequestAction}
+      sendClubJoinRequestAction={sendJoinRequest}
     />
   );
 }

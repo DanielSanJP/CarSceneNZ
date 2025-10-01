@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import { manageMemberAction } from "@/lib/actions/club-actions";
+import { sendClubMail, sendJoinRequest } from "@/lib/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -145,41 +146,31 @@ export const ClubDetailView = memo(function ClubDetailView({
     }
   };
 
-  // API-based club mail function
+  // Server action-based club mail function
   const sendClubMailAction = async (
     mailData: ClubMailData
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch("/api/clubs/mail", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(mailData),
-      });
-
-      return await response.json();
+      const result = await sendClubMail(
+        mailData.club_id,
+        mailData.subject,
+        mailData.message
+      );
+      return result;
     } catch (error) {
       console.error("Error sending club mail:", error);
       return { success: false, error: "Failed to send club mail" };
     }
   };
 
-  // API-based join request function
+  // Server action-based join request function
   const sendClubJoinRequestAction = async (
     clubId: string,
     message?: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch("/api/clubs/join-request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ clubId, message }),
-      });
-
-      return await response.json();
+      const result = await sendJoinRequest(clubId, message);
+      return result;
     } catch (error) {
       console.error("Error sending join request:", error);
       return { success: false, error: "Failed to send join request" };
@@ -208,7 +199,9 @@ export const ClubDetailView = memo(function ClubDetailView({
           toast.success("Leadership transferred successfully");
         }
       } else {
-        toast.error(result.error || "Failed to manage member");
+        toast.error(
+          "error" in result ? result.error : "Failed to manage member"
+        );
       }
 
       return result;

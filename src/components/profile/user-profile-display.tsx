@@ -3,6 +3,7 @@
 import { useOptimistic, useTransition } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
+import { sendClubInvitation } from "@/lib/actions";
 import type { ProfileData, LeaderClubsData, User } from "@/types/user";
 import { ProfileHeader } from "./profile-header";
 import { ProfileStats } from "./profile-stats";
@@ -84,38 +85,15 @@ export function UserProfileDisplay({
     );
   }
 
-  // API wrapper for club invitations
+  // Server action wrapper for club invitations
   const sendClubInvitationAction = async (
     targetUserId: string,
     clubId: string,
     message?: string
   ) => {
     try {
-      const response = await fetch("/api/clubs/invite", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          targetUserId,
-          clubId,
-          message,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        return {
-          success: false,
-          error: error.error || "Failed to send club invitation",
-        };
-      }
-
-      const result = await response.json();
-      return {
-        success: true,
-        ...result,
-      };
+      const result = await sendClubInvitation(targetUserId, clubId, message);
+      return result;
     } catch (error) {
       console.error("Club invitation error:", error);
       return {

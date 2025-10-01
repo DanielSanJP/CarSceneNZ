@@ -5,6 +5,7 @@ export interface Message {
   subject?: string;
   message: string;
   message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'club_invitation' | 'club_notification' | 'system';
+  is_read: boolean;
   created_at: string;
   updated_at: string;
   sender?: {
