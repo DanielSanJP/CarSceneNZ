@@ -194,11 +194,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         <Link
                           href={item.url}
                           onClick={handleLinkClick}
-                          className="relative"
+                          className="flex items-center justify-between w-full"
                         >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                          {item.title === "Inbox" && <InboxUnreadBadge />}
+                          <div className="flex items-center">
+                            <item.icon className="h-4 w-4 mr-2" />
+                            <span>{item.title}</span>
+                          </div>
+                          {item.title === "Inbox" && <InboxUnreadBadge variant="inline" />}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

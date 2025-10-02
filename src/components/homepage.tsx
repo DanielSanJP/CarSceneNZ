@@ -9,7 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Car as CarIcon, Users, Trophy, Star } from "lucide-react";
+import { Calendar, Car as CarIcon, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Event } from "@/types/event";
@@ -293,73 +293,6 @@ export function Homepage({ homeData }: HomepageProps) {
           )}
         </div>
       </section>
-
-      {/* Features Section */}
-
-      <div className="text-center mb-12">
-        <h3 className="text-3xl font-bold text-foreground mb-4">
-          Everything You Need
-        </h3>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          From finding the next car meet to showcasing your build, Car Scene NZ
-          has all the tools to connect with the community.
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="text-center">
-          <CardHeader>
-            <Calendar className="h-12 w-12 text-primary mx-auto mb-4" />
-            <CardTitle>Find Events</CardTitle>
-            <CardDescription>
-              Discover car meets and events happening across New Zealand
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="text-center">
-          <CardHeader>
-            <CarIcon className="h-12 w-12 text-primary mx-auto mb-4" />
-            <CardTitle>Showcase Cars</CardTitle>
-            <CardDescription>
-              Build your virtual garage and show off your rides to the community
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="text-center">
-          <CardHeader>
-            <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-            <CardTitle>Join Clubs</CardTitle>
-            <CardDescription>
-              Connect with like-minded enthusiasts and build lasting friendships
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="text-center">
-          <CardHeader>
-            <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-            <CardTitle>Compete</CardTitle>
-            <CardDescription>
-              Participate in leaderboards and showcase the best builds in NZ
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t pt-8">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <CarIcon className="h-6 w-6" />
-            <span className="font-semibold">Car Scene NZ</span>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            © 2025 Car Scene NZ. Connecting the car community.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

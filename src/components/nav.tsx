@@ -133,10 +133,15 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/inbox" className="cursor-pointer relative">
-            <Mail className="mr-2 h-4 w-4" />
-            <span>Inbox</span>
-            <InboxUnreadBadge />
+          <Link
+            href="/inbox"
+            className="cursor-pointer flex items-center justify-between w-full"
+          >
+            <div className="flex items-center">
+              <Mail className="mr-2 h-4 w-4" />
+              <span>Inbox</span>
+            </div>
+            <InboxUnreadBadge variant="inline" />
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -257,42 +262,6 @@ export function Navigation({ user }: { user: UserType | null }) {
                 {/* Authenticated only navigation */}
                 {user && (
                   <>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink asChild>
-                        <Link
-                          href="/garage/my-garage"
-                          className="flex flex-row items-center gap-2"
-                          data-active={isActivePath("/garage/my-garage")}
-                        >
-                          <Car className="h-4 w-4" />
-                          <span>My Garage</span>
-                        </Link>
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink asChild>
-                        <Link
-                          href="/events/my-events"
-                          className="flex flex-row items-center gap-2"
-                          data-active={isActivePath("/events/my-events")}
-                        >
-                          <Calendar className="h-4 w-4" />
-                          <span>My Events</span>
-                        </Link>
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink asChild>
-                        <Link
-                          href="/clubs/my-clubs"
-                          className="flex flex-row items-center gap-2"
-                          data-active={isActivePath("/clubs/my-clubs")}
-                        >
-                          <Users className="h-4 w-4" />
-                          <span>My Clubs</span>
-                        </Link>
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
                     <NavigationMenuItem>
                       <NavigationMenuLink asChild>
                         <Link

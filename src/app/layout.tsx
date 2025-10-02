@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Navigation } from "@/components/nav";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Footer } from "@/components/footer";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import {
@@ -58,11 +59,12 @@ export default async function RootLayout({
                   <SidebarInset>
                     <Navigation user={user} />
                     <div className="flex-1 flex flex-col min-h-0">
-                      <div className="min-h-screen bg-background">
+                      <div className="flex-1 bg-background">
                         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                           <div className="max-w-7xl mx-auto">{children}</div>
                         </div>
                       </div>
+                      <Footer />
                     </div>
                   </SidebarInset>
                 </SidebarProvider>
