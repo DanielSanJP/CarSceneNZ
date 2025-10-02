@@ -200,7 +200,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
                             <item.icon className="h-4 w-4 mr-2" />
                             <span>{item.title}</span>
                           </div>
-                          {item.title === "Inbox" && <InboxUnreadBadge variant="inline" />}
+                          {item.title === "Inbox" && (
+                            <InboxUnreadBadge variant="inline" />
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
