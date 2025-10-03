@@ -34,7 +34,9 @@ export default function GoogleAd({
     try {
       // Only push ad if it hasn't been pushed yet
       if (adRef.current && typeof window !== "undefined") {
-        const adsbygoogle = (window as any).adsbygoogle || [];
+        const adsbygoogle =
+          (window as Window & typeof globalThis as { adsbygoogle?: unknown[] })
+            .adsbygoogle || [];
 
         // Check if ad is already loaded
         if (adRef.current.dataset.adsbygoogleStatus !== "done") {
