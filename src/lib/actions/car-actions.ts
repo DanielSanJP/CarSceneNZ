@@ -20,8 +20,6 @@ export async function likeCarAction(carId: string) {
 
     const supabase = await createClient();
 
-    console.log(`🔄 Server Action: Toggling like for car ${carId}, user ${authUser.id}`);
-
     // 1. Check if user already liked this car
     const { data: existingLike, error: checkError } = await supabase
       .from('car_likes')
@@ -50,7 +48,6 @@ export async function likeCarAction(carId: string) {
         return { success: false, error: 'Failed to remove like' };
       }
 
-      console.log(`👎 Removed like for car ${carId}`);
       isLiked = false;
     } else {
       // Like: Add the like
@@ -66,7 +63,6 @@ export async function likeCarAction(carId: string) {
         return { success: false, error: 'Failed to add like' };
       }
 
-      console.log(`👍 Added like for car ${carId}`);
       isLiked = true;
     }
 
@@ -94,8 +90,6 @@ export async function likeCarAction(carId: string) {
       return { success: false, error: 'Failed to update car likes count' };
     }
 
-    console.log(`✅ Updated car ${carId} total_likes to ${newLikeCount}`);
-
     // Note: Club total_likes will be automatically calculated by the club_stats view
     // No need to manually update club totals anymore
 
@@ -115,8 +109,6 @@ export async function likeCarAction(carId: string) {
     revalidateTag('clubs'); // Invalidate clubs cache since rankings may change
     revalidateTag('leaderboards'); // Invalidate leaderboards cache since club rankings may change
     revalidateTag(`user-${authUser.id}-likes`);
-    
-    console.log(`🔄 Server Action: Cache invalidated for car ${carId} like toggle`);
 
     return { 
       success: true, 
@@ -257,9 +249,6 @@ export async function deleteCarAction(carId: string): Promise<boolean> {
     if (carData?.images && carData.images.length > 0) {
       try {
         const result = await deleteMultipleCarImagesAction(carData.images);
-        console.log(
-          `🗑️ Car Delete: Cleaned up ${result.successCount}/${carData.images.length} images`
-        );
         if (result.error) {
           console.warn("Warning during image cleanup:", result.error);
         }
@@ -277,9 +266,6 @@ export async function deleteCarAction(carId: string): Promise<boolean> {
       return false;
     }
 
-    console.log(
-      `✅ Car Delete: Successfully deleted car ${carId} and its images`
-    );
     return true;
   } catch (error) {
     console.error("Error deleting car:", error);

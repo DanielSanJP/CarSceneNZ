@@ -4,7 +4,7 @@ import { useState, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { manageMemberAction } from "@/lib/actions/club-actions";
+import { manageMemberAction } from "@/lib/actions/clubs/club-management";
 import { sendClubMail, sendJoinRequest } from "@/lib/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,10 @@ import { SendClubMail } from "@/components/clubs/send-club-mail";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
 import type { ClubMailData } from "@/types/inbox";
 import type { ClubDetailData } from "@/types/club";
-import { joinClubAction, leaveClubAction } from "@/lib/actions/club-actions";
+import {
+  joinClubAction,
+  leaveClubAction,
+} from "@/lib/actions/clubs/club-membership";
 
 interface ClubDetailViewProps {
   currentUser: User | null;
@@ -521,8 +524,8 @@ export const ClubDetailView = memo(function ClubDetailView({
                       isLeader && memberCount > 1
                         ? "Click to see how to leave this club"
                         : isLeader && memberCount === 1
-                        ? "Leave and delete club (you are the only member)"
-                        : undefined
+                          ? "Leave and delete club (you are the only member)"
+                          : undefined
                     }
                   >
                     {isLeaving ? (
@@ -566,8 +569,8 @@ export const ClubDetailView = memo(function ClubDetailView({
                           {isLeaving
                             ? "Leaving..."
                             : isLeader && memberCount === 1
-                            ? "Delete Club & Leave"
-                            : "Leave Club"}
+                              ? "Delete Club & Leave"
+                              : "Leave Club"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>

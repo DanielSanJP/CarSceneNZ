@@ -7,8 +7,6 @@ export const revalidate = 300; // 5 minutes
 
 async function getSearchData() {
   try {
-    console.log(`🔍 Search Data: Fetching all searchable data directly...`);
-
     const supabase = await createClient();
 
     // Fetch cars (public data only)
@@ -125,10 +123,6 @@ async function getSearchData() {
       events: transformedEvents,
       clubs: clubs || [],
     };
-
-    console.log(
-      `✅ Search Data: Fetched ${searchData.cars.length} cars, ${searchData.users.length} users, ${searchData.events.length} events, ${searchData.clubs.length} clubs`
-    );
 
     return searchData;
   } catch (error) {

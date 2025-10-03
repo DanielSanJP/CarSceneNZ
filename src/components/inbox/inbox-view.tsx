@@ -96,14 +96,8 @@ function InboxViewComponent({
     const hasUnreadMessages = messages.some((msg) => !msg.is_read);
 
     if (!hasUnreadMessages) {
-      console.log("ℹ️ No unread messages found - skipping mark as read");
       return;
     }
-
-    const unreadCount = messages.filter((m) => !m.is_read).length;
-    console.log(
-      `📨 INBOX: Marking ${unreadCount} unread messages as read (user is viewing inbox)...`
-    );
 
     // Add a small delay to avoid conflicts with realtime updates
     const timeoutId = setTimeout(() => {
@@ -169,19 +163,6 @@ function InboxViewComponent({
   ) => {
     setProcessingRequest(msg.id);
     try {
-      console.log("🔍 DEBUG - Message object:", msg);
-      console.log("🔍 DEBUG - Message club_id:", msg.club_id);
-      console.log("🔍 DEBUG - Message sender_id:", msg.sender_id);
-
-      const requestData = {
-        messageId: msg.id,
-        action,
-        clubId: msg.club_id || "",
-        inviterId: msg.sender_id,
-      };
-
-      console.log("🔍 DEBUG - Sending request data:", requestData);
-
       const result = await handleClubInvitationAction(
         msg.id,
         action,

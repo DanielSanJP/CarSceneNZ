@@ -23,13 +23,13 @@ export default async function InboxPage() {
 
     console.log(
       `✅ Server: Retrieved ${
-        result.messages?.length || 0
+        result.data?.length || 0
       } messages via server action`
     );
 
     return (
       <InboxView
-        initialMessages={result.messages as InboxMessage[]}
+        initialMessages={result.data as InboxMessage[]}
         currentUserId={authUser.id}
       />
     );

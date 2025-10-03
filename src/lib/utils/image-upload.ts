@@ -94,26 +94,15 @@ function generateFileName(options: UploadOptions): string {
  */
 export async function uploadImage(options: UploadOptions): Promise<UploadResult> {
   try {
-    console.log(`Starting ${options.bucket} image upload for ${options.resourceId}`)
-    console.log('File details:', { 
-      name: options.file.name, 
-      size: options.file.size, 
-      type: options.file.type 
-    })
-    
     const supabase = await createClient()
     const fileName = generateFileName(options)
-    console.log('Generated filename:', fileName)
     
     // Remove existing files only if explicitly replacing all images
     // For adding images to existing cars, we should NOT remove existing files
     if (!options.isTemp && options.fileIndex === 0) {
       // Only remove existing files when starting fresh (fileIndex === 0)
       // This preserves existing images when adding new ones
-      console.log('Preserving existing images - not removing files')
     }
-    
-    console.log('Starting file upload...')
     
     // Upload the new file
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -122,10 +111,6 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
         cacheControl: '3600',
         upsert: true // Allow overwriting existing files
       })
-    
-    console.log('Upload operation completed')
-    console.log('Upload data:', uploadData)
-    console.log('Upload error:', uploadError)
     
     if (uploadError) {
       console.error(`${options.bucket} image upload error:`, uploadError)
@@ -143,14 +128,10 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
       }
     }
     
-    console.log('Upload successful, getting public URL...')
-    
     // Get public URL
     const { data: urlData } = supabase.storage
       .from(options.bucket)
       .getPublicUrl(fileName)
-    
-    console.log('Public URL data:', urlData)
     
     if (!urlData?.publicUrl) {
       console.error('Failed to get public URL')
@@ -162,7 +143,6 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
     
     // Add cache-busting parameter to force browser to reload the image
     const cacheBustingUrl = `${urlData.publicUrl}?v=${Date.now()}`
-    console.log('Cache-busting URL:', cacheBustingUrl)
     
     return {
       url: cacheBustingUrl,
@@ -207,7 +187,6 @@ export async function uploadMultipleImages(
       .filter(result => result.url !== null)
       .map(result => result.url!)
     
-    console.log(`All uploads completed. Successful URLs: ${successfulUrls.length}/${files.length}`)
     return successfulUrls
   } catch (error) {
     console.error(`Error uploading multiple ${bucket} images:`, error)
@@ -224,8 +203,6 @@ export async function moveFromTemp(
   bucket: StorageBucket
 ): Promise<string[]> {
   try {
-    console.log(`Moving ${bucket} files from temp ${tempId} to final ${finalId}`)
-    
     const supabase = await createClient()
     
     // List all files with the temp ID
@@ -264,7 +241,6 @@ export async function moveFromTemp(
       }
     }
     
-    console.log(`Successfully moved ${movedUrls.length} files`)
     return movedUrls
   } catch (error) {
     console.error(`Error moving files from temp:`, error)
@@ -280,8 +256,6 @@ export async function deleteResourceImages(
   bucket: StorageBucket
 ): Promise<boolean> {
   try {
-    console.log(`Deleting all ${bucket} images for ${resourceId}`)
-    
     const supabase = await createClient()
     
     // List all files for this resource
@@ -290,7 +264,6 @@ export async function deleteResourceImages(
       .list('', { search: resourceId })
     
     if (listError || !files || files.length === 0) {
-      console.log(`No files found for ${resourceId} or error:`, listError)
       return true
     }
     
@@ -305,7 +278,6 @@ export async function deleteResourceImages(
       return false
     }
     
-    console.log(`Successfully deleted ${filesToDelete.length} files for ${resourceId}`)
     return true
   } catch (error) {
     console.error(`Error deleting ${bucket} images for ${resourceId}:`, error)

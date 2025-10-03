@@ -11,8 +11,6 @@ export async function deleteCarImageAction(imageUrl: string): Promise<{ success:
       return { success: false, error: 'Image URL is required' }
     }
 
-    console.log('🗑️ Deleting car image from storage:', imageUrl)
-
     // Extract the file path from the URL
     // URL format: https://[project].supabase.co/storage/v1/object/public/cars/filename.jpg
     const urlParts = imageUrl.split('/storage/v1/object/public/cars/')
@@ -23,7 +21,6 @@ export async function deleteCarImageAction(imageUrl: string): Promise<{ success:
 
     // Get the filename (remove cache-busting parameters)
     const filename = urlParts[1].split('?')[0]
-    console.log('📁 Extracted filename:', filename)
 
     const supabase = await createClient()
 
@@ -37,7 +34,6 @@ export async function deleteCarImageAction(imageUrl: string): Promise<{ success:
       return { success: false, error: error.message }
     }
 
-    console.log('✅ Successfully deleted file from storage:', filename)
     return { success: true, error: null }
 
   } catch (error) {
@@ -62,8 +58,6 @@ export async function deleteMultipleCarImagesAction(imageUrls: string[]): Promis
       return { successCount: 0, failedUrls: [], error: 'No image URLs provided' }
     }
 
-    console.log(`🗑️ Deleting ${imageUrls.length} car images from storage`)
-
     const results = await Promise.allSettled(
       imageUrls.map(url => deleteCarImageAction(url))
     )
@@ -78,8 +72,6 @@ export async function deleteMultipleCarImagesAction(imageUrls: string[]): Promis
         failedUrls.push(imageUrls[index])
       }
     })
-
-    console.log(`✅ Batch delete completed: ${successCount}/${imageUrls.length} successful`)
 
     return {
       successCount,
@@ -106,8 +98,6 @@ export async function cleanupOrphanedCarImagesAction(carId: string, validUrls: s
   error: string | null;
 }> {
   try {
-    console.log(`🧹 Starting cleanup for car ${carId}`)
-
     const supabase = await createClient()
 
     // List all files for this car in storage
@@ -121,7 +111,6 @@ export async function cleanupOrphanedCarImagesAction(carId: string, validUrls: s
     }
 
     if (!files || files.length === 0) {
-      console.log('✅ No files found in storage for car', carId)
       return { cleanedCount: 0, error: null }
     }
 
@@ -137,11 +126,8 @@ export async function cleanupOrphanedCarImagesAction(carId: string, validUrls: s
     )
 
     if (orphanedFiles.length === 0) {
-      console.log('✅ No orphaned files found for car', carId)
       return { cleanedCount: 0, error: null }
     }
-
-    console.log(`🗑️ Found ${orphanedFiles.length} orphaned files to clean up`)
 
     // Delete orphaned files
     const filesToDelete = orphanedFiles.map(file => file.name)
@@ -154,7 +140,6 @@ export async function cleanupOrphanedCarImagesAction(carId: string, validUrls: s
       return { cleanedCount: 0, error: deleteError.message }
     }
 
-    console.log(`✅ Cleaned up ${orphanedFiles.length} orphaned files for car ${carId}`)
     return { cleanedCount: orphanedFiles.length, error: null }
 
   } catch (error) {

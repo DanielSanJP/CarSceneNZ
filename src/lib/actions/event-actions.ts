@@ -18,8 +18,6 @@ export async function toggleEventAttendanceAction(eventId: string, status?: "int
 
     const supabase = await createClient();
 
-    console.log(`🔄 Server Action: Updating attendance for event ${eventId}, user ${authUser.id}, status: ${status || 'toggle'}`);
-
     // 1. Check if user is already attending this event
     const { data: existingAttendance, error: checkError } = await supabase
       .from('event_attendees')
@@ -49,7 +47,6 @@ export async function toggleEventAttendanceAction(eventId: string, status?: "int
           return { success: false, error: 'Failed to leave event' };
         }
 
-        console.log(`👋 User left event ${eventId}`);
         isAttending = false;
       }
     } else {
@@ -68,7 +65,6 @@ export async function toggleEventAttendanceAction(eventId: string, status?: "int
           return { success: false, error: 'Failed to join event' };
         }
 
-        console.log(`🎉 User joined event ${eventId} with status ${status || 'going'}`);
         isAttending = true;
       } else {
         // Update existing attendance status
@@ -82,7 +78,6 @@ export async function toggleEventAttendanceAction(eventId: string, status?: "int
           return { success: false, error: 'Failed to update attendance' };
         }
 
-        console.log(`🔄 Updated event ${eventId} attendance status to ${status || 'going'}`);
         isAttending = true;
       }
     }
@@ -100,8 +95,6 @@ export async function toggleEventAttendanceAction(eventId: string, status?: "int
 
     newAttendeeCount = attendeeCount || 0;
 
-    console.log(`✅ Event ${eventId} attendee count: ${newAttendeeCount}`);
-
     // Server Actions immediately invalidate both Data Cache AND Router Cache
     revalidatePath('/events/[id]', 'page');
     revalidatePath(`/events/${eventId}`);
@@ -116,8 +109,6 @@ export async function toggleEventAttendanceAction(eventId: string, status?: "int
     revalidateTag(`user-${authUser.id}-events`); // Revalidate user-specific events cache
     revalidateTag('my-events'); // Revalidate my-events cache tag
     revalidateTag('home-data'); // Revalidate home data cache tag
-    
-    console.log(`🔄 Server Action: Cache invalidated for event ${eventId} attendance toggle`);
 
     return { 
       success: true, 

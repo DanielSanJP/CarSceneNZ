@@ -84,7 +84,7 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
         return [];
       }
 
-      const messageList = result.messages || [];
+      const messageList = result.data || [];
       debug(`✅ REALTIME: Messages for user ${userId}: ${messageList.length}`);
       return messageList as InboxMessage[];
     } catch (error) {
@@ -191,43 +191,121 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
           broadcast: {
             self: false, // Don't receive our own messages
           },
+          presence: {
+            key: userId,
+          },
         },
       })
+
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_recipients",
+          filter: `recipient_id=eq.${userId}`,
+        },
+        (payload) => {
+          debug("� REALTIME: New message received", payload.new?.message_id);
+          debug("📨 REALTIME: New message received!", payload);
+          refreshUnreadCount();
+          refreshMessages();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "message_recipients",
+          filter: `recipient_id=eq.${userId}`,
+        },
+        (payload) => {
+          debug("� REALTIME: Message updated", payload.new?.message_id);
+          debug("📨 REALTIME: Message updated!", payload);
+          refreshUnreadCount();
+
+          // Update specific message if it was marked as read
+          if (payload.new.is_read && !payload.old.is_read) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === payload.new.message_id
+                  ? { ...msg, is_read: true, read_at: payload.new.read_at }
+                  : msg
+              )
+            );
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "message_recipients",
+          filter: `recipient_id=eq.${userId}`,
+        },
+        (payload) => {
+          debug("� REALTIME: Message deleted", payload.old?.message_id);
+          debug("📨 REALTIME: Message deleted!", payload);
+          refreshUnreadCount();
+
+          // Remove deleted message
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== payload.old.message_id)
+          );
+        }
+      )
       .on("broadcast", { event: "unread_count_changed" }, (payload) => {
-        debug("📨 REALTIME: Received broadcast event!");
-        debug("📨 REALTIME: Payload:", payload);
+        debug("📨 REALTIME: Received broadcast event!", payload);
 
+        // Handle direct payload from pg_notify (new system)
+        let eventData = payload;
+
+        // Support both old nested format and new direct format
         if (payload && payload.payload) {
-          const eventData = payload.payload;
+          eventData = payload.payload;
+        }
 
-          // Check if this event is for the current user
-          if (eventData.userId === userId) {
-            debug("✅ REALTIME: Event is for current user");
+        // Check if this event is for the current user
+        if (eventData && eventData.userId === userId) {
+          debug("✅ REALTIME: Event is for current user");
 
-            // Use database count directly from trigger (bulletproof approach)
-            if (eventData.unreadCount !== undefined) {
-              setUnreadCount(eventData.unreadCount);
-              debug(
-                `🔔 REALTIME: Updated unread count to: ${eventData.unreadCount}`
+          // Use database count directly from trigger (bulletproof approach)
+          if (eventData.unreadCount !== undefined) {
+            setUnreadCount(eventData.unreadCount);
+            debug(
+              `🔔 REALTIME: Updated unread count to: ${eventData.unreadCount}`
+            );
+          }
+
+          // Handle different actions
+          if (eventData.action === "new_message") {
+            refreshMessages(); // Refresh messages list
+          } else if (eventData.action === "message_read") {
+            // Update specific message
+            if (eventData.messageId) {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === eventData.messageId
+                    ? {
+                        ...msg,
+                        is_read: true,
+                        read_at: new Date().toISOString(),
+                      }
+                    : msg
+                )
               );
             }
-
-            // Handle different actions
-            if (eventData.action === "new_message") {
-              refreshMessages(); // Refresh messages list
-            } else if (eventData.action === "message_read") {
-              // Update specific message
-              if (eventData.messageId) {
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === eventData.messageId
-                      ? { ...msg, is_read: true }
-                      : msg
-                  )
-                );
-              }
-            } else if (eventData.action === "message_deleted") {
-              // Remove deleted message
+          } else if (eventData.action === "messages_marked_read") {
+            // Handle bulk read operation
+            debug(
+              `📨 REALTIME: Bulk read - ${eventData.markedCount} messages marked as read`
+            );
+            refreshMessages(); // Refresh entire message list
+          } else if (eventData.action === "message_deleted") {
+            // Remove deleted message
+            if (eventData.messageId) {
               setMessages((prev) =>
                 prev.filter((msg) => msg.id !== eventData.messageId)
               );
@@ -235,8 +313,8 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
           }
         }
       })
-      .subscribe((status) => {
-        debug(`📡 REALTIME: Subscription status: ${status}`);
+      .subscribe((status, err) => {
+        debug(`� REALTIME: Subscription status: ${status}`, err);
 
         if (status === "SUBSCRIBED") {
           setIsConnected(true);
@@ -246,10 +324,10 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
           debug("❌ REALTIME: Connection closed");
         } else if (status === "CHANNEL_ERROR") {
           setIsConnected(false);
-          console.error("❌ REALTIME: Channel error");
+          console.error("❌ REALTIME: Channel error", err);
         } else if (status === "TIMED_OUT") {
           setIsConnected(false);
-          console.error("⏰ REALTIME: Connection timed out");
+          console.error("⏰ REALTIME: Connection timed out", err);
         }
       });
 
@@ -264,7 +342,13 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
       }
       setIsConnected(false);
     };
-  }, [userId, fetchUnreadCount, fetchMessages, refreshMessages]); // Include all dependencies
+  }, [
+    userId,
+    fetchUnreadCount,
+    fetchMessages,
+    refreshMessages,
+    refreshUnreadCount,
+  ]); // Include all dependencies
 
   const value: RealtimeContextValue = {
     unreadCount,

@@ -11,10 +11,6 @@ export async function getProfileData(
   usernameOrId: string,
   currentUserId?: string
 ): Promise<ProfileData> {
-  const startTime = Date.now();
-
-  console.log(`🚀 FETCH CACHE: Fetching profile data for ${usernameOrId} via direct queries...`);
-
   const supabase = await createClient();
 
   try {
@@ -48,8 +44,6 @@ export async function getProfileData(
       console.error("❌ Error fetching user:", userError);
       throw new Error("User not found");
     }
-
-    console.log(`🔍 DEBUG: Found user: ${userData.username}`);
 
     // Get user statistics in parallel
     const [
@@ -114,10 +108,7 @@ export async function getProfileData(
     if (followersCountError) console.error('Followers count error:', followersCountError);
     if (followingCountError) console.error('Following count error:', followingCountError);
 
-    console.log(`🔍 DEBUG: User stats for ${userData.id} (${userData.username}):`);
-    console.log(`  - Followers: ${followersCount} (following_id = ${userData.id})`);
-    console.log(`  - Following: ${followingCount} (follower_id = ${userData.id})`);
-    console.log(`  - Cars: ${carCount}, Clubs: ${clubsMemberCount}, Events: ${eventsAttendedCount}`);
+
 
     // Get user's cars
     const { data: userCars, error: carsError } = await supabase
@@ -264,10 +255,6 @@ export async function getProfileData(
       currentUser: null // Set by the calling page component
     };
 
-    const endTime = Date.now();
-    console.log(`✅ FETCH CACHE: Profile ${usernameOrId} data fetched and processed in ${endTime - startTime}ms`);
-    console.log(`📊 Final data - User: ${profileData.profileUser.username}, Cars: ${profileData.userCars.length}, Clubs: ${profileData.userClubs.length}`);
-
     return profileData;
   } catch (error) {
     console.error("❌ Error fetching profile data:", error);
@@ -279,11 +266,7 @@ export async function getProfileData(
  * Get clubs where the user is a leader (for invite functionality)
  */
 export async function getLeaderClubsData(userId: string): Promise<LeaderClubsData | null> {
-  const startTime = Date.now();
-
   try {
-    console.log(`🚀 SSR CACHE: Fetching leader clubs for user ${userId} via direct queries...`);
-
     const supabase = await createClient();
 
     // Get clubs where user is the leader - simple query!
@@ -308,7 +291,7 @@ export async function getLeaderClubsData(userId: string): Promise<LeaderClubsDat
       return null; // Don't fail the whole page, just don't show invite buttons
     }
 
-    console.log(`🔍 DEBUG: Found ${leaderClubs?.length || 0} clubs where user is leader`);
+    // Transform the data to include required fields
 
     // Get member counts for these clubs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -328,9 +311,6 @@ export async function getLeaderClubsData(userId: string): Promise<LeaderClubsDat
       });
     }
 
-    const endTime = Date.now();
-    console.log(`✅ FETCH CACHE: User ${userId} leader clubs fetched and processed in ${endTime - startTime}ms`);
-
     // Format response to match expected LeaderClubsData interface
     const formattedResponse = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -346,8 +326,6 @@ export async function getLeaderClubsData(userId: string): Promise<LeaderClubsDat
         cache_key: `leader_clubs_${userId}_${Date.now()}`,
       },
     };
-
-    console.log(`📊 Final data - Leader clubs: ${formattedResponse.leaderClubs.length}`);
 
     return formattedResponse;
   } catch (error) {
@@ -379,10 +357,8 @@ export async function getFollowersData(userId: string) {
     return [];
   }
 
-  console.log('Raw followers data:', followers);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = followers?.map((f: any) => f.follower).filter(Boolean) || [];
-  console.log('Processed followers data:', result);
   return result;
 }
 
@@ -409,9 +385,7 @@ export async function getFollowingData(userId: string) {
     return [];
   }
 
-  console.log('Raw following data:', following);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = following?.map((f: any) => f.following).filter(Boolean) || [];
-  console.log('Processed following data:', result);
   return result;
 }

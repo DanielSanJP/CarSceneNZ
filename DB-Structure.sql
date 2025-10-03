@@ -35,8 +35,6 @@ CREATE TABLE public.cars (
     exhaust character varying,
     intake character varying,
     turbo character varying,
-    supercharger character varying,
-    twin_turbo_setup character varying,
     intercooler character varying,
     fuel_injectors character varying,
     fuel_pump character varying,
@@ -70,6 +68,8 @@ CREATE TABLE public.cars (
     suspension jsonb,
     wheels jsonb,
     gauges jsonb,
+    supercharger character varying,
+    twin_turbo_setup character varying,
     CONSTRAINT cars_pkey PRIMARY KEY (id),
     CONSTRAINT cars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
 );
@@ -133,25 +133,33 @@ CREATE TABLE public.events (
     CONSTRAINT events_pkey PRIMARY KEY (id),
     CONSTRAINT events_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.message_recipients (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    message_id uuid NOT NULL,
+    recipient_id uuid NOT NULL,
+    is_read boolean DEFAULT false,
+    read_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT message_recipients_pkey PRIMARY KEY (id),
+    CONSTRAINT message_recipients_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.messages(id),
+    CONSTRAINT message_recipients_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.messages (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
     sender_id uuid NOT NULL,
-    receiver_id uuid NOT NULL,
     subject character varying,
     message text NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
     message_type character varying DEFAULT 'general'::character varying CHECK (
         message_type::text = ANY (
             ARRAY ['general'::character varying::text, 'club_join_request'::character varying::text, 'club_announcement'::character varying::text, 'club_invitation'::character varying::text, 'club_notification'::character varying::text, 'system'::character varying::text]
         )
     ),
     club_id uuid,
-    is_read boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT messages_pkey PRIMARY KEY (id),
-    CONSTRAINT messages_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
-    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id),
-    CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES public.users(id)
+    CONSTRAINT new_messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id),
+    CONSTRAINT new_messages_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
 );
 CREATE TABLE public.user_follows (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),

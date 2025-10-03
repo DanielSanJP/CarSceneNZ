@@ -65,19 +65,10 @@ export function ProfileStats({
   };
 
   const handleFollowingDialogOpen = async () => {
-    console.log("🚀 handleFollowingDialogOpen triggered");
-    console.log("📊 Current state:", {
-      followingLength: following.length,
-      followingCount: profileUser.followingCount,
-      shouldFetch: following.length === 0 && profileUser.followingCount > 0,
-    });
-
     if (following.length === 0 && profileUser.followingCount > 0) {
-      console.log("🔄 Starting to fetch following data...");
       setFollowingLoading(true);
       try {
         const data = await getFollowingData(profileUser.id);
-        console.log("✅ Following data received:", data);
         setFollowing(data as unknown as FollowUserData[]);
       } catch (error) {
         console.error("❌ Error loading following:", error);
@@ -85,8 +76,6 @@ export function ProfileStats({
       } finally {
         setFollowingLoading(false);
       }
-    } else {
-      console.log("⚡ Using cached data or no data to fetch");
     }
     setFollowingDialogOpen(true);
   };
@@ -122,7 +111,6 @@ export function ProfileStats({
               </p>
             ) : (
               following.map((followedUser) => {
-                console.log("🎯 Rendering following user:", followedUser);
                 return (
                   <Link
                     key={followedUser.id}

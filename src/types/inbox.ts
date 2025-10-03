@@ -1,6 +1,6 @@
-import type { Message } from './message';
+import type { MessageWithRecipient } from './message';
 
-export interface InboxMessage extends Omit<Message, 'sender' | 'receiver'> {
+export interface InboxMessage extends MessageWithRecipient {
   message_type?: 'general' | 'club_join_request' | 'club_announcement' | 'club_invitation' | 'club_notification' | 'system';
   club_id?: string;
   club_name?: string;

@@ -155,9 +155,6 @@ function ProfileDropdown({ user }: { user: UserType | null }) {
 }
 
 export function Navigation({ user }: { user: UserType | null }) {
-  // DEBUG: Check if Navigation component is rendering
-  console.log("🧭 NAVIGATION: Component rendering with user:", user?.id);
-
   const pathname = usePathname();
 
   const isActivePath = (path: string) => {

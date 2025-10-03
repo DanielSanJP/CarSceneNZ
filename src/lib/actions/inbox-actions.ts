@@ -3,230 +3,264 @@
 import { createClient } from "@/lib/utils/supabase/server";
 import { getAuthUser } from "@/lib/auth";
 import { revalidateTag, revalidatePath } from "next/cache";
+import type { MessageWithRecipient } from "@/types/message";
 
 /**
- * Get inbox messages for the current user
+ * Get inbox messages for the current user using new messaging system
  */
 export async function getInboxMessages() {
   try {
     const currentUser = await getAuthUser();
     
     if (!currentUser) {
-      return { success: false, error: "Authentication required" };
+      return { success: false, error: 'Authentication required' };
     }
 
     const userId = currentUser.id;
-    console.log(`📬 Fetching inbox messages for user: ${userId}`);
 
     const supabase = await createClient();
     
-    // Debug: Check if we have an authenticated user in this context
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    console.log(`🔍 SERVER ACTION AUTH - User: ${authUser?.id}, Error:`, authError);
-    console.log(`🔍 SERVER ACTION - Requested userId: ${userId}`);
-    console.log(`🔍 SERVER ACTION - Auth user matches requested: ${authUser?.id === userId}`);
-    
-    // Use direct query to get messages with related data
+    // Use the new inbox_messages view for clean querying
     const { data: messages, error } = await supabase
-      .from('messages')
-      .select(`
-        id,
-        sender_id,
-        receiver_id,
-        subject,
-        message,
-        message_type,
-        club_id,
-        created_at,
-        updated_at,
-        is_read,
-        sender:users!messages_sender_id_fkey (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        ),
-        club:clubs (
-          id,
-          name
-        )
-      `)
-      .eq('receiver_id', userId)
+      .from('inbox_messages')
+      .select('*')
+      .eq('recipient_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Query error:', error);
-      return { success: false, error: `Query failed: ${error.message}` };
+      console.error('Error fetching inbox messages:', error);
+      return { success: false, error: 'Failed to fetch inbox messages' };
     }
 
-    console.log(`✅ Retrieved ${messages?.length || 0} messages`);
-
-    // Transform the data to handle Supabase's returns and add flat fields for compatibility
-    const transformedMessages = messages?.map((msg) => {
-      // Safely extract sender data (handle both array and object cases)
-      const sender = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender;
-      const club = Array.isArray(msg.club) ? msg.club[0] : msg.club;
-      
-      return {
-        ...msg,
-        // Normalize nested objects
-        sender: sender || null,
-        club: club || null,
-        // Add flat fields for backward compatibility
-        sender_username: sender?.username || null,
-        sender_display_name: sender?.display_name || null,
-        sender_profile_image_url: sender?.profile_image_url || null,
-        club_name: club?.name || null,
-      };
-    }) || [];
+    // Transform the data to match InboxMessage interface
+    const transformedMessages: MessageWithRecipient[] = messages?.map((msg) => ({
+      id: msg.id,
+      sender_id: msg.sender_id,
+      recipient_id: msg.recipient_id,
+      subject: msg.subject,
+      message: msg.message,
+      message_type: msg.message_type,
+      club_id: msg.club_id,
+      is_read: msg.is_read,
+      read_at: msg.read_at,
+      created_at: msg.created_at,
+      updated_at: msg.updated_at,
+      // Flat sender fields
+      sender_username: msg.sender_username,
+      sender_display_name: msg.sender_display_name,
+      sender_profile_image_url: msg.sender_profile_image_url,
+      // Club info
+      club_name: msg.club_name,
+      // Nested sender for backward compatibility
+      sender: {
+        id: msg.sender_id,
+        username: msg.sender_username,
+        display_name: msg.sender_display_name,
+        profile_image_url: msg.sender_profile_image_url,
+      },
+    })) || [];
 
     return {
       success: true,
-      messages: transformedMessages,
-      meta: {
-        generated_at: new Date().toISOString(),
-        cache_key: `inbox_messages_${userId}`,
-      },
+      data: transformedMessages,
     };
 
   } catch (error) {
-    console.error("❌ Error fetching inbox messages:", error);
+    console.error("Error fetching inbox messages:", error);
     return { success: false, error: "Failed to fetch inbox messages" };
   }
 }
 
 /**
- * Get unread message count for the current user
+ * Get unread message count for the current user using new system
  */
 export async function getUnreadCount() {
   try {
     const currentUser = await getAuthUser();
     
     if (!currentUser) {
-      return { success: false, error: "Authentication required" };
+      return { success: false, error: 'Authentication required' };
     }
     
     const userId = currentUser.id;
-    console.log(`🔢 Fetching unread count for user: ${userId}`);
 
     const supabase = await createClient();
 
-    // Count unread messages using the is_read column
-    const { count, error: countError } = await supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('receiver_id', userId)
-      .eq('is_read', false);
+    // Use the new get_unread_count function
+    const { data, error } = await supabase
+      .rpc('get_unread_count', { p_recipient_id: userId });
 
-    if (countError) {
-      console.error('❌ Error counting unread messages:', countError);
-      return { success: false, error: 'Failed to count unread messages' };
+    if (error) {
+      console.error('Error fetching unread count:', error);
+      return { success: false, error: 'Failed to fetch unread count' };
     }
-
-    const unreadCount = count || 0;
-    console.log(`✅ Unread count for user ${userId}: ${unreadCount}`);
 
     return {
       success: true,
-      count: unreadCount,
-      meta: {
-        generated_at: new Date().toISOString(),
-        cache_key: `unread_count_${userId}`,
-        method: 'is_read_column',
-      },
+      count: data || 0,
     };
 
   } catch (error) {
-    console.error("❌ Error fetching unread count:", error);
+    console.error("Error fetching unread count:", error);
     return { success: false, error: "Failed to fetch unread count" };
   }
 }
 
 /**
- * Mark all messages as read for the current user
+ * Mark all messages as read for the current user using new system
  */
 export async function markAllMessagesAsRead() {
   try {
     const currentUser = await getAuthUser();
     
     if (!currentUser) {
-      return { success: false, error: "Authentication required" };
+      return { success: false, error: 'Authentication required' };
     }
     
     const userId = currentUser.id;
-    console.log(`📨 Marking all unread messages as read for user: ${userId}`);
 
     const supabase = await createClient();
 
-    // Mark all unread messages as read using the is_read column
-    const { data, error } = await supabase
-      .from('messages')
-      .update({ is_read: true })
-      .eq('receiver_id', userId)
-      .eq('is_read', false)
-      .select('id');
+    // Use the new mark_all_messages_read function
+    const { data: markedCount, error } = await supabase
+      .rpc('mark_all_messages_read', { p_recipient_id: userId });
 
     if (error) {
-      console.error('❌ Error marking messages as read:', error);
+      console.error('Error marking messages as read:', error);
       return { success: false, error: 'Failed to mark messages as read' };
     }
 
-    const markedCount = data?.length || 0;
-    console.log(`✅ Marked ${markedCount} messages as read for user ${userId}`);
-
     // Only broadcast and invalidate cache if messages were actually marked as read
-    if (markedCount > 0) {
-      try {
-        // Get the actual unread count after marking messages as read
-        const { count: currentUnreadCount } = await supabase
-          .from('messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('receiver_id', userId)
-          .eq('is_read', false);
-
-        const realUnreadCount = currentUnreadCount || 0;
-
-        // Broadcast the unread count change event with REAL count
-        const channel = supabase.channel(`user:${userId}:unread`);
-        
-        await channel.send({
-          type: 'broadcast',
-          event: 'unread_count_changed',
-          payload: {
-            userId: userId,
-            action: 'mark_read',
-            messageType: 'bulk_mark_read',
-            count: markedCount,
-            unreadCount: realUnreadCount, // 👈 REAL DATABASE COUNT
-            timestamp: new Date().toISOString(),
-          },
-        });
-
-        console.log(`📡 Broadcasted unread count change for user ${userId}, real count: ${realUnreadCount}`);
-      } catch (broadcastError) {
-        console.error('❌ Error broadcasting unread count change:', broadcastError);
-        // Don't fail the main operation if broadcast fails
-      }
-
-      // Only invalidate relevant caches when messages were actually updated
+    if ((markedCount || 0) > 0) {
+      // Revalidate caches
       revalidateTag('inbox');
       revalidatePath('/inbox');
-      console.log(`🔄 Cache invalidated for user ${userId} after marking ${markedCount} messages as read`);
+      
+      return {
+        success: true,
+        markedCount: markedCount || 0,
+        message: `Marked ${markedCount} messages as read`,
+        meta: {
+          processed_at: new Date().toISOString(),
+          user_id: userId,
+        },
+      };
     } else {
-      console.log(`ℹ️ No messages to mark as read for user ${userId} - skipping cache invalidation`);
+      return {
+        success: true,
+        markedCount: 0,
+        message: 'No unread messages to mark as read',
+        meta: {
+          processed_at: new Date().toISOString(),
+          user_id: userId,
+        },
+      };
     }
 
-    return {
-      success: true,
-      markedCount,
-      meta: {
-        updated_at: new Date().toISOString(),
-        cache_invalidated: true,
-      },
-    };
+  } catch (error) {
+    console.error("Error marking all messages as read:", error);
+    return { success: false, error: "Failed to mark all messages as read" };
+  }
+}
+
+/**
+ * Mark a specific message as read for the current user
+ */
+export async function markMessageAsRead(messageId: string) {
+  try {
+    const currentUser = await getAuthUser();
+    
+    if (!currentUser) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    const userId = currentUser.id;
+
+    const supabase = await createClient();
+
+    // Use the new mark_message_read function
+    const { data: success, error } = await supabase
+      .rpc('mark_message_read', { 
+        p_message_id: messageId, 
+        p_recipient_id: userId 
+      });
+
+    if (error) {
+      console.error('Error marking message as read:', error);
+      return { success: false, error: 'Failed to mark message as read' };
+    }
+
+    if (success) {
+      // Revalidate caches
+      revalidateTag('inbox');
+      revalidatePath('/inbox');
+      
+      return {
+        success: true,
+        message: 'Message marked as read',
+        meta: {
+          processed_at: new Date().toISOString(),
+          user_id: userId,
+          message_id: messageId,
+        },
+      };
+    } else {
+      return { success: false, error: 'Message not found or already read' };
+    }
 
   } catch (error) {
-    console.error("❌ Error marking messages as read:", error);
-    return { success: false, error: "Failed to mark messages as read" };
+    console.error("Error marking message as read:", error);
+    return { success: false, error: "Failed to mark message as read" };
+  }
+}
+
+/**
+ * Delete a message for the current user (removes from their inbox)
+ */
+export async function deleteMessageForUser(messageId: string) {
+  try {
+    const currentUser = await getAuthUser();
+    
+    if (!currentUser) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    const userId = currentUser.id;
+
+    const supabase = await createClient();
+
+    // Use the new delete_message_for_recipient function
+    const { data: success, error } = await supabase
+      .rpc('delete_message_for_recipient', { 
+        p_message_id: messageId, 
+        p_recipient_id: userId 
+      });
+
+    if (error) {
+      console.error('Error deleting message:', error);
+      return { success: false, error: 'Failed to delete message' };
+    }
+
+    if (success) {
+      // Revalidate caches
+      revalidateTag('inbox');
+      revalidatePath('/inbox');
+      
+      return {
+        success: true,
+        message: 'Message deleted',
+        meta: {
+          processed_at: new Date().toISOString(),
+          user_id: userId,
+          message_id: messageId,
+        },
+      };
+    } else {
+      return { success: false, error: 'Message not found' };
+    }
+
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    return { success: false, error: "Failed to delete message" };
   }
 }

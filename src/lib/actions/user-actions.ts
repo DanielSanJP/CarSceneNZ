@@ -138,8 +138,6 @@ export async function updateUserProfileAction(formData: FormData) {
     const facebookUrl = formData.get('facebook_url') as string;
     const tiktokUrl = formData.get('tiktok_url') as string;
 
-    console.log(`🔄 Server Action: Updating profile for user ${authUser.id}`);
-
     // Validate required fields
     if (!username?.trim()) {
       return { success: false, error: "Username is required" };
@@ -247,7 +245,7 @@ export async function updateUserProfileAction(formData: FormData) {
       return { success: false, error: 'Failed to update profile' };
     }
 
-    console.log(`✅ Profile updated successfully for user ${authUser.id}`);
+    // Revalidate profile pages
 
     // Invalidate caches
     revalidatePath('/profile/edit');

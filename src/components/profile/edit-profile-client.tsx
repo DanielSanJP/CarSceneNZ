@@ -234,14 +234,12 @@ export function EditProfileClient({
         return;
       }
 
-      console.log("Starting profile update process...");
       let finalImageUrl: string | null = user.profile_image_url || null;
 
       // Handle profile image changes
       if (profileImageFile) {
         // Upload new profile image
         setUploadingImage(true);
-        console.log("Starting profile image compression and upload...");
 
         try {
           // Compress the image first
@@ -250,22 +248,14 @@ export function EditProfileClient({
             "profile"
           );
 
-          console.log("Image compression completed:", {
-            originalSize: compressionResult.originalSize,
-            compressedSize: compressionResult.compressedSize,
-            compressionRatio: compressionResult.compressionRatio,
-          });
-
           const formData = new FormData();
           formData.append("file", compressionResult.file);
           formData.append("userId", user.id);
 
           const uploadResult = await uploadAction(formData);
-          console.log("Image upload completed, result:", uploadResult);
 
           if (uploadResult.url) {
             finalImageUrl = uploadResult.url;
-            console.log("Final image URL set to:", finalImageUrl);
           } else {
             console.error("Image upload failed:", uploadResult.error);
             setError(
@@ -289,12 +279,10 @@ export function EditProfileClient({
         setUploadingImage(false);
       } else if (previewUrl === null && user.profile_image_url) {
         // User removed their profile image
-        console.log("User removed profile image, setting to null");
         finalImageUrl = null;
       }
 
       // Create FormData for server action
-      console.log("Creating FormData for server action...");
       const formData = new FormData();
       formData.append("username", username.trim());
       formData.append("display_name", displayName.trim());
@@ -480,8 +468,8 @@ export function EditProfileClient({
                   usernameStatus.available === false
                     ? "border-red-500 focus:border-red-500"
                     : usernameStatus.available === true
-                    ? "border-green-500 focus:border-green-500"
-                    : ""
+                      ? "border-green-500 focus:border-green-500"
+                      : ""
                 }
               />
               {usernameStatus.isChecking && (
