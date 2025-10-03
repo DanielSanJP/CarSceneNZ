@@ -27,6 +27,7 @@ import type { User } from "@/types/user";
 import type { Club, ClubsGalleryData } from "@/types/club";
 import { Pagination, PaginationInfo } from "@/components/ui/pagination";
 import { RequestToJoin } from "@/components/clubs/request-to-join";
+import { toast } from "sonner";
 
 interface ClubGalleryProps {
   currentUser: User | null;
@@ -68,6 +69,7 @@ export const ClubGallery = memo(function ClubGallery({
   );
   const [currentPage, setCurrentPage] = useState(initialFilters.page || 1);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [joiningClubId, setJoiningClubId] = useState<string | null>(null);
 
   // Handle error state or missing data
   if (!clubsData) {
@@ -388,30 +390,40 @@ export const ClubGallery = memo(function ClubGallery({
                       <Button
                         className="w-full"
                         size="sm"
+                        disabled={joiningClubId === club.id}
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
 
                           if (!currentUser) return;
 
+                          setJoiningClubId(club.id);
                           try {
                             const result = await joinClubAction(
                               club.id,
                               currentUser.id
                             );
                             if (result.success) {
-                              // Successfully joined - cache will be revalidated by API
-                              // No need to reload, revalidation will update the UI
+                              toast.success("Successfully joined the club!");
+                              // Keep joiningClubId set until data refreshes
                             } else {
-                              alert(result.message || "Failed to join club");
+                              toast.error(
+                                result.message || "Failed to join club"
+                              );
+                              // Clear on error so user can retry
+                              setJoiningClubId(null);
                             }
                           } catch (error) {
                             console.error("Error joining club:", error);
-                            alert("Failed to join club. Please try again.");
+                            toast.error(
+                              "Failed to join club. Please try again."
+                            );
+                            // Clear on error so user can retry
+                            setJoiningClubId(null);
                           }
                         }}
                       >
-                        Join Club
+                        {joiningClubId === club.id ? "Joining..." : "Join Club"}
                       </Button>
                     ) : (
                       <Link

@@ -140,16 +140,8 @@ function InboxViewComponent({
 
       toast.success(`Successfully ${action}ed join request`);
 
-      // Update RealtimeProvider state based on action
-      if (action === "reject") {
-        // Remove rejected message from RealtimeProvider state (it's deleted on server)
-        await removeMessage(msg.id);
-      } else {
-        // Message will be updated to read via database trigger, no manual state update needed
-        console.log(
-          `📨 Join request approved - database trigger will handle state update`
-        );
-      }
+      // Remove message from RealtimeProvider state (it's deleted on server in both cases)
+      await removeMessage(msg.id);
     } catch {
       toast.error(`Failed to ${action} join request`);
     } finally {
@@ -176,16 +168,8 @@ function InboxViewComponent({
 
       toast.success(`Successfully ${action}ed club invitation`);
 
-      // Update RealtimeProvider state based on action
-      if (action === "reject") {
-        // Remove rejected invitation from RealtimeProvider state (it's deleted on server)
-        await removeMessage(msg.id);
-      } else {
-        // Message will be updated to read via database trigger, no manual state update needed
-        console.log(
-          `📨 Club invitation accepted - database trigger will handle state update`
-        );
-      }
+      // Remove message from RealtimeProvider state (it's deleted on server in both cases)
+      await removeMessage(msg.id);
     } catch {
       toast.error(`Failed to ${action} club invitation`);
     } finally {

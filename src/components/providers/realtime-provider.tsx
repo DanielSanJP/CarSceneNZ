@@ -126,9 +126,8 @@ export function RealtimeProvider({ children, userId }: RealtimeProviderProps) {
 
       debug(`✅ REALTIME: Marked ${result.markedCount || 0} messages as read`);
 
-      // Update local state
-      setMessages((prev) => prev.map((msg) => ({ ...msg, is_read: true })));
-      setUnreadCount(0);
+      // Let realtime handle the state update (no manual state changes)
+      // The database trigger will broadcast the update and realtime will sync it
     } catch (error) {
       console.error("❌ REALTIME: Error marking messages as read:", error);
     }
