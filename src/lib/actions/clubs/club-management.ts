@@ -253,7 +253,7 @@ export async function deleteClubAction(clubId: string) {
       return { success: false, message: 'Only the club leader can delete the club' };
     }
 
-    // Delete the club (cascade will handle members and other related data)
+    // Delete the club (cascade will handle members, messages, and other related data)
     const { error: deleteError } = await supabase
       .from('clubs')
       .delete()

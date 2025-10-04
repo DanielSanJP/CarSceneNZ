@@ -137,7 +137,7 @@ export async function leaveClubAction(clubId: string, userId: string) {
 
       if (allMembers && allMembers.length === 1) {
         // Solo leader - delete the entire club
-        // Delete the club (cascade will handle members and other related data)
+        // Delete the club (cascade will handle members, messages, and other related data)
         const { error: deleteError } = await supabase
           .from('clubs')
           .delete()

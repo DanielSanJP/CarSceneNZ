@@ -2,6 +2,7 @@ import { getAuthUser, getUserProfile } from "@/lib/auth";
 import { ClubDetailView } from "@/components/clubs/display/club-detail-view";
 import type { ClubDetailData } from "@/types/club";
 import { createClient } from "@/lib/utils/supabase/server";
+import { notFound } from "next/navigation";
 
 export const revalidate = 60; // 1 minute
 
@@ -14,7 +15,7 @@ interface ClubDetailPageProps {
 async function getClubDetailDataSSR(
   clubId: string,
   currentUserId?: string
-): Promise<ClubDetailData> {
+): Promise<ClubDetailData | null> {
   const startTime = Date.now();
 
   try {
@@ -38,7 +39,8 @@ async function getClubDetailDataSSR(
 
     if (clubError || !club) {
       console.error("❌ Club not found:", clubError);
-      throw new Error("Club not found");
+      // Return null to trigger notFound() in the page component
+      return null;
     }
 
     // 2. Get club leader info
@@ -151,24 +153,11 @@ export default async function ClubDetailPage({
   const currentUser = authUser ? await getUserProfile(authUser.id) : null;
 
   // Fetch club detail data using cached API route
-  let clubDetailData: ClubDetailData | null = null;
-  try {
-    clubDetailData = await getClubDetailDataSSR(id, currentUser?.id);
-  } catch (error) {
-    console.error("Failed to fetch club detail data on server:", error);
-    // Return error state
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">
-            Failed to load club details
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            There was an error loading the club information.
-          </p>
-        </div>
-      </div>
-    );
+  const clubDetailData = await getClubDetailDataSSR(id, currentUser?.id);
+
+  // If club not found, show 404 page
+  if (!clubDetailData) {
+    notFound();
   }
 
   return (

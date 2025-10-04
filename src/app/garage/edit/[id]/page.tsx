@@ -3,13 +3,13 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect, notFound } from "next/navigation";
 import { EditCarForm } from "@/components/garage";
 import { uploadCarImages } from "@/lib/utils/image-upload";
-import { getBaseUrl } from "@/lib/utils";
 import { Car } from "@/types";
 import { cleanupOrphanedCarImagesAction } from "@/lib/actions/delete-actions";
 import {
   updateCarWithComponentsAction,
   deleteCarAction as deleteCarServerAction,
 } from "@/lib/actions/car-actions";
+import { createClient } from "@/lib/utils/supabase/server";
 
 // Utility function to clean up image URLs and remove duplicates
 function cleanImageArray(images: string[]): string[] {
@@ -227,26 +227,21 @@ async function deleteCarAction(carId: string) {
   "use server";
 
   const authUser = await requireAuth();
+  const supabase = await createClient();
 
-  // Use our simplified API route to get car data for permission check
-  const response = await fetch(
-    `${getBaseUrl()}/api/garage/${carId}?userId=${authUser.id}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  // Get car data for permission check using direct query
+  const { data: carData, error } = await supabase
+    .from("cars")
+    .select("id, owner_id")
+    .eq("id", carId)
+    .single();
 
-  if (!response.ok) {
+  if (error || !carData) {
     throw new Error("Car not found");
   }
 
-  const carData = await response.json();
-
-  if (!carData || !carData.car || carData.car.owner_id !== authUser.id) {
-    throw new Error("Car not found or unauthorized");
+  if (carData.owner_id !== authUser.id) {
+    throw new Error("Unauthorized");
   }
 
   const success = await deleteCarServerAction(carId);
@@ -287,28 +282,105 @@ async function deleteCarAction(carId: string) {
 export default async function EditCarPage({ params }: EditCarPageProps) {
   const { id } = await params;
   const authUser = await requireAuth();
+  const supabase = await createClient();
 
-  // Use our simplified API route instead of RPC
-  const response = await fetch(
-    `${getBaseUrl()}/api/garage/${id}?userId=${authUser.id}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  // Fetch car data using direct Supabase query
+  const { data: carData, error: carError } = await supabase
+    .from("cars")
+    .select(
+      `
+      *,
+      owner:users!cars_owner_id_fkey(
+        id,
+        username,
+        display_name,
+        profile_image_url
+      )
+    `
+    )
+    .eq("id", id)
+    .single();
 
-  if (!response.ok) {
-    console.error("Failed to fetch car details:", response.status);
+  if (carError || !carData) {
+    console.error("Failed to fetch car details:", carError);
     notFound();
   }
 
-  const carDetailData = await response.json();
+  // Transform owner data
+  const owner = Array.isArray(carData.owner) ? carData.owner[0] : carData.owner;
 
-  if (!carDetailData || !carDetailData.car) {
-    notFound();
-  }
+  // Build carDetailData structure similar to what the API would return
+  const carDetailData = {
+    car: {
+      id: carData.id,
+      owner_id: carData.owner_id,
+      brand: carData.brand,
+      model: carData.model,
+      year: carData.year,
+      images: carData.images || [],
+      total_likes: carData.total_likes || 0,
+      created_at: carData.created_at,
+      updated_at: carData.updated_at,
+      owner: owner,
+    },
+    engine: {
+      engine_code: carData.engine_code,
+      displacement: carData.displacement,
+      aspiration: carData.aspiration,
+      power_hp: carData.power_hp,
+      torque_nm: carData.torque_nm,
+      ecu: carData.ecu,
+      tuned_by: carData.tuned_by,
+      pistons: carData.pistons,
+      connecting_rods: carData.connecting_rods,
+      valves: carData.valves,
+      valve_springs: carData.valve_springs,
+      camshafts: carData.camshafts,
+      header: carData.header,
+      exhaust: carData.exhaust,
+      intake: carData.intake,
+      turbo: carData.turbo,
+      supercharger: carData.supercharger,
+      twin_turbo_setup: carData.twin_turbo_setup,
+      intercooler: carData.intercooler,
+      fuel_injectors: carData.fuel_injectors,
+      fuel_pump: carData.fuel_pump,
+      fuel_rail: carData.fuel_rail,
+    },
+    interior: {
+      front_seats: carData.front_seats,
+      rear_seats: carData.rear_seats,
+      steering_wheel: carData.steering_wheel,
+      head_unit: carData.head_unit,
+      speakers: carData.speakers,
+      subwoofer: carData.subwoofer,
+      amplifier: carData.amplifier,
+    },
+    exterior: {
+      front_bumper: carData.front_bumper,
+      front_lip: carData.front_lip,
+      rear_bumper: carData.rear_bumper,
+      rear_lip: carData.rear_lip,
+      side_skirts: carData.side_skirts,
+      rear_spoiler: carData.rear_spoiler,
+      diffuser: carData.diffuser,
+      fender_flares: carData.fender_flares,
+      hood: carData.hood,
+      paint_color: carData.paint_color,
+      paint_finish: carData.paint_finish,
+      wrap_brand: carData.wrap_brand,
+      wrap_color: carData.wrap_color,
+      headlights: carData.headlights,
+      taillights: carData.taillights,
+      fog_lights: carData.fog_lights,
+      underglow: carData.underglow,
+      interior_lighting: carData.interior_lighting,
+    },
+    brakes: carData.brakes,
+    suspension: carData.suspension,
+    wheels: carData.wheels,
+    gauges: carData.gauges,
+  };
 
   // Extract the flattened car data from the nested structure for the edit form
   const car: Car = {
@@ -320,7 +392,6 @@ export default async function EditCarPage({ params }: EditCarPageProps) {
     year: carDetailData.car.year,
     images: carDetailData.car.images,
     total_likes: carDetailData.car.total_likes,
-    is_liked: carDetailData.car.is_liked,
     created_at: carDetailData.car.created_at,
     updated_at: carDetailData.car.updated_at,
 

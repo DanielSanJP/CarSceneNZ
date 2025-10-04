@@ -63,15 +63,31 @@ async function getGarageData(
 
     console.log(`🔍 DEBUG: Fetched ${cars?.length || 0} cars from database`);
 
-    // Transform cars to handle owner relationship (Supabase returns arrays, we need single objects)
+    // Debug: Log the first car to see what structure we're getting
+    if (cars && cars.length > 0) {
+      console.log(
+        `🔍 DEBUG: Sample car structure:`,
+        JSON.stringify(cars[0], null, 2)
+      );
+    }
+
+    // Transform cars to handle owner relationship
+    // Note: Supabase foreign key joins return the related object directly, not as an array
     const transformedCars =
-      cars?.map((car) => ({
-        ...car,
-        owner:
-          Array.isArray(car.owner) && car.owner.length > 0
-            ? car.owner[0]
-            : undefined,
-      })) || [];
+      cars?.map((car) => {
+        // The owner should be an object directly from Supabase, not an array
+        const ownerData = car.owner as unknown as {
+          id: string;
+          username: string;
+          display_name?: string | null;
+          profile_image_url?: string | null;
+        } | null;
+
+        return {
+          ...car,
+          owner: ownerData,
+        };
+      }) || [];
 
     // Get user's liked cars if userId is provided
     let likedCarIds: string[] = [];
@@ -86,23 +102,33 @@ async function getGarageData(
       likedCarIds = likes?.map((like) => like.car_id) || [];
     }
 
-    // Add is_liked flag to cars and fix owner type
-    const carsWithLikes = transformedCars.map((car) => ({
-      ...car,
-      is_liked: likedCarIds.includes(car.id),
-      owner: car.owner
-        ? {
-            ...car.owner,
-            display_name: car.owner.display_name || undefined,
-            profile_image_url: car.owner.profile_image_url || undefined,
-          }
-        : {
-            id: car.owner_id,
-            username: "Unknown",
-            display_name: undefined,
-            profile_image_url: undefined,
-          },
-    }));
+    // Add is_liked flag to cars and ensure owner is properly formatted
+    const carsWithLikes = transformedCars.map((car) => {
+      // Log if owner is missing for debugging
+      if (!car.owner) {
+        console.warn(
+          `⚠️ Car ${car.id} (${car.brand} ${car.model}) has no owner data. Owner ID: ${car.owner_id}`
+        );
+      }
+
+      return {
+        ...car,
+        is_liked: likedCarIds.includes(car.id),
+        owner: car.owner
+          ? {
+              id: car.owner.id,
+              username: car.owner.username,
+              display_name: car.owner.display_name || undefined,
+              profile_image_url: car.owner.profile_image_url || undefined,
+            }
+          : {
+              id: car.owner_id,
+              username: "Unknown User",
+              display_name: undefined,
+              profile_image_url: undefined,
+            },
+      };
+    });
 
     const garageApiData = {
       cars: carsWithLikes,

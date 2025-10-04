@@ -3,6 +3,7 @@
 import { useState, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { manageMemberAction } from "@/lib/actions/clubs/club-management";
 import { sendClubMail, sendJoinRequest } from "@/lib/actions";
@@ -63,6 +64,7 @@ export const ClubDetailView = memo(function ClubDetailView({
   leaderboardTab = "clubs",
   clubDetailData,
 }: ClubDetailViewProps) {
+  const router = useRouter();
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -126,7 +128,8 @@ export const ClubDetailView = memo(function ClubDetailView({
         if ("deleted" in result && result.deleted) {
           toast.success(result.message || "Left club and club was deleted");
           // Redirect to clubs page since club no longer exists
-          window.location.href = "/clubs";
+          router.push("/clubs");
+          router.refresh(); // Force refresh to clear any cached data
         } else {
           toast.success("Successfully left the club");
         }
