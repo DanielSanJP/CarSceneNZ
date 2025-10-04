@@ -296,11 +296,13 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   };
 
   return (
-    <EventsGallery
-      page={page}
-      limit={limit}
-      eventsData={ssrEventsData}
-      attendEventAction={toggleEventAttendanceAction}
-    />
+    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+      <EventsGallery
+        page={page}
+        limit={limit}
+        eventsData={ssrEventsData}
+        attendEventAction={toggleEventAttendanceAction}
+      />
+    </div>
   );
 }

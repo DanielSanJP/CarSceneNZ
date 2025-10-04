@@ -8,6 +8,7 @@ import { OwnerRankings } from "@/components/leaderboard/owner-rankings";
 import { ClubRankings } from "@/components/leaderboard/club-rankings";
 import { CarRankings } from "@/components/leaderboard/car-rankings";
 import type { LeaderboardsData } from "@/types/leaderboard";
+import { LeftSidebarAd, RightSidebarAd } from "@/components/ads/ad-placements";
 
 type TabType = "owners" | "clubs" | "cars";
 
@@ -63,43 +64,64 @@ export function LeaderboardsView({
   };
 
   return (
-    <>
-      {/* Tab Navigation */}
-      <div className="flex justify-center mb-8">
-        <div className="bg-muted p-1 rounded-lg flex gap-1 w-full max-w-md mx-auto">
-          <Button
-            variant={activeTab === "owners" ? "default" : "ghost"}
-            onClick={() => handleTabChange("owners")}
-            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
-          >
-            <Car className="h-4 w-4" />
-            <span>Owners</span>
-          </Button>
-          <Button
-            variant={activeTab === "clubs" ? "default" : "ghost"}
-            onClick={() => handleTabChange("clubs")}
-            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
-          >
-            <Users className="h-4 w-4" />
-            <span>Clubs</span>
-          </Button>
-          <Button
-            variant={activeTab === "cars" ? "default" : "ghost"}
-            onClick={() => handleTabChange("cars")}
-            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
-          >
-            <Trophy className="h-4 w-4" />
-            <span>Cars</span>
-          </Button>
-        </div>
-      </div>
+    <div className="flex gap-6 justify-center px-4 sm:px-6 lg:px-8">
+      {/* Left Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <LeftSidebarAd />
+      </aside>
 
-      {/* Tab Content */}
-      <>
-        {activeTab === "owners" && <OwnerRankings data={ownersData} />}
-        {activeTab === "clubs" && <ClubRankings data={clubsData} />}
-        {activeTab === "cars" && <CarRankings data={carsData} />}
-      </>
-    </>
+      {/* Main Content */}
+      <main className="w-full max-w-7xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">🏆 Community Leaderboards</h1>
+          <p className="text-muted-foreground">
+            See who&apos;s leading the pack in cars, clubs, and owners
+          </p>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-muted p-1 rounded-lg flex gap-1 w-full max-w-md mx-auto">
+            <Button
+              variant={activeTab === "owners" ? "default" : "ghost"}
+              onClick={() => handleTabChange("owners")}
+              className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
+            >
+              <Car className="h-4 w-4" />
+              <span>Owners</span>
+            </Button>
+            <Button
+              variant={activeTab === "clubs" ? "default" : "ghost"}
+              onClick={() => handleTabChange("clubs")}
+              className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
+            >
+              <Users className="h-4 w-4" />
+              <span>Clubs</span>
+            </Button>
+            <Button
+              variant={activeTab === "cars" ? "default" : "ghost"}
+              onClick={() => handleTabChange("cars")}
+              className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
+            >
+              <Trophy className="h-4 w-4" />
+              <span>Cars</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <>
+          {activeTab === "owners" && <OwnerRankings data={ownersData} />}
+          {activeTab === "clubs" && <ClubRankings data={clubsData} />}
+          {activeTab === "cars" && <CarRankings data={carsData} />}
+        </>
+      </main>
+
+      {/* Right Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <RightSidebarAd />
+      </aside>
+    </div>
   );
 }

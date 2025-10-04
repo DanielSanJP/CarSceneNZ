@@ -170,23 +170,27 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
     };
 
     return (
-      <GarageGallery
-        page={page}
-        limit={limit}
-        garageData={garageData}
-        likeCarAction={likeCarAction}
-      />
+      <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <GarageGallery
+          page={page}
+          limit={limit}
+          garageData={garageData}
+          likeCarAction={likeCarAction}
+        />
+      </div>
     );
   } catch (error) {
     console.error("Error loading garage:", error);
     // Return null data to show error state
     return (
-      <GarageGallery
-        page={page}
-        limit={limit}
-        garageData={null}
-        likeCarAction={likeCarAction}
-      />
+      <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <GarageGallery
+          page={page}
+          limit={limit}
+          garageData={null}
+          likeCarAction={likeCarAction}
+        />
+      </div>
     );
   }
 }

@@ -16,6 +16,7 @@ import Image from "next/image";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { GarageData } from "@/types/car";
+import { LeftSidebarAd, RightSidebarAd } from "@/components/ads/ad-placements";
 
 interface GarageGalleryProps {
   page?: number;
@@ -222,197 +223,210 @@ export function GarageGallery({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Car Gallery</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Discover amazing builds from the community
-          </p>
+    <div className="flex gap-6 justify-center px-4 sm:px-6 lg:px-8">
+      {/* Left Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <LeftSidebarAd />
+      </aside>
+
+      {/* Main Content */}
+      <main className="w-full max-w-7xl space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Car Gallery</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Discover amazing builds from the community
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="space-y-3">
-        {/* Flexible filter layout - BMY on one line, Sort can wrap */}
-        <div className="flex flex-wrap gap-2 sm:gap-3">
-          <div className="flex flex-1 min-w-0 gap-2 sm:gap-3">
-            <Select value={filters.brand} onValueChange={updateFilter.brand}>
-              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[80px]">
-                <SelectValue placeholder="Brand" />
+        {/* Filters */}
+        <div className="space-y-3">
+          {/* Flexible filter layout - BMY on one line, Sort can wrap */}
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            <div className="flex flex-1 min-w-0 gap-2 sm:gap-3">
+              <Select value={filters.brand} onValueChange={updateFilter.brand}>
+                <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[80px]">
+                  <SelectValue placeholder="Brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Brands</SelectItem>
+                  {brands.map((brand) => (
+                    <SelectItem key={brand} value={brand}>
+                      {brand}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.model}
+                onValueChange={updateFilter.model}
+                disabled={filters.brand === "all"}
+              >
+                <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[80px]">
+                  <SelectValue placeholder="Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Models</SelectItem>
+                  {models.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.year} onValueChange={updateFilter.year}>
+                <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[70px]">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {years.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Select value={filters.sort} onValueChange={updateFilter.sort}>
+              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm w-full sm:w-auto sm:min-w-[120px]">
+                <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Brands</SelectItem>
-                {brands.map((brand) => (
-                  <SelectItem key={brand} value={brand}>
-                    {brand}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.model}
-              onValueChange={updateFilter.model}
-              disabled={filters.brand === "all"}
-            >
-              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[80px]">
-                <SelectValue placeholder="Model" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Models</SelectItem>
-                {models.map((model) => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.year} onValueChange={updateFilter.year}>
-              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm flex-1 min-w-[70px]">
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Years</SelectItem>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
+                <SelectItem value="newest_year">Newest Cars</SelectItem>
+                <SelectItem value="oldest_year">Oldest Cars</SelectItem>
+                <SelectItem value="most_liked">Most Liked</SelectItem>
+                <SelectItem value="least_liked">Least Liked</SelectItem>
+                <SelectItem value="recently_added">Recently Added</SelectItem>
+                <SelectItem value="oldest_added">Oldest Added</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <Select value={filters.sort} onValueChange={updateFilter.sort}>
-            <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm w-full sm:w-auto sm:min-w-[120px]">
-              <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest_year">Newest Cars</SelectItem>
-              <SelectItem value="oldest_year">Oldest Cars</SelectItem>
-              <SelectItem value="most_liked">Most Liked</SelectItem>
-              <SelectItem value="least_liked">Least Liked</SelectItem>
-              <SelectItem value="recently_added">Recently Added</SelectItem>
-              <SelectItem value="oldest_added">Oldest Added</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Results count - compact */}
+          <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
+            {filteredAndSortedCars.length} cars found
+          </div>
         </div>
 
-        {/* Results count - compact */}
-        <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-          {filteredAndSortedCars.length} cars found
-        </div>
-      </div>
-
-      {/* Cars Grid */}
-      {filteredAndSortedCars.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <CarIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No cars found</h3>
-            <p className="text-muted-foreground mb-6">
-              Try adjusting your filters or check back later for new builds
-            </p>
-            {currentUser && (
-              <Link href="/garage/create">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your Car
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredAndSortedCars.map((car) => (
-            <Link href={`/garage/${car.id}`} key={car.id} className="group">
-              <Card className="overflow-hidden pt-0 hover:shadow-lg transition-shadow">
-                {/* Car Image */}
-                <div className="relative aspect-square overflow-hidden">
-                  {failedImages.has(car.id) ||
-                  !car.images?.[0] ||
-                  car.images[0].trim() === "" ? (
-                    <div className="aspect-square bg-muted flex items-center justify-center">
-                      <CarIcon className="h-16 w-16 text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <Image
-                      src={car.images[0]}
-                      alt={`${car.brand} ${car.model}`}
-                      fill
-                      quality={100}
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      onError={() => handleImageError(car.id)}
-                    />
-                  )}
-
-                  {/* Like Button - Top Right */}
-                  <div className="absolute top-2 right-2">
-                    <LikeButton
-                      carId={car.id}
-                      initialIsLiked={car.is_liked || false}
-                      variant="floating"
-                      size="xl"
-                      user={currentUser}
-                      onLike={handleLike}
-                      onUnlike={handleUnlike}
-                      onLikeCountChange={(newCount) =>
-                        handleLikeCountChange(car.id, newCount)
-                      }
-                    />
-                  </div>
-                </div>
-
-                <CardHeader className="pb-2 sm:pb-3">
-                  <CardTitle className="text-base sm:text-lg">
-                    {car.year} {car.brand} {car.model}
-                  </CardTitle>
-                  <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                      {carLikeCounts[car.id] ?? car.total_likes}
-                    </span>
-                    {car.owner && (
-                      <span className="flex items-center gap-1 truncate">
-                        <User className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">
-                          {car.owner.display_name || car.owner.username}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-0 pb-3 sm:pb-4">
-                  {/* Action Buttons */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full h-8 sm:h-9"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      router.push(`/garage/${car.id}`);
-                    }}
-                  >
-                    <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />
-                    <span className="text-xs sm:text-sm">View Details</span>
+        {/* Cars Grid */}
+        {filteredAndSortedCars.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <CarIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No cars found</h3>
+              <p className="text-muted-foreground mb-6">
+                Try adjusting your filters or check back later for new builds
+              </p>
+              {currentUser && (
+                <Link href="/garage/create">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your Car
                   </Button>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredAndSortedCars.map((car) => (
+              <Link href={`/garage/${car.id}`} key={car.id} className="group">
+                <Card className="overflow-hidden pt-0 hover:shadow-lg transition-shadow">
+                  {/* Car Image */}
+                  <div className="relative aspect-square overflow-hidden">
+                    {failedImages.has(car.id) ||
+                    !car.images?.[0] ||
+                    car.images[0].trim() === "" ? (
+                      <div className="aspect-square bg-muted flex items-center justify-center">
+                        <CarIcon className="h-16 w-16 text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <Image
+                        src={car.images[0]}
+                        alt={`${car.brand} ${car.model}`}
+                        fill
+                        quality={100}
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        onError={() => handleImageError(car.id)}
+                      />
+                    )}
 
-      {/* Results info */}
-      <div className="text-center text-xs sm:text-sm text-muted-foreground mt-3">
-        Showing {filteredAndSortedCars.length} of {cars.length} cars
-      </div>
+                    {/* Like Button - Top Right */}
+                    <div className="absolute top-2 right-2">
+                      <LikeButton
+                        carId={car.id}
+                        initialIsLiked={car.is_liked || false}
+                        variant="floating"
+                        size="xl"
+                        user={currentUser}
+                        onLike={handleLike}
+                        onUnlike={handleUnlike}
+                        onLikeCountChange={(newCount) =>
+                          handleLikeCountChange(car.id, newCount)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <CardHeader className="pb-2 sm:pb-3">
+                    <CardTitle className="text-base sm:text-lg">
+                      {car.year} {car.brand} {car.model}
+                    </CardTitle>
+                    <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        {carLikeCounts[car.id] ?? car.total_likes}
+                      </span>
+                      {car.owner && (
+                        <span className="flex items-center gap-1 truncate">
+                          <User className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">
+                            {car.owner.display_name || car.owner.username}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="pt-0 pb-3 sm:pb-4">
+                    {/* Action Buttons */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-8 sm:h-9"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        router.push(`/garage/${car.id}`);
+                      }}
+                    >
+                      <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />
+                      <span className="text-xs sm:text-sm">View Details</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Results info */}
+        <div className="text-center text-xs sm:text-sm text-muted-foreground mt-3">
+          Showing {filteredAndSortedCars.length} of {cars.length} cars
+        </div>
+      </main>
+
+      {/* Right Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <RightSidebarAd />
+      </aside>
     </div>
   );
 }

@@ -104,5 +104,10 @@ export default async function HomePage() {
   }
 
   // Pass data directly to client component (using Next.js fetch caching)
-  return <Homepage homeData={processedHomeData} />;
+  // Wrap in full-width container to break out of layout constraints for sidebar ads
+  return (
+    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+      <Homepage homeData={processedHomeData} />
+    </div>
+  );
 }

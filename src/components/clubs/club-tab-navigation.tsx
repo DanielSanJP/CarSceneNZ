@@ -9,6 +9,7 @@ import { CreateClubForm } from "@/components/clubs/tabs/create-club-form";
 import { ClubCardSkeleton } from "@/components/ui/content-skeletons";
 import type { User } from "@/types/user";
 import type { ClubsGalleryData } from "@/types/club";
+import { LeftSidebarAd, RightSidebarAd } from "@/components/ads/ad-placements";
 
 type MainTab = "gallery" | "create";
 
@@ -98,82 +99,95 @@ function ClubTabNavigationContent({
   };
 
   return (
-    <>
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Car Clubs</h1>
-        <p className="text-muted-foreground mb-6">
-          Join the community, find your crew, share your passion
-        </p>
-      </div>
+    <div className="flex gap-6 justify-center px-4 sm:px-6 lg:px-8">
+      {/* Left Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <LeftSidebarAd />
+      </aside>
 
-      {/* Main Navigation Tabs */}
-      <div className="flex justify-center mb-8">
-        <div className="bg-muted p-1 rounded-lg flex gap-1 w-full max-w-md mx-auto">
-          <Button
-            variant={currentTab === "gallery" ? "default" : "ghost"}
-            onClick={() => handleTabChange("gallery")}
-            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
-          >
-            <Users className="h-4 w-4" />
-            <span>Browse Clubs</span>
-          </Button>
-          <Button
-            variant={currentTab === "create" ? "default" : "ghost"}
-            onClick={() => handleTabChange("create")}
-            className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Create Club</span>
-          </Button>
+      {/* Main Content */}
+      <main className="w-full max-w-7xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4">Car Clubs</h1>
+          <p className="text-muted-foreground mb-6">
+            Join the community, find your crew, share your passion
+          </p>
         </div>
-      </div>
 
-      {/* Content based on current tab */}
-      {isTabLoading ? (
-        // Show appropriate skeleton based on tab type
-        <>
-          {currentTab === "gallery" && <ClubCardSkeleton count={9} />}
-          {currentTab === "create" && (
-            <div className="max-w-2xl mx-auto">
-              <ClubCardSkeleton count={1} />
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          {currentTab === "gallery" && (
-            <ClubGallery
-              currentUser={currentUser}
-              initialFilters={initialFilters}
-              clubsData={initialData || null}
-              joinClubAction={joinClubAction}
-              sendClubJoinRequestAction={sendClubJoinRequestAction}
-            />
-          )}
+        {/* Main Navigation Tabs */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-muted p-1 rounded-lg flex gap-1 w-full max-w-md mx-auto">
+            <Button
+              variant={currentTab === "gallery" ? "default" : "ghost"}
+              onClick={() => handleTabChange("gallery")}
+              className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
+            >
+              <Users className="h-4 w-4" />
+              <span>Browse Clubs</span>
+            </Button>
+            <Button
+              variant={currentTab === "create" ? "default" : "ghost"}
+              onClick={() => handleTabChange("create")}
+              className="flex items-center gap-1 sm:gap-2 flex-1 px-2 sm:px-4"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Club</span>
+            </Button>
+          </div>
+        </div>
 
-          {currentTab === "create" && (
-            <>
-              {currentUser ? (
-                <CreateClubForm
-                  user={currentUser}
-                  action={createClubAction}
-                  embedded={true}
-                  onSuccess={() => router.push("/clubs/my-clubs")}
-                  uploadAction={uploadAction}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    Please log in to create a club.
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
-    </>
+        {/* Content based on current tab */}
+        {isTabLoading ? (
+          // Show appropriate skeleton based on tab type
+          <>
+            {currentTab === "gallery" && <ClubCardSkeleton count={9} />}
+            {currentTab === "create" && (
+              <div className="max-w-2xl mx-auto">
+                <ClubCardSkeleton count={1} />
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {currentTab === "gallery" && (
+              <ClubGallery
+                currentUser={currentUser}
+                initialFilters={initialFilters}
+                clubsData={initialData || null}
+                joinClubAction={joinClubAction}
+                sendClubJoinRequestAction={sendClubJoinRequestAction}
+              />
+            )}
+
+            {currentTab === "create" && (
+              <>
+                {currentUser ? (
+                  <CreateClubForm
+                    user={currentUser}
+                    action={createClubAction}
+                    embedded={true}
+                    onSuccess={() => router.push("/clubs/my-clubs")}
+                    uploadAction={uploadAction}
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      Please log in to create a club.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </main>
+
+      {/* Right Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <RightSidebarAd />
+      </aside>
+    </div>
   );
 }
 

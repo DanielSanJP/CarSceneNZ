@@ -32,6 +32,7 @@ import {
   Star,
   Check,
 } from "lucide-react";
+import { LeftSidebarAd, RightSidebarAd } from "@/components/ads/ad-placements";
 
 interface EventsGalleryProps {
   page: number;
@@ -445,310 +446,326 @@ export function EventsGallery({
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-foreground mb-4">
-          Car Events Across NZ
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Discover and join car meets, track days, and automotive gatherings
-          happening across New Zealand.
-        </p>
-      </div>
+    <div className="flex gap-6 justify-center px-4 sm:px-6 lg:px-8">
+      {/* Left Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <LeftSidebarAd />
+      </aside>
 
-      {/* Filters */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filters:</span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            {/* Location Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                Location:
-              </span>
-              <Select
-                value={filters.location}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, location: value }))
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="All locations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All locations</SelectItem>
-                  {locations.map((location) => (
-                    <SelectItem key={location} value={location}>
-                      {location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sort Order */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                Sort by:
-              </span>
-              <Select
-                value={filters.sortOrder}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, sortOrder: value }))
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Sort by date" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nearest">Nearest first</SelectItem>
-                  <SelectItem value="furthest">Furthest first</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Results count */}
+      {/* Main Content - Original max-w-7xl constraint */}
+      <main className="w-full max-w-7xl space-y-8">
+        {/* Header */}
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredAndSortedEvents.length} of {events.length} events
-            {filters.location !== "all" && ` in ${filters.location}`}
+          <h1 className="text-4xl font-bold text-foreground mb-4">
+            Car Events Across NZ
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Discover and join car meets, track days, and automotive gatherings
+            happening across New Zealand.
           </p>
         </div>
-      </div>
 
-      {/* Events Grid */}
-      {filteredAndSortedEvents.length === 0 ? (
-        <div className="text-center py-12">
-          <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            No events found
-          </h3>
-          <p className="text-muted-foreground">
-            Check back later for upcoming car events and meets.
-          </p>
+        {/* Filters */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filters:</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+              {/* Location Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  Location:
+                </span>
+                <Select
+                  value={filters.location}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, location: value }))
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="All locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All locations</SelectItem>
+                    {locations.map((location) => (
+                      <SelectItem key={location} value={location}>
+                        {location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sort Order */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  Sort by:
+                </span>
+                <Select
+                  value={filters.sortOrder}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, sortOrder: value }))
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Sort by date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nearest">Nearest first</SelectItem>
+                    <SelectItem value="furthest">Furthest first</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Results count */}
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredAndSortedEvents.length} of {events.length} events
+              {filters.location !== "all" && ` in ${filters.location}`}
+            </p>
+          </div>
         </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredAndSortedEvents.map((event) => {
-            const attendeeCount = getAttendeeCount(event.id);
-            const interestedCount = getInterestedCount(event.id);
-            const host = getHostInfo(event.host);
-            const userStatus = getUserStatus(event.id);
 
-            // Debug logging for the first event only to avoid spam
-            if (filteredAndSortedEvents.indexOf(event) === 0) {
-              console.log(`🔍 GALLERY DEBUG for event ${event.id}:`, {
-                localUserStatuses: localUserStatuses[event.id],
-                userEventStatuses: userEventStatuses[event.id],
-                calculatedUserStatus: userStatus,
-                user: user ? `${user.username} (${user.id})` : "not logged in",
-              });
-            }
+        {/* Events Grid */}
+        {filteredAndSortedEvents.length === 0 ? (
+          <div className="text-center py-12">
+            <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              No events found
+            </h3>
+            <p className="text-muted-foreground">
+              Check back later for upcoming car events and meets.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredAndSortedEvents.map((event) => {
+              const attendeeCount = getAttendeeCount(event.id);
+              const interestedCount = getInterestedCount(event.id);
+              const host = getHostInfo(event.host);
+              const userStatus = getUserStatus(event.id);
 
-            return (
-              <Link
-                key={event.id}
-                href={`/events/${event.id}`}
-                className="block"
-              >
-                <Card className="overflow-hidden pt-0 cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
-                  {/* Event Image/Poster */}
-                  <div className="relative aspect-square overflow-hidden">
-                    {failedImages.has(event.id) || !event.poster_image_url ? (
-                      // Fallback placeholder
-                      <div className="aspect-square bg-muted flex items-center justify-center">
-                        <div className="text-center">
-                          <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
-                          <p className="text-sm text-muted-foreground font-medium px-4">
-                            {event.title}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <Image
-                        src={event.poster_image_url}
-                        alt={event.title}
-                        fill
-                        quality={100}
-                        priority={filteredAndSortedEvents.indexOf(event) < 6}
-                        className="object-cover"
-                        sizes="(max-width: 640px) 200vw, (max-width: 768px) 100vw, (max-width: 1024px) 66vw, (max-width: 1280px) 50vw, 40vw"
-                        onError={() => handleImageError(event.id)}
-                      />
-                    )}
-                  </div>
+              // Debug logging for the first event only to avoid spam
+              if (filteredAndSortedEvents.indexOf(event) === 0) {
+                console.log(`🔍 GALLERY DEBUG for event ${event.id}:`, {
+                  localUserStatuses: localUserStatuses[event.id],
+                  userEventStatuses: userEventStatuses[event.id],
+                  calculatedUserStatus: userStatus,
+                  user: user
+                    ? `${user.username} (${user.id})`
+                    : "not logged in",
+                });
+              }
 
-                  <CardHeader className="pb-3 h-24 flex-shrink-0">
-                    <div className="flex items-start justify-between h-full">
-                      <div className="flex-1 flex flex-col">
-                        <CardTitle className="text-lg mb-2 line-clamp-1">
-                          {event.title}
-                        </CardTitle>
-                        <CardDescription className="line-clamp-2 flex-1">
-                          {event.description}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-3 flex-1 flex flex-col">
-                    {/* Date and Time */}
-                    <EventDateDisplay
-                      dailySchedule={event.daily_schedule || []}
-                    />
-
-                    <Separator />
-
-                    {/* Location */}
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {event.location}
-                      </span>
-                    </div>
-
-                    <Separator />
-
-                    {/* Attendance Stats */}
-                    <div className="flex items-center justify-evenly text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4" />
-                        <span>{interestedCount} interested</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{attendeeCount} going</span>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Host - Fixed height section */}
-                    <div className="h-12 flex items-center">
-                      {host ? (
-                        <div className="flex items-center space-x-3">
-                          {host.profile_image_url ? (
-                            <Image
-                              src={host.profile_image_url}
-                              alt={host.display_name || host.username}
-                              width={32}
-                              height={32}
-                              quality={100}
-                              className="h-8 w-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>
-                                {(
-                                  host.display_name ||
-                                  host.username ||
-                                  "Unknown"
-                                )
-                                  .split(" ")
-                                  .map((n: string) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          <div>
-                            <div className="text-xs text-muted-foreground">
-                              Hosted by
-                            </div>
-                            <div className="text-sm font-medium">
-                              {host.display_name ||
-                                host.username ||
-                                "Unknown Host"}
-                            </div>
+              return (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.id}`}
+                  className="block"
+                >
+                  <Card className="overflow-hidden pt-0 cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
+                    {/* Event Image/Poster */}
+                    <div className="relative aspect-square overflow-hidden">
+                      {failedImages.has(event.id) || !event.poster_image_url ? (
+                        // Fallback placeholder
+                        <div className="aspect-square bg-muted flex items-center justify-center">
+                          <div className="text-center">
+                            <ImageIcon className="h-16 w-16 text-primary mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground font-medium px-4">
+                              {event.title}
+                            </p>
                           </div>
                         </div>
                       ) : (
-                        <div className="text-xs text-muted-foreground">
-                          Host information unavailable
-                        </div>
+                        <Image
+                          src={event.poster_image_url}
+                          alt={event.title}
+                          fill
+                          quality={100}
+                          priority={filteredAndSortedEvents.indexOf(event) < 6}
+                          className="object-cover"
+                          sizes="(max-width: 640px) 200vw, (max-width: 768px) 100vw, (max-width: 1024px) 66vw, (max-width: 1280px) 50vw, 40vw"
+                          onError={() => handleImageError(event.id)}
+                        />
                       )}
                     </div>
 
-                    <Separator />
+                    <CardHeader className="pb-3 h-24 flex-shrink-0">
+                      <div className="flex items-start justify-between h-full">
+                        <div className="flex-1 flex flex-col">
+                          <CardTitle className="text-lg mb-2 line-clamp-1">
+                            {event.title}
+                          </CardTitle>
+                          <CardDescription className="line-clamp-2 flex-1">
+                            {event.description}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
 
-                    {/* Spacer to push buttons to bottom */}
-                    <div className="flex-grow"></div>
+                    <CardContent className="space-y-3 flex-1 flex flex-col">
+                      {/* Date and Time */}
+                      <EventDateDisplay
+                        dailySchedule={event.daily_schedule || []}
+                      />
 
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <Button
-                        className="w-full flex-1"
-                        variant={
-                          userStatus === "interested" ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log(
-                            `🔘 INTERESTED button clicked for ${
-                              event.id
-                            }: userStatus=${userStatus}, variant=${
-                              userStatus === "interested"
-                                ? "default"
-                                : "outline"
-                            }`
-                          );
-                          handleAttendanceAction(event.id, "interested");
-                        }}
-                      >
-                        {userStatus === "interested" ? (
-                          <Check className="h-4 w-4 mr-1" />
+                      <Separator />
+
+                      {/* Location */}
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {event.location}
+                        </span>
+                      </div>
+
+                      <Separator />
+
+                      {/* Attendance Stats */}
+                      <div className="flex items-center justify-evenly text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4" />
+                          <span>{interestedCount} interested</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          <span>{attendeeCount} going</span>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Host - Fixed height section */}
+                      <div className="h-12 flex items-center">
+                        {host ? (
+                          <div className="flex items-center space-x-3">
+                            {host.profile_image_url ? (
+                              <Image
+                                src={host.profile_image_url}
+                                alt={host.display_name || host.username}
+                                width={32}
+                                height={32}
+                                quality={100}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>
+                                  {(
+                                    host.display_name ||
+                                    host.username ||
+                                    "Unknown"
+                                  )
+                                    .split(" ")
+                                    .map((n: string) => n[0])
+                                    .join("")}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Hosted by
+                              </div>
+                              <div className="text-sm font-medium">
+                                {host.display_name ||
+                                  host.username ||
+                                  "Unknown Host"}
+                              </div>
+                            </div>
+                          </div>
                         ) : (
-                          <Star className="h-4 w-4 mr-1" />
+                          <div className="text-xs text-muted-foreground">
+                            Host information unavailable
+                          </div>
                         )}
-                        Interested
-                      </Button>
-                      <Button
-                        className="w-full flex-1"
-                        variant={
-                          userStatus === "going" || userStatus === "approved"
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log(
-                            `🔘 GOING button clicked for ${
-                              event.id
-                            }: userStatus=${userStatus}, variant=${
-                              userStatus === "going" ||
-                              userStatus === "approved"
-                                ? "default"
-                                : "outline"
-                            }`
-                          );
-                          handleAttendanceAction(event.id, "going");
-                        }}
-                      >
-                        {userStatus === "going" || userStatus === "approved" ? (
-                          <Check className="h-4 w-4 mr-1" />
-                        ) : (
-                          <Users className="h-4 w-4 mr-1" />
-                        )}
-                        I&apos;m Going
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+                      </div>
+
+                      <Separator />
+
+                      {/* Spacer to push buttons to bottom */}
+                      <div className="flex-grow"></div>
+
+                      {/* Action Buttons */}
+                      <div className="flex space-x-2">
+                        <Button
+                          className="w-full flex-1"
+                          variant={
+                            userStatus === "interested" ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log(
+                              `🔘 INTERESTED button clicked for ${
+                                event.id
+                              }: userStatus=${userStatus}, variant=${
+                                userStatus === "interested"
+                                  ? "default"
+                                  : "outline"
+                              }`
+                            );
+                            handleAttendanceAction(event.id, "interested");
+                          }}
+                        >
+                          {userStatus === "interested" ? (
+                            <Check className="h-4 w-4 mr-1" />
+                          ) : (
+                            <Star className="h-4 w-4 mr-1" />
+                          )}
+                          Interested
+                        </Button>
+                        <Button
+                          className="w-full flex-1"
+                          variant={
+                            userStatus === "going" || userStatus === "approved"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log(
+                              `🔘 GOING button clicked for ${
+                                event.id
+                              }: userStatus=${userStatus}, variant=${
+                                userStatus === "going" ||
+                                userStatus === "approved"
+                                  ? "default"
+                                  : "outline"
+                              }`
+                            );
+                            handleAttendanceAction(event.id, "going");
+                          }}
+                        >
+                          {userStatus === "going" ||
+                          userStatus === "approved" ? (
+                            <Check className="h-4 w-4 mr-1" />
+                          ) : (
+                            <Users className="h-4 w-4 mr-1" />
+                          )}
+                          I&apos;m Going
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* Right Sidebar - Hidden on mobile/tablet, visible on xl screens */}
+      <aside className="hidden xl:block w-[200px] flex-shrink-0 sticky top-4 h-fit">
+        <RightSidebarAd />
+      </aside>
     </div>
   );
 }

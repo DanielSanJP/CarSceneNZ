@@ -13,13 +13,8 @@ interface GoogleAdProps {
 /**
  * Google AdSense Display Ad Component
  *
- * Usage:
- * 1. Create ad units in Google AdSense dashboard (Ads → By ad unit → Display ads)
- * 2. Copy the data-ad-slot ID from the generated code
- * 3. Use this component with your ad slot ID
- *
- * Example:
- * <GoogleAd adSlot="1234567890" adFormat="auto" />
+ * Simple ad implementation that relies on CSS media queries for responsive sizing.
+ * The parent component should define specific sizes using CSS media queries.
  */
 export default function GoogleAd({
   adSlot,
@@ -31,20 +26,37 @@ export default function GoogleAd({
   const adRef = useRef<HTMLModElement>(null);
 
   useEffect(() => {
-    try {
-      // Only push ad if it hasn't been pushed yet
-      if (adRef.current && typeof window !== "undefined") {
+    const loadAd = () => {
+      try {
+        if (!adRef.current || typeof window === "undefined") return;
+
+        // Wait for AdSense script to be available
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (!(window as any).adsbygoogle) {
+          setTimeout(loadAd, 100);
+          return;
+        }
+
+        // Check container has width (retry if not ready)
+        const width = adRef.current.offsetWidth;
+        if (width === 0) {
+          setTimeout(loadAd, 100);
+          return;
+        }
+
+        // Load the ad
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const adsbygoogle = ((window as any).adsbygoogle || []) as unknown[];
-
-        // Check if ad is already loaded
-        if (adRef.current.dataset.adsbygoogleStatus !== "done") {
-          adsbygoogle.push({});
-        }
+        adsbygoogle.push({});
+      } catch (err) {
+        console.error("AdSense error:", err);
       }
-    } catch (err) {
-      console.error("AdSense error:", err);
-    }
+    };
+
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(loadAd, 150);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (

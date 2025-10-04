@@ -474,22 +474,24 @@ export default async function ClubsPage({
   }
 
   return (
-    <ClubTabNavigation
-      currentUser={
-        currentUser
-          ? {
-              ...currentUser,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }
-          : null
-      }
-      initialFilters={initialFilters}
-      initialData={initialData}
-      createClubAction={createClubAction}
-      uploadAction={uploadClubImageServerAction}
-      joinClubAction={joinClubAction}
-      sendClubJoinRequestAction={sendJoinRequest}
-    />
+    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+      <ClubTabNavigation
+        currentUser={
+          currentUser
+            ? {
+                ...currentUser,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }
+            : null
+        }
+        initialFilters={initialFilters}
+        initialData={initialData}
+        createClubAction={createClubAction}
+        uploadAction={uploadClubImageServerAction}
+        joinClubAction={joinClubAction}
+        sendClubJoinRequestAction={sendJoinRequest}
+      />
+    </div>
   );
 }

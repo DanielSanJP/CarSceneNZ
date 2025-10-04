@@ -24,6 +24,7 @@ import Link from "next/link";
 import type { EventDetailData } from "@/types/event";
 import { toast } from "sonner";
 import type { EventAttendee } from "@/types/event";
+import { EventDetailSquareAd } from "@/components/ads/ad-placements";
 
 interface EventDetailViewProps {
   eventDetailData: EventDetailData; // Direct SSR data - required
@@ -571,6 +572,9 @@ export function EventDetailView({
               </div>
             </CardContent>
           </Card>
+
+          {/* Square Ad */}
+          <EventDetailSquareAd />
         </div>
       </div>
     </>
